@@ -7,7 +7,16 @@ import QRCode from "react-qr-code";
 import { Book } from "./types";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
 
+import { RoleSelection } from "./components/RoleSelection";
+import { Discovery } from "./components/Discovery";
+
 const STORE_PATH = "shelfsync_settings.json";
+
+interface Host {
+  ip: string;
+  port: number;
+  hostname: string;
+}
 
 interface ConnectionInfo {
   ip: string;
@@ -15,18 +24,28 @@ interface ConnectionInfo {
   hostname: string;
 }
 
+type AppMode = "unselected" | "host" | "client";
+
 function App() {
+  const [appMode, setAppMode] = useState<AppMode>("unselected");
   const [libraryPath, setLibraryPath] = useState<string>("");
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
+  const [connectedHost, setConnectedHost] = useState<Host | null>(null);
 
   // Load settings and connection info on mount
   useEffect(() => {
     async function loadData() {
       try {
         const store = await load(STORE_PATH);
+        
+        const savedMode = await store.get<AppMode>("app_mode");
+        if (savedMode) {
+          setAppMode(savedMode);
+        }
+
         const savedPath = await store.get<string>("library_path");
         if (savedPath) {
           setLibraryPath(savedPath);
@@ -41,6 +60,34 @@ function App() {
     }
     loadData();
   }, []);
+
+  const handleSelectMode = async (mode: AppMode) => {
+    setAppMode(mode);
+    const store = await load(STORE_PATH);
+    await store.set("app_mode", mode);
+    await store.save();
+    if (mode === "client") {
+        setConnectedHost(null);
+        setBooks([]);
+    }
+  };
+
+  const handleConnect = async (host: Host) => {
+    setConnectedHost(host);
+    setLoading(true);
+    setError(null);
+    try {
+        const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`);
+        if (!response.ok) throw new Error("Failed to fetch manifest from host");
+        const data = await response.json();
+        setBooks(data);
+    } catch (e) {
+        console.error("Connection error:", e);
+        setError("Could not connect to host. Make sure it's running and accessible.");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleSelectFolder = async () => {
     try {
@@ -80,6 +127,82 @@ function App() {
     }
   };
 
+  if (appMode === "unselected") {
+    return <RoleSelection onSelect={handleSelectMode} />;
+  }
+
+  if (appMode === "client") {
+    return (
+      <main className="container mx-auto p-6 dark:bg-slate-900 dark:text-white min-h-screen">
+        <header className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+                <BookIcon className="w-8 h-8 text-green-500" />
+                ShelfSync Client
+            </h1>
+            {connectedHost && (
+                <p className="text-slate-400">Connected to {connectedHost.hostname} ({connectedHost.ip})</p>
+            )}
+          </div>
+          <div className="flex gap-4">
+             {connectedHost && (
+                <button 
+                    onClick={() => setConnectedHost(null)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors"
+                >
+                    Disconnect
+                </button>
+             )}
+            <button 
+                onClick={() => handleSelectMode("unselected")}
+                className="text-sm text-slate-500 hover:text-white transition-colors"
+            >
+                Change Role
+            </button>
+          </div>
+        </header>
+
+        {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-lg mb-6">
+                {error}
+            </div>
+        )}
+
+        {loading ? (
+            <div className="text-center py-20 text-slate-400">Communicating with host...</div>
+        ) : connectedHost ? (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Available Books</h2>
+                    <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                        Live Sync
+                    </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {books.map((book) => (
+                    <div key={book.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm flex gap-4">
+                        <div className="w-20 h-28 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {/* We could use the cover URL here */}
+                            <BookIcon className="w-8 h-8 text-slate-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg truncate" title={book.title}>{book.title}</h3>
+                            <p className="text-sm text-slate-400 mb-2 truncate">{book.authors}</p>
+                            <button className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
+                                Sync to Replica
+                            </button>
+                        </div>
+                    </div>
+                    ))}
+                </div>
+            </div>
+        ) : (
+            <Discovery onConnect={handleConnect} />
+        )}
+      </main>
+    );
+  }
+
   return (
     <main className="container mx-auto p-6 dark:bg-slate-900 dark:text-white min-h-screen flex flex-col md:flex-row gap-6">
       <div className="flex-1">
@@ -87,9 +210,15 @@ function App() {
             <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
                 <BookIcon className="w-8 h-8 text-blue-500" />
-                ShelfSync
+                ShelfSync Host
             </h1>
             <p className="text-slate-400">Local Replica Sync Engine</p>
+            <button 
+              onClick={() => handleSelectMode("unselected")}
+              className="mt-2 text-xs text-slate-500 hover:text-white transition-colors"
+            >
+              Change Role
+            </button>
             </div>
             
             <div className="flex flex-col items-end gap-2">
