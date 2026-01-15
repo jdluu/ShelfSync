@@ -3,6 +3,7 @@ import { Monitor, Smartphone } from 'lucide-react';
 import { Box, VStack, Heading, Text, Container, SimpleGrid, Card, Icon, HStack } from "@chakra-ui/react";
 import { ColorModeButton } from "./ui/color-mode";
 import { Footer } from "./Footer";
+import { SkipLink } from "./SkipLink";
 
 interface RoleSelectionProps {
   onSelect: (role: 'host' | 'client') => void;
@@ -11,7 +12,8 @@ interface RoleSelectionProps {
 export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
   return (
     <>
-    <Box minH="100vh" bg="bg.canvas" color="fg" display="flex" alignItems="center" justifyContent="center" p={6} pb={16}>
+    <SkipLink />
+    <Box as="main" id="main-content" minH="100vh" bg="bg.canvas" color="fg" display="flex" alignItems="center" justifyContent="center" p={6} pb={16}>
       <Container maxW="md">
         <VStack gap={8} textAlign="center">
           <HStack justify="flex-end" w="full" position="absolute" top={4} right={4}>
