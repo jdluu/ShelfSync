@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-// import "./App.css"; // Chakra handles styling
 import { invoke } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 import QRCode from "react-qr-code";
@@ -10,7 +9,6 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { Book } from "./types";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
 
-// Chakra Imports
 import { 
   Box, Container, VStack, HStack, Heading, Text, Button, Card, Icon, 
   SimpleGrid, Spinner, Badge, Grid, GridItem, Alert 
@@ -19,7 +17,7 @@ import {
 import { RoleSelection } from "./components/RoleSelection";
 import { Discovery } from "./components/Discovery";
 import { initDB, getLocalBooks, saveBook } from "./db";
-import { nord } from "./theme";
+import { ColorModeButton } from "./components/ui/color-mode";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -140,7 +138,6 @@ function App() {
         const stored = await getLocalBooks();
         setLocalBooks(stored);
 
-        // Ideally replace alert with Toast. For now:
         console.log(`Synced "${book.title}" successfully!`);
       } catch (e) {
           console.error("Sync failed:", e);
@@ -188,25 +185,26 @@ function App() {
 
   if (appMode === "client") {
     return (
-      <Box minH="100vh" bg={nord.nord0} color="white" p={6}>
+      <Box minH="100vh" bg="bg.canvas" color="fg" p={6}>
         <Container maxW="container.xl">
           <HStack justify="space-between" mb={8}>
              <Box>
                 <Heading size="2xl" display="flex" alignItems="center" gap={2}>
-                    <Icon color={nord.nord14} asChild><BookIcon /></Icon>
+                    <Icon color="success" asChild><BookIcon /></Icon>
                     ShelfSync Client
                 </Heading>
                 {connectedHost && (
-                    <Text color={nord.nord4}>Connected to {connectedHost.hostname} ({connectedHost.ip})</Text>
+                    <Text color="fg.muted">Connected to {connectedHost.hostname} ({connectedHost.ip})</Text>
                 )}
              </Box>
              <HStack>
+                <ColorModeButton />
                 {connectedHost && (
                     <Button onClick={() => setConnectedHost(null)} variant="subtle" size="sm">
                         Disconnect
                     </Button>
                 )}
-                <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="sm" color={nord.nord4}>
+                <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="sm" color="fg.muted">
                     Change Role
                 </Button>
              </HStack>
@@ -221,8 +219,8 @@ function App() {
 
           {loading ? (
              <Box textAlign="center" py={20}>
-                <Spinner size="xl" color="green.500" />
-                <Text mt={4} color={nord.nord4}>Communicating with host...</Text>
+                <Spinner size="xl" color="success" />
+                <Text mt={4} color="fg.muted">Communicating with host...</Text>
              </Box>
           ) : connectedHost ? (
              <VStack align="stretch" gap={6}>
@@ -233,15 +231,15 @@ function App() {
 
                 <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                     {books.map((book) => (
-                    <Card.Root key={book.id} bg={nord.nord1} borderColor={nord.nord2}>
+                    <Card.Root key={book.id} bg="bg.subtle" borderColor="border">
                         <Card.Body p={4}>
                            <HStack align="start" gap={4}>
-                               <Box w={20} h={28} bg={nord.nord2} borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
-                                  <Icon color={nord.nord3} w={8} h={8} asChild><BookIcon /></Icon>
+                               <Box w={20} h={28} bg="bg.muted" borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
+                                  <Icon color="fg.subtle" w={8} h={8} asChild><BookIcon /></Icon>
                                </Box>
                                <VStack align="start" gap={1} flex={1} overflow="hidden">
                                   <Heading size="sm" truncate w="full">{book.title}</Heading>
-                                  <Text fontSize="sm" color="gray.400" truncate w="full">{book.authors}</Text>
+                                  <Text fontSize="sm" color="fg.muted" truncate w="full">{book.authors}</Text>
                                   <Button 
                                     size="xs" 
                                     colorPalette="blue" 
@@ -261,19 +259,19 @@ function App() {
                 <Discovery onConnect={handleConnect} />
                 
                 {localBooks.length > 0 && (
-                    <Box pt={8} borderTopWidth="1px" borderColor={nord.nord1}>
+                    <Box pt={8} borderTopWidth="1px" borderColor="border.subtle">
                          <Heading size="lg" mb={6}>Local Library (Offline)</Heading>
                          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                             {localBooks.map((book) => (
-                            <Card.Root key={book.id} bg={nord.nord1} borderColor={nord.nord2} opacity={0.8}>
+                            <Card.Root key={book.id} bg="bg.subtle" borderColor="border" opacity={0.8}>
                                 <Card.Body p={4}>
                                    <HStack align="start" gap={4}>
-                                       <Box w={20} h={28} bg={nord.nord2} borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
-                                          <Icon color={nord.nord3} w={8} h={8} asChild><BookIcon /></Icon>
+                                       <Box w={20} h={28} bg="bg.muted" borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
+                                          <Icon color="fg.subtle" w={8} h={8} asChild><BookIcon /></Icon>
                                        </Box>
                                        <VStack align="start" gap={1} flex={1} overflow="hidden">
-                                          <Heading size="sm" truncate w="full" color={nord.nord4}>{book.title}</Heading>
-                                          <Text fontSize="sm" color={nord.nord3} truncate w="full">{book.authors}</Text>
+                                          <Heading size="sm" truncate w="full" color="fg.muted">{book.title}</Heading>
+                                          <Text fontSize="sm" color="fg.subtle" truncate w="full">{book.authors}</Text>
                                           <HStack mt={1}>
                                               <Badge variant="surface" colorPalette="gray">Downloaded</Badge>
                                               <Button 
@@ -301,31 +299,34 @@ function App() {
 
   // Host Mode
   return (
-    <Box minH="100vh" bg={nord.nord0} color="white" p={6}>
+    <Box minH="100vh" bg="bg.canvas" color="fg" p={6}>
       <Container maxW="container.xl">
         <Grid templateColumns={{ base: "1fr", md: "1fr 320px" }} gap={6}>
            <GridItem>
               <HStack justify="space-between" mb={8} align="start">
                  <Box>
                     <Heading size="2xl" display="flex" alignItems="center" gap={2}>
-                        <Icon color={nord.nord8} asChild><BookIcon /></Icon>
+                        <Icon color="accent" asChild><BookIcon /></Icon>
                         ShelfSync Host
                     </Heading>
-                    <Text color="gray.400">Local Replica Sync Engine</Text>
-                    <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="xs" color={nord.nord3} mt={2}>
+                    <Text color="fg.muted">Local Replica Sync Engine</Text>
+                    <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="xs" color="fg.subtle" mt={2}>
                         Change Role
                     </Button>
                  </Box>
 
-                 <VStack align="end" gap={2}>
-                    <Button onClick={handleSelectFolder} colorPalette="blue">
-                        <Icon mr={2} asChild><FolderOpen /></Icon>
-                        {libraryPath ? "Change Library" : "Select Library"}
-                    </Button>
-                    <Text fontSize="xs" fontFamily="mono" color={nord.nord3} maxW="300px" truncate>
-                        {libraryPath || "No library selected"}
-                    </Text>
-                 </VStack>
+                 <HStack gap={2}>
+                    <ColorModeButton />
+                    <VStack align="end" gap={2}>
+                      <Button onClick={handleSelectFolder} colorPalette="blue">
+                          <Icon mr={2} asChild><FolderOpen /></Icon>
+                          {libraryPath ? "Change Library" : "Select Library"}
+                      </Button>
+                      <Text fontSize="xs" fontFamily="mono" color="fg.subtle" maxW="300px" truncate>
+                          {libraryPath || "No library selected"}
+                      </Text>
+                    </VStack>
+                 </HStack>
               </HStack>
 
               {error && (
@@ -343,23 +344,23 @@ function App() {
               ) : books.length > 0 ? (
                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                     {books.map((book) => (
-                    <Card.Root key={book.id} bg={nord.nord1} borderColor={nord.nord2} _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
+                    <Card.Root key={book.id} bg="bg.subtle" borderColor="border" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
                         <Card.Body p={4}>
                              <Heading size="sm" truncate>{book.title}</Heading>
-                             <Text fontSize="sm" color="gray.400" truncate mb={2}>{book.authors}</Text>
-                             <Text fontSize="xs" color={nord.nord3} fontFamily="mono" wordBreak="break-all">{book.path}</Text>
+                             <Text fontSize="sm" color="fg.muted" truncate mb={2}>{book.authors}</Text>
+                             <Text fontSize="xs" color="fg.subtle" fontFamily="mono" wordBreak="break-all">{book.path}</Text>
                         </Card.Body>
                     </Card.Root>
                     ))}
                  </SimpleGrid>
               ) : (
-                 <Box textAlign="center" py={20} bg="whiteAlpha.50" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="gray.700">
+                 <Box textAlign="center" py={20} bg="bg.subtle" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="border">
                     {libraryPath ? (
-                        <Text color="gray.400">No books found in this library.</Text>
+                        <Text color="fg.muted">No books found in this library.</Text>
                     ) : (
                         <VStack>
-                            <Text color={nord.nord4} fontWeight="medium">Welcome to ShelfSync Host</Text>
-                            <Text color={nord.nord3} fontSize="sm">Select your Calibre library folder to begin.</Text>
+                            <Text color="fg" fontWeight="medium">Welcome to ShelfSync Host</Text>
+                            <Text color="fg.subtle" fontSize="sm">Select your Calibre library folder to begin.</Text>
                         </VStack>
                     )}
                  </Box>
@@ -367,9 +368,9 @@ function App() {
            </GridItem>
 
            <GridItem>
-              <Box bg={nord.nord1} p={6} borderRadius="xl" borderWidth="1px" borderColor="gray.700">
+              <Box bg="bg.subtle" p={6} borderRadius="xl" borderWidth="1px" borderColor="border">
                  <Heading size="md" mb={4} display="flex" alignItems="center" gap={2}>
-                    <Icon color={nord.nord14} asChild><Network /></Icon>
+                    <Icon color="success" asChild><Network /></Icon>
                     Connectivity
                  </Heading>
                  
@@ -385,37 +386,37 @@ function App() {
                        </Box>
 
                        <VStack gap={3}>
-                           <HStack p={3} bg={nord.nord0} borderRadius="lg" borderWidth="1px" borderColor="gray.700">
-                              <Icon color="gray.400" asChild><Wifi /></Icon>
+                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
+                              <Icon color="fg.subtle" asChild><Wifi /></Icon>
                               <Box>
-                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Host IP</Text>
+                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Host IP</Text>
                                  <Text fontFamily="mono" fontSize="lg">{connectionInfo.ip}</Text>
                               </Box>
                            </HStack>
 
-                           <HStack p={3} bg={nord.nord0} borderRadius="lg" borderWidth="1px" borderColor="gray.700">
-                              <Box w={5} display="flex" justifyContent="center" color="gray.400" fontFamily="mono">:</Box>
+                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
+                              <Box w={5} display="flex" justifyContent="center" color="fg.subtle" fontFamily="mono">:</Box>
                               <Box>
-                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Port</Text>
+                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Port</Text>
                                  <Text fontFamily="mono" fontSize="lg">{connectionInfo.port}</Text>
                               </Box>
                            </HStack>
 
-                           <HStack p={3} bg={nord.nord0} borderRadius="lg" borderWidth="1px" borderColor="gray.700">
-                              <Box w={5} display="flex" justifyContent="center" color="gray.400" fontFamily="mono">@</Box>
+                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
+                              <Box w={5} display="flex" justifyContent="center" color="fg.subtle" fontFamily="mono">@</Box>
                               <Box>
-                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Hostname</Text>
+                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Hostname</Text>
                                  <Text fontFamily="mono" fontSize="lg" truncate maxW="200px">{connectionInfo.hostname}</Text>
                               </Box>
                            </HStack>
                        </VStack>
                        
-                       <Text fontSize="xs" color={nord.nord3} textAlign="center">
+                       <Text fontSize="xs" color="fg.subtle" textAlign="center">
                           Scan this QR code with the ShelfSync mobile app to connect.
                        </Text>
                     </VStack>
                  ) : (
-                    <Text textAlign="center" py={10} color="gray.400">Loading network info...</Text>
+                    <Text textAlign="center" py={10} color="fg.muted">Loading network info...</Text>
                  )}
               </Box>
            </GridItem>
