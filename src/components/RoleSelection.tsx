@@ -2,6 +2,7 @@ import React from 'react';
 import { Monitor, Smartphone } from 'lucide-react';
 import { Box, VStack, Heading, Text, Container, SimpleGrid, Card, Icon, HStack } from "@chakra-ui/react";
 import { ColorModeButton } from "./ui/color-mode";
+import { Footer } from "./Footer";
 
 interface RoleSelectionProps {
   onSelect: (role: 'host' | 'client') => void;
@@ -9,7 +10,8 @@ interface RoleSelectionProps {
 
 export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
   return (
-    <Box minH="100vh" bg="bg.canvas" color="fg" display="flex" alignItems="center" justifyContent="center" p={6}>
+    <>
+    <Box minH="100vh" bg="bg.canvas" color="fg" display="flex" alignItems="center" justifyContent="center" p={6} pb={16}>
       <Container maxW="md">
         <VStack gap={8} textAlign="center">
           <HStack justify="flex-end" w="full" position="absolute" top={4} right={4}>
@@ -69,5 +71,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
         </VStack>
       </Container>
     </Box>
+    <Footer />
+    </>
   );
 };

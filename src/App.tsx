@@ -18,6 +18,7 @@ import { RoleSelection } from "./components/RoleSelection";
 import { Discovery } from "./components/Discovery";
 import { initDB, getLocalBooks, saveBook } from "./db";
 import { ColorModeButton } from "./components/ui/color-mode";
+import { Footer } from "./components/Footer";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -185,7 +186,8 @@ function App() {
 
   if (appMode === "client") {
     return (
-      <Box minH="100vh" bg="bg.canvas" color="fg" p={6}>
+      <>
+      <Box minH="100vh" bg="bg.canvas" color="fg" p={6} pb={16}>
         <Container maxW="container.xl">
           <HStack justify="space-between" mb={8}>
              <Box>
@@ -294,12 +296,15 @@ function App() {
           )}
         </Container>
       </Box>
+      <Footer />
+      </>
     );
   }
 
   // Host Mode
   return (
-    <Box minH="100vh" bg="bg.canvas" color="fg" p={6}>
+    <>
+    <Box minH="100vh" bg="bg.canvas" color="fg" p={6} pb={16}>
       <Container maxW="container.xl">
         <Grid templateColumns={{ base: "1fr", md: "1fr 320px" }} gap={6}>
            <GridItem>
@@ -423,6 +428,8 @@ function App() {
         </Grid>
       </Container>
     </Box>
+    <Footer />
+    </>
   );
 }
 
