@@ -4,11 +4,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { load } from "@tauri-apps/plugin-store";
 import QRCode from "react-qr-code";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import { Book } from "./types";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
 
 import { RoleSelection } from "./components/RoleSelection";
 import { Discovery } from "./components/Discovery";
+import { initDB, getLocalBooks, saveBook } from "./db";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -30,6 +33,7 @@ function App() {
   const [appMode, setAppMode] = useState<AppMode>("unselected");
   const [libraryPath, setLibraryPath] = useState<string>("");
   const [books, setBooks] = useState<Book[]>([]);
+  const [localBooks, setLocalBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
@@ -69,6 +73,13 @@ function App() {
     if (mode === "client") {
         setConnectedHost(null);
         setBooks([]);
+        try {
+            await initDB();
+            const stored = await getLocalBooks();
+            setLocalBooks(stored);
+        } catch (e) {
+            console.error("Failed to init local DB:", e);
+        }
     }
   };
 
@@ -87,6 +98,42 @@ function App() {
     } finally {
         setLoading(false);
     }
+  };
+
+  const handleSync = async (book: Book) => {
+      if (!connectedHost) return;
+      try {
+        // 1. Download file
+        const response = await fetch(`http://${connectedHost.ip}:${connectedHost.port}/api/download/${book.id}/epub`);
+        if (!response.ok) throw new Error("Download failed");
+        
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        // 2. Save to local storage
+        const fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.epub`;
+        const filePath = await join(await appDataDir(), fileName);
+        
+        // Ensure directory exists (appDataDir should exist, but good practice)
+        // For simplicity using BaseDirectory.AppData
+        // Note: writeBinaryFile documentation says we need to specify base dir if using relative path, 
+        // OR use absolute path. join(appDataDir, ...) gives absolute.
+        
+        await writeFile(filePath, uint8Array);
+
+        // 3. Update DB
+        await saveBook(book, filePath);
+        
+        // Refresh local books
+        const stored = await getLocalBooks();
+        setLocalBooks(stored);
+
+        alert(`Synced "${book.title}" successfully!`);
+      } catch (e) {
+          console.error("Sync failed:", e);
+          alert("Failed to sync book. Check console.");
+      }
   };
 
   const handleSelectFolder = async () => {
@@ -173,7 +220,7 @@ function App() {
         ) : connectedHost ? (
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Available Books</h2>
+                    <h2 className="text-xl font-semibold">Available Books (Remote)</h2>
                     <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                         Live Sync
                     </span>
@@ -188,7 +235,10 @@ function App() {
                         <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-lg truncate" title={book.title}>{book.title}</h3>
                             <p className="text-sm text-slate-400 mb-2 truncate">{book.authors}</p>
-                            <button className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors">
+                            <button 
+                                onClick={() => handleSync(book)}
+                                className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                            >
                                 Sync to Replica
                             </button>
                         </div>
@@ -197,7 +247,31 @@ function App() {
                 </div>
             </div>
         ) : (
-            <Discovery onConnect={handleConnect} />
+            <div className="space-y-12">
+                <Discovery onConnect={handleConnect} />
+                
+                {localBooks.length > 0 && (
+                    <div className="pt-8 border-t border-slate-800">
+                        <h2 className="text-xl font-semibold mb-6">Local Library (Offline)</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {localBooks.map((book) => (
+                            <div key={book.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm flex gap-4 opacity-75">
+                                <div className="w-20 h-28 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    <BookIcon className="w-8 h-8 text-slate-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-lg truncate text-slate-300" title={book.title}>{book.title}</h3>
+                                    <p className="text-sm text-slate-500 mb-2 truncate">{book.authors}</p>
+                                    <span className="text-xs px-2 py-1 bg-slate-700 rounded text-slate-400">
+                                        Downloaded
+                                    </span>
+                                </div>
+                            </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         )}
       </main>
     );
