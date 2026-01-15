@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from "@tauri-apps/api/core";
 import { Search, Globe, ChevronRight, RefreshCw, Plus } from 'lucide-react';
 import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner } from "@chakra-ui/react";
+import { nord } from "../theme";
 
 interface Host {
   ip: string;
@@ -51,7 +52,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
     <VStack gap={8} align="stretch">
       <HStack justify="space-between">
         <Heading size="lg" display="flex" alignItems="center" gap={2}>
-            <Icon color="green.500" asChild><Search /></Icon>
+            <Icon color={nord.nord14} asChild><Search /></Icon>
             Discover Hosts
         </Heading>
         <Button 
@@ -72,37 +73,37 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
                     key={`${host.ip}:${host.port}`}
                     onClick={() => onConnect(host)}
                     cursor="pointer"
-                    _hover={{ bg: "gray.700" }}
+                    _hover={{ bg: nord.nord2 }}
                     transition="background 0.2s"
-                    bg="gray.800"
-                    borderColor="gray.700"
+                    bg={nord.nord1}
+                    borderColor={nord.nord2}
                 >
                     <Card.Body py={4}>
                       <HStack justify="space-between">
                         <HStack gap={4}>
-                            <Box w={10} h={10} borderRadius="full" bg="green.900" display="flex" alignItems="center" justifyContent="center">
-                                <Icon color="green.500" w={5} h={5} asChild><Globe /></Icon>
+                            <Box w={10} h={10} borderRadius="full" bg={nord.nord2} display="flex" alignItems="center" justifyContent="center">
+                                <Icon color={nord.nord14} w={5} h={5} asChild><Globe /></Icon>
                             </Box>
                             <Box>
                                 <Text fontWeight="semibold">{host.hostname}</Text>
-                                <Text fontSize="xs" color="gray.500" fontFamily="mono">{host.ip}:{host.port}</Text>
+                                <Text fontSize="xs" color={nord.nord4} fontFamily="mono">{host.ip}:{host.port}</Text>
                             </Box>
                         </HStack>
-                        <Icon color="gray.600" asChild><ChevronRight /></Icon>
+                        <Icon color={nord.nord3} asChild><ChevronRight /></Icon>
                       </HStack>
                     </Card.Body>
                 </Card.Root>
             ))
         ) : (
-            <Box textAlign="center" py={12} bg="whiteAlpha.50" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="gray.700">
-                <Text color="gray.500">No hosts discovered yet.</Text>
-                <Text fontSize="xs" color="gray.600" mt={1}>Make sure your host is on the same network.</Text>
+            <Box textAlign="center" py={12} bg={nord.nord1} borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor={nord.nord2}>
+                <Text color={nord.nord4}>No hosts discovered yet.</Text>
+                <Text fontSize="xs" color={nord.nord3} mt={1}>Make sure your host is on the same network.</Text>
             </Box>
         )}
       </VStack>
 
-      <Box pt={4} borderTopWidth="1px" borderColor="gray.800">
-        <Heading size="xs" color="gray.400" mb={3} display="flex" alignItems="center" gap={2}>
+      <Box pt={4} borderTopWidth="1px" borderColor={nord.nord1}>
+        <Heading size="xs" color={nord.nord4} mb={3} display="flex" alignItems="center" gap={2}>
             <Icon asChild><Plus /></Icon>
             Manual Connection
         </Heading>
@@ -112,16 +113,16 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
                 value={manualIp}
                 onChange={(e) => setManualIp(e.target.value)}
                 flex={1}
-                bg="gray.800"
-                borderColor="gray.700"
+                bg={nord.nord1}
+                borderColor={nord.nord2}
             />
             <Input 
                 placeholder="Port" 
                 value={manualPort}
                 onChange={(e) => setManualPort(e.target.value)}
                 w={24}
-                bg="gray.800"
-                borderColor="gray.700"
+                bg={nord.nord1}
+                borderColor={nord.nord2}
             />
             <Button 
                 onClick={handleManualConnect}
