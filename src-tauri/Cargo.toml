@@ -32,6 +32,8 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
+tokio-util = { version = "0.7.18", features = ["io"] }
+hostname = "0.4.2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 rusqlite = { version = "0.31.0", features = ["bundled"] }
@@ -40,5 +42,6 @@ rusqlite = { version = "0.31.0", features = ["bundled"] }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 
 [dev-dependencies]
+axum-test = "18.6.0"
 tempfile = "3.24.0"
 
