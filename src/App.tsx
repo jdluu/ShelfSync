@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
 import { load } from "@tauri-apps/plugin-store";
 import QRCode from "react-qr-code";
+import { open } from "@tauri-apps/plugin-dialog";
+// @ts-ignore
+import { open as openPath } from "@tauri-apps/plugin-opener";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { Book } from "./types";
@@ -88,8 +90,15 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-        const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`);
-        if (!response.ok) throw new Error("Failed to fetch manifest from host");
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+        const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, {
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        
+        if (!response.ok) throw new Error("Failed to fetch manifest");
         const data = await response.json();
         setBooks(data);
     } catch (e) {
@@ -104,7 +113,14 @@ function App() {
       if (!connectedHost) return;
       try {
         // 1. Download file
-        const response = await fetch(`http://${connectedHost.ip}:${connectedHost.port}/api/download/${book.id}/epub`);
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 30000); // 30s timeout for download
+
+        const response = await fetch(`http://${connectedHost.ip}:${connectedHost.port}/api/download/${book.id}/epub`, {
+             signal: controller.signal
+        });
+        clearTimeout(id);
+
         if (!response.ok) throw new Error("Download failed");
         
         const blob = await response.blob();
@@ -262,9 +278,17 @@ function App() {
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-semibold text-lg truncate text-slate-300" title={book.title}>{book.title}</h3>
                                     <p className="text-sm text-slate-500 mb-2 truncate">{book.authors}</p>
-                                    <span className="text-xs px-2 py-1 bg-slate-700 rounded text-slate-400">
-                                        Downloaded
-                                    </span>
+                                    <div className="flex gap-2">
+                                        <span className="text-xs px-2 py-1 bg-slate-700 rounded text-slate-400">
+                                            Downloaded
+                                        </span>
+                                        <button 
+                                            onClick={() => openPath(book.local_path!)}
+                                            className="text-xs px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                                        >
+                                            Read
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             ))}
