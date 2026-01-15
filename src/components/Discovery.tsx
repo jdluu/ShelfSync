@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from "@tauri-apps/api/core";
 import { Search, Globe, ChevronRight, RefreshCw, Plus } from 'lucide-react';
+import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner } from "@chakra-ui/react";
 
 interface Host {
   ip: string;
@@ -47,79 +48,90 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Search className="w-6 h-6 text-green-500" />
+    <VStack gap={8} align="stretch">
+      <HStack justify="space-between">
+        <Heading size="lg" display="flex" alignItems="center" gap={2}>
+            <Icon color="green.500" asChild><Search /></Icon>
             Discover Hosts
-        </h2>
-        <button 
+        </Heading>
+        <Button 
             onClick={scan}
             disabled={scanning}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors disabled:opacity-50"
+            variant="surface"
+            size="sm"
         >
-            <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
+            {scanning ? <Spinner size="sm" /> : <Icon asChild><RefreshCw /></Icon>}
             Refresh
-        </button>
-      </div>
+        </Button>
+      </HStack>
 
-      <div className="grid gap-4">
+      <VStack gap={4} align="stretch">
         {hosts.length > 0 ? (
             hosts.map((host) => (
-                <button
+                <Card.Root
                     key={`${host.ip}:${host.port}`}
                     onClick={() => onConnect(host)}
-                    className="flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all group"
+                    cursor="pointer"
+                    _hover={{ bg: "gray.700" }}
+                    transition="background 0.2s"
+                    bg="gray.800"
+                    borderColor="gray.700"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                            <Globe className="w-5 h-5 text-green-500" />
-                        </div>
-                        <div className="text-left">
-                            <p className="font-semibold text-slate-100">{host.hostname}</p>
-                            <p className="text-xs text-slate-500 font-mono">{host.ip}:{host.port}</p>
-                        </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-green-500 transition-colors" />
-                </button>
+                    <Card.Body py={4}>
+                      <HStack justify="space-between">
+                        <HStack gap={4}>
+                            <Box w={10} h={10} borderRadius="full" bg="green.900" display="flex" alignItems="center" justifyContent="center">
+                                <Icon color="green.500" w={5} h={5} asChild><Globe /></Icon>
+                            </Box>
+                            <Box>
+                                <Text fontWeight="semibold">{host.hostname}</Text>
+                                <Text fontSize="xs" color="gray.500" fontFamily="mono">{host.ip}:{host.port}</Text>
+                            </Box>
+                        </HStack>
+                        <Icon color="gray.600" asChild><ChevronRight /></Icon>
+                      </HStack>
+                    </Card.Body>
+                </Card.Root>
             ))
         ) : (
-            <div className="text-center py-12 bg-slate-800/30 rounded-xl border border-dashed border-slate-700">
-                <p className="text-slate-500">No hosts discovered yet.</p>
-                <p className="text-xs text-slate-600 mt-1">Make sure your host is on the same network.</p>
-            </div>
+            <Box textAlign="center" py={12} bg="whiteAlpha.50" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="gray.700">
+                <Text color="gray.500">No hosts discovered yet.</Text>
+                <Text fontSize="xs" color="gray.600" mt={1}>Make sure your host is on the same network.</Text>
+            </Box>
         )}
-      </div>
+      </VStack>
 
-      <div className="pt-4 border-t border-slate-800">
-        <h3 className="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
-            <Plus className="w-4 h-4" />
+      <Box pt={4} borderTopWidth="1px" borderColor="gray.800">
+        <Heading size="xs" color="gray.400" mb={3} display="flex" alignItems="center" gap={2}>
+            <Icon asChild><Plus /></Icon>
             Manual Connection
-        </h3>
-        <div className="flex gap-2">
-            <input 
-                type="text" 
+        </Heading>
+        <HStack gap={2}>
+            <Input 
                 placeholder="IP Address (e.g. 192.168.1.5)" 
                 value={manualIp}
                 onChange={(e) => setManualIp(e.target.value)}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 transition-colors"
+                flex={1}
+                bg="gray.800"
+                borderColor="gray.700"
             />
-            <input 
-                type="text" 
+            <Input 
                 placeholder="Port" 
                 value={manualPort}
                 onChange={(e) => setManualPort(e.target.value)}
-                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-green-500 transition-colors"
+                w={24}
+                bg="gray.800"
+                borderColor="gray.700"
             />
-            <button 
+            <Button 
                 onClick={handleManualConnect}
                 disabled={!manualIp}
-                className="px-6 bg-green-600 hover:bg-green-700 disabled:bg-slate-700 rounded-lg font-medium transition-colors"
+                colorPalette="green"
             >
                 Connect
-            </button>
-        </div>
-      </div>
-    </div>
+            </Button>
+        </HStack>
+      </Box>
+    </VStack>
   );
 };

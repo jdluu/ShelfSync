@@ -1,5 +1,6 @@
 import React from 'react';
 import { Monitor, Smartphone } from 'lucide-react';
+import { Box, VStack, Heading, Text, Container, SimpleGrid, Card, Icon } from "@chakra-ui/react";
 
 interface RoleSelectionProps {
   onSelect: (role: 'host' | 'client') => void;
@@ -7,41 +8,61 @@ interface RoleSelectionProps {
 
 export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6">
-      <div className="max-w-md w-full text-center space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">ShelfSync</h1>
-          <p className="text-slate-400">Choose your device role</p>
-        </div>
+    <Box minH="100vh" bg="gray.900" color="white" display="flex" alignItems="center" justifyContent="center" p={6}>
+      <Container maxW="md">
+        <VStack gap={8} textAlign="center">
+          <Box>
+            <Heading size="4xl" mb={2}>ShelfSync</Heading>
+            <Text color="gray.400">Choose your device role</Text>
+          </Box>
 
-        <div className="grid gap-4">
-          <button
-            onClick={() => onSelect('host')}
-            className="group flex flex-col items-center gap-4 p-8 bg-slate-800 hover:bg-blue-600/20 border border-slate-700 hover:border-blue-500 rounded-2xl transition-all text-left"
-          >
-            <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <Monitor className="w-8 h-8 text-blue-500" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold">Host (Desktop)</h3>
-              <p className="text-sm text-slate-400">Share your Calibre library with other devices.</p>
-            </div>
-          </button>
+          <SimpleGrid columns={1} gap={4} w="full">
+            <Card.Root 
+              onClick={() => onSelect('host')}
+              cursor="pointer"
+              bg="gray.800"
+              borderColor="gray.700"
+              borderWidth="1px"
+              transition="all 0.2s"
+              _hover={{ bg: "blue.900", borderColor: "blue.500" }}
+            >
+              <Card.Body>
+                <VStack gap={4}>
+                  <Box w={16} h={16} borderRadius="full" bg="blue.900" display="flex" alignItems="center" justifyContent="center">
+                    <Icon color="blue.400" w={8} h={8} asChild><Monitor /></Icon>
+                  </Box>
+                  <Box textAlign="center">
+                    <Heading size="md">Host (Desktop)</Heading>
+                    <Text fontSize="sm" color="gray.400">Share your Calibre library with other devices.</Text>
+                  </Box>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
 
-          <button
-            onClick={() => onSelect('client')}
-            className="group flex flex-col items-center gap-4 p-8 bg-slate-800 hover:bg-green-600/20 border border-slate-700 hover:border-green-500 rounded-2xl transition-all text-left"
-          >
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
-              <Smartphone className="w-8 h-8 text-green-500" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold">Client (Mobile)</h3>
-              <p className="text-sm text-slate-400">Sync and download books from a ShelfSync host.</p>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
+            <Card.Root 
+              onClick={() => onSelect('client')}
+              cursor="pointer"
+              bg="gray.800"
+              borderColor="gray.700"
+              borderWidth="1px"
+              transition="all 0.2s"
+              _hover={{ bg: "green.900", borderColor: "green.500" }}
+            >
+              <Card.Body>
+                <VStack gap={4}>
+                  <Box w={16} h={16} borderRadius="full" bg="green.900" display="flex" alignItems="center" justifyContent="center">
+                    <Icon color="green.400" w={8} h={8} asChild><Smartphone /></Icon>
+                  </Box>
+                  <Box textAlign="center">
+                    <Heading size="md">Client (Mobile)</Heading>
+                    <Text fontSize="sm" color="gray.400">Sync and download books from a ShelfSync host.</Text>
+                  </Box>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
+          </SimpleGrid>
+        </VStack>
+      </Container>
+    </Box>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import "./App.css";
+// import "./App.css"; // Chakra handles styling
 import { invoke } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 import QRCode from "react-qr-code";
@@ -10,6 +10,12 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { Book } from "./types";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
+
+// Chakra Imports
+import { 
+  Box, Container, VStack, HStack, Heading, Text, Button, Card, Icon, 
+  SimpleGrid, Spinner, Badge, Grid, GridItem, Alert 
+} from "@chakra-ui/react";
 
 import { RoleSelection } from "./components/RoleSelection";
 import { Discovery } from "./components/Discovery";
@@ -41,7 +47,6 @@ function App() {
   const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const [connectedHost, setConnectedHost] = useState<Host | null>(null);
 
-  // Load settings and connection info on mount
   useEffect(() => {
     async function loadData() {
       try {
@@ -91,7 +96,7 @@ function App() {
     setError(null);
     try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const id = setTimeout(() => controller.abort(), 5000); 
 
         const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, {
             signal: controller.signal
@@ -112,9 +117,8 @@ function App() {
   const handleSync = async (book: Book) => {
       if (!connectedHost) return;
       try {
-        // 1. Download file
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 30000); // 30s timeout for download
+        const id = setTimeout(() => controller.abort(), 30000); 
 
         const response = await fetch(`http://${connectedHost.ip}:${connectedHost.port}/api/download/${book.id}/epub`, {
              signal: controller.signal
@@ -127,28 +131,20 @@ function App() {
         const arrayBuffer = await blob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
 
-        // 2. Save to local storage
         const fileName = `${book.title.replace(/[^a-z0-9]/gi, '_')}.epub`;
         const filePath = await join(await appDataDir(), fileName);
         
-        // Ensure directory exists (appDataDir should exist, but good practice)
-        // For simplicity using BaseDirectory.AppData
-        // Note: writeBinaryFile documentation says we need to specify base dir if using relative path, 
-        // OR use absolute path. join(appDataDir, ...) gives absolute.
-        
         await writeFile(filePath, uint8Array);
-
-        // 3. Update DB
         await saveBook(book, filePath);
         
-        // Refresh local books
         const stored = await getLocalBooks();
         setLocalBooks(stored);
 
-        alert(`Synced "${book.title}" successfully!`);
+        // Ideally replace alert with Toast. For now:
+        console.log(`Synced "${book.title}" successfully!`);
       } catch (e) {
           console.error("Sync failed:", e);
-          alert("Failed to sync book. Check console.");
+          setError("Failed to sync book. Check console.");
       }
   };
 
@@ -162,12 +158,9 @@ function App() {
 
       if (selected && typeof selected === "string") {
         setLibraryPath(selected);
-        // Save to store
         const store = await load(STORE_PATH);
         await store.set("library_path", selected);
         await store.save();
-        
-        // Fetch books
         fetchBooks(selected);
       }
     } catch (e) {
@@ -180,11 +173,10 @@ function App() {
     setError(null);
     try {
       const result = await invoke<Book[]>("get_books", { libraryPath: path });
-      console.log("Books found:", result.length);
       setBooks(result);
     } catch (e) {
       console.error("Error fetching books:", e);
-      setError(typeof e === 'string' ? e : "Failed to load library database. Make sure 'metadata.db' exists in the folder.");
+      setError(typeof e === 'string' ? e : "Failed to load library database.");
     } finally {
       setLoading(false);
     }
@@ -196,230 +188,240 @@ function App() {
 
   if (appMode === "client") {
     return (
-      <main className="container mx-auto p-6 dark:bg-slate-900 dark:text-white min-h-screen">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-                <BookIcon className="w-8 h-8 text-green-500" />
-                ShelfSync Client
-            </h1>
-            {connectedHost && (
-                <p className="text-slate-400">Connected to {connectedHost.hostname} ({connectedHost.ip})</p>
-            )}
-          </div>
-          <div className="flex gap-4">
-             {connectedHost && (
-                <button 
-                    onClick={() => setConnectedHost(null)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors"
-                >
-                    Disconnect
-                </button>
-             )}
-            <button 
-                onClick={() => handleSelectMode("unselected")}
-                className="text-sm text-slate-500 hover:text-white transition-colors"
-            >
-                Change Role
-            </button>
-          </div>
-        </header>
+      <Box minH="100vh" bg="gray.900" color="white" p={6}>
+        <Container maxW="container.xl">
+          <HStack justify="space-between" mb={8}>
+             <Box>
+                <Heading size="2xl" display="flex" alignItems="center" gap={2}>
+                    <Icon color="green.500" asChild><BookIcon /></Icon>
+                    ShelfSync Client
+                </Heading>
+                {connectedHost && (
+                    <Text color="gray.400">Connected to {connectedHost.hostname} ({connectedHost.ip})</Text>
+                )}
+             </Box>
+             <HStack>
+                {connectedHost && (
+                    <Button onClick={() => setConnectedHost(null)} variant="subtle" size="sm">
+                        Disconnect
+                    </Button>
+                )}
+                <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="sm" color="gray.400">
+                    Change Role
+                </Button>
+             </HStack>
+          </HStack>
 
-        {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-lg mb-6">
-                {error}
-            </div>
-        )}
+          {error && (
+            <Alert.Root status="error" mb={6}>
+              <Alert.Indicator />
+              <Alert.Title>{error}</Alert.Title>
+            </Alert.Root>
+          )}
 
-        {loading ? (
-            <div className="text-center py-20 text-slate-400">Communicating with host...</div>
-        ) : connectedHost ? (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Available Books (Remote)</h2>
-                    <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Live Sync
-                    </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {loading ? (
+             <Box textAlign="center" py={20}>
+                <Spinner size="xl" color="green.500" />
+                <Text mt={4} color="gray.400">Communicating with host...</Text>
+             </Box>
+          ) : connectedHost ? (
+             <VStack align="stretch" gap={6}>
+                <HStack justify="space-between">
+                    <Heading size="lg">Available Books (Remote)</Heading>
+                    <Badge colorPalette="green" variant="solid">Live Sync</Badge>
+                </HStack>
+
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                     {books.map((book) => (
-                    <div key={book.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm flex gap-4">
-                        <div className="w-20 h-28 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-                            {/* We could use the cover URL here */}
-                            <BookIcon className="w-8 h-8 text-slate-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg truncate" title={book.title}>{book.title}</h3>
-                            <p className="text-sm text-slate-400 mb-2 truncate">{book.authors}</p>
-                            <button 
-                                onClick={() => handleSync(book)}
-                                className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-                            >
-                                Sync to Replica
-                            </button>
-                        </div>
-                    </div>
+                    <Card.Root key={book.id} bg="gray.800" borderColor="gray.700">
+                        <Card.Body p={4}>
+                           <HStack align="start" gap={4}>
+                               <Box w={20} h={28} bg="gray.700" borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
+                                  <Icon color="gray.500" w={8} h={8} asChild><BookIcon /></Icon>
+                               </Box>
+                               <VStack align="start" gap={1} flex={1} overflow="hidden">
+                                  <Heading size="sm" truncate w="full">{book.title}</Heading>
+                                  <Text fontSize="sm" color="gray.400" truncate w="full">{book.authors}</Text>
+                                  <Button 
+                                    size="xs" 
+                                    colorPalette="blue" 
+                                    onClick={() => handleSync(book)}
+                                  >
+                                    Sync to Replica
+                                  </Button>
+                               </VStack>
+                           </HStack>
+                        </Card.Body>
+                    </Card.Root>
                     ))}
-                </div>
-            </div>
-        ) : (
-            <div className="space-y-12">
+                </SimpleGrid>
+             </VStack>
+          ) : (
+             <VStack align="stretch" gap={12}>
                 <Discovery onConnect={handleConnect} />
                 
                 {localBooks.length > 0 && (
-                    <div className="pt-8 border-t border-slate-800">
-                        <h2 className="text-xl font-semibold mb-6">Local Library (Offline)</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <Box pt={8} borderTopWidth="1px" borderColor="gray.800">
+                         <Heading size="lg" mb={6}>Local Library (Offline)</Heading>
+                         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                             {localBooks.map((book) => (
-                            <div key={book.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm flex gap-4 opacity-75">
-                                <div className="w-20 h-28 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                    <BookIcon className="w-8 h-8 text-slate-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-lg truncate text-slate-300" title={book.title}>{book.title}</h3>
-                                    <p className="text-sm text-slate-500 mb-2 truncate">{book.authors}</p>
-                                    <div className="flex gap-2">
-                                        <span className="text-xs px-2 py-1 bg-slate-700 rounded text-slate-400">
-                                            Downloaded
-                                        </span>
-                                        <button 
-                                            onClick={() => openPath(book.local_path!)}
-                                            className="text-xs px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                                        >
-                                            Read
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <Card.Root key={book.id} bg="gray.800" borderColor="gray.700" opacity={0.8}>
+                                <Card.Body p={4}>
+                                   <HStack align="start" gap={4}>
+                                       <Box w={20} h={28} bg="gray.700" borderRadius="md" flexShrink={0} display="flex" alignItems="center" justifyContent="center">
+                                          <Icon color="gray.600" w={8} h={8} asChild><BookIcon /></Icon>
+                                       </Box>
+                                       <VStack align="start" gap={1} flex={1} overflow="hidden">
+                                          <Heading size="sm" truncate w="full" color="gray.300">{book.title}</Heading>
+                                          <Text fontSize="sm" color="gray.500" truncate w="full">{book.authors}</Text>
+                                          <HStack mt={1}>
+                                              <Badge variant="surface" colorPalette="gray">Downloaded</Badge>
+                                              <Button 
+                                                size="xs" 
+                                                colorPalette="green"
+                                                onClick={() => openPath(book.local_path!)}
+                                              >
+                                                Read
+                                              </Button>
+                                          </HStack>
+                                       </VStack>
+                                   </HStack>
+                                </Card.Body>
+                            </Card.Root>
                             ))}
-                        </div>
-                    </div>
+                         </SimpleGrid>
+                    </Box>
                 )}
-            </div>
-        )}
-      </main>
+             </VStack>
+          )}
+        </Container>
+      </Box>
     );
   }
 
+  // Host Mode
   return (
-    <main className="container mx-auto p-6 dark:bg-slate-900 dark:text-white min-h-screen flex flex-col md:flex-row gap-6">
-      <div className="flex-1">
-        <header className="flex items-center justify-between mb-8">
-            <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-                <BookIcon className="w-8 h-8 text-blue-500" />
-                ShelfSync Host
-            </h1>
-            <p className="text-slate-400">Local Replica Sync Engine</p>
-            <button 
-              onClick={() => handleSelectMode("unselected")}
-              className="mt-2 text-xs text-slate-500 hover:text-white transition-colors"
-            >
-              Change Role
-            </button>
-            </div>
-            
-            <div className="flex flex-col items-end gap-2">
-                <button
-                onClick={handleSelectFolder}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors cursor-pointer"
-                >
-                <FolderOpen className="w-4 h-4" />
-                {libraryPath ? "Change Library" : "Select Library"}
-                </button>
-                <span className="text-xs text-slate-500 font-mono truncate max-w-[300px]" title={libraryPath}>
-                    {libraryPath || "No library selected"}
-                </span>
-            </div>
-        </header>
+    <Box minH="100vh" bg="gray.900" color="white" p={6}>
+      <Container maxW="container.xl">
+        <Grid templateColumns={{ base: "1fr", md: "1fr 320px" }} gap={6}>
+           <GridItem>
+              <HStack justify="space-between" mb={8} align="start">
+                 <Box>
+                    <Heading size="2xl" display="flex" alignItems="center" gap={2}>
+                        <Icon color="blue.500" asChild><BookIcon /></Icon>
+                        ShelfSync Host
+                    </Heading>
+                    <Text color="gray.400">Local Replica Sync Engine</Text>
+                    <Button onClick={() => handleSelectMode("unselected")} variant="ghost" size="xs" color="gray.500" mt={2}>
+                        Change Role
+                    </Button>
+                 </Box>
 
+                 <VStack align="end" gap={2}>
+                    <Button onClick={handleSelectFolder} colorPalette="blue">
+                        <Icon mr={2} asChild><FolderOpen /></Icon>
+                        {libraryPath ? "Change Library" : "Select Library"}
+                    </Button>
+                    <Text fontSize="xs" fontFamily="mono" color="gray.500" maxW="300px" truncate>
+                        {libraryPath || "No library selected"}
+                    </Text>
+                 </VStack>
+              </HStack>
 
-        {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-lg mb-6">
-            {error}
-            </div>
-        )}
+              {error && (
+                <Alert.Root status="error" mb={6}>
+                    <Alert.Indicator />
+                    <Alert.Title>{error}</Alert.Title>
+                </Alert.Root>
+               )}
 
-        {loading ? (
-            <div className="text-center py-20 text-slate-400">Loading library...</div>
-        ) : books.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {books.map((book) => (
-                <div key={book.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                    <h3 className="font-semibold text-lg truncate" title={book.title}>{book.title}</h3>
-                    <p className="text-sm text-slate-400 mb-2 truncate">{book.authors}</p>
-                    <div className="text-xs text-slate-600 font-mono break-all">{book.path}</div>
-                </div>
-                ))}
-            </div>
-        ) : (
-            <div className="text-center py-20 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
-                {libraryPath ? (
-                    <p className="text-slate-400">No books found in this library.</p>
-                ) : (
-                    <div className="space-y-2">
-                        <p className="text-slate-300 font-medium">Welcome to ShelfSync Host</p>
-                        <p className="text-slate-500 text-sm">Select your Calibre library folder to begin.</p>
-                    </div>
-                )}
-            </div>
-        )}
-      </div>
+              {loading ? (
+                 <Box textAlign="center" py={20}>
+                    <Spinner size="lg" />
+                    <Text mt={2}>Loading library...</Text>
+                 </Box>
+              ) : books.length > 0 ? (
+                 <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
+                    {books.map((book) => (
+                    <Card.Root key={book.id} bg="gray.800" borderColor="gray.700" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
+                        <Card.Body p={4}>
+                             <Heading size="sm" truncate>{book.title}</Heading>
+                             <Text fontSize="sm" color="gray.400" truncate mb={2}>{book.authors}</Text>
+                             <Text fontSize="xs" color="gray.600" fontFamily="mono" wordBreak="break-all">{book.path}</Text>
+                        </Card.Body>
+                    </Card.Root>
+                    ))}
+                 </SimpleGrid>
+              ) : (
+                 <Box textAlign="center" py={20} bg="whiteAlpha.50" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="gray.700">
+                    {libraryPath ? (
+                        <Text color="gray.400">No books found in this library.</Text>
+                    ) : (
+                        <VStack>
+                            <Text color="gray.300" fontWeight="medium">Welcome to ShelfSync Host</Text>
+                            <Text color="gray.500" fontSize="sm">Select your Calibre library folder to begin.</Text>
+                        </VStack>
+                    )}
+                 </Box>
+              )}
+           </GridItem>
 
-      {/* Connectivity Sidebar */}
-      <aside className="w-full md:w-80 bg-slate-800/50 p-6 rounded-xl border border-slate-700 h-fit">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Network className="w-5 h-5 text-green-500" />
-            Connectivity
-        </h2>
-        
-        {connectionInfo ? (
-            <div className="space-y-6">
-                <div className="bg-white p-4 rounded-lg w-full flex justify-center">
-                    <QRCode 
-                        value={JSON.stringify(connectionInfo)} 
-                        size={200}
-                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                        viewBox={`0 0 256 256`}
-                    />
-                </div>
-                
-                <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
-                        <Wifi className="w-5 h-5 text-slate-400" />
-                        <div>
-                            <p className="text-xs text-slate-400 uppercase tracking-wider">Host IP</p>
-                            <p className="font-mono text-lg">{connectionInfo.ip}</p>
-                        </div>
-                    </div>
+           <GridItem>
+              <Box bg="gray.800" p={6} borderRadius="xl" borderWidth="1px" borderColor="gray.700">
+                 <Heading size="md" mb={4} display="flex" alignItems="center" gap={2}>
+                    <Icon color="green.500" asChild><Network /></Icon>
+                    Connectivity
+                 </Heading>
+                 
+                 {connectionInfo ? (
+                    <VStack align="stretch" gap={6}>
+                       <Box bg="white" p={4} borderRadius="lg" display="flex" justifyContent="center">
+                          <QRCode 
+                            value={JSON.stringify(connectionInfo)}
+                            size={200}
+                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                            viewBox={`0 0 256 256`}
+                          />
+                       </Box>
 
-                    <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
-                        <div className="w-5 h-5 flex items-center justify-center font-mono text-slate-400">:</div>
-                        <div>
-                            <p className="text-xs text-slate-400 uppercase tracking-wider">Port</p>
-                            <p className="font-mono text-lg">{connectionInfo.port}</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
-                        <div className="w-5 h-5 flex items-center justify-center font-mono text-slate-400">@</div>
-                        <div>
-                            <p className="text-xs text-slate-400 uppercase tracking-wider">Hostname</p>
-                            <p className="font-mono text-lg truncate" title={connectionInfo.hostname}>{connectionInfo.hostname}</p>
-                        </div>
-                    </div>
-                </div>
+                       <VStack gap={3}>
+                           <HStack p={3} bg="gray.900" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
+                              <Icon color="gray.400" asChild><Wifi /></Icon>
+                              <Box>
+                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Host IP</Text>
+                                 <Text fontFamily="mono" fontSize="lg">{connectionInfo.ip}</Text>
+                              </Box>
+                           </HStack>
 
-                <div className="text-xs text-slate-500 text-center">
-                    Scan this QR code with the ShelfSync mobile app to connect.
-                </div>
-            </div>
-        ) : (
-            <div className="text-center py-10 text-slate-400">
-                Loading network info...
-            </div>
-        )}
-      </aside>
-    </main>
+                           <HStack p={3} bg="gray.900" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
+                              <Box w={5} display="flex" justifyContent="center" color="gray.400" fontFamily="mono">:</Box>
+                              <Box>
+                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Port</Text>
+                                 <Text fontFamily="mono" fontSize="lg">{connectionInfo.port}</Text>
+                              </Box>
+                           </HStack>
+
+                           <HStack p={3} bg="gray.900" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
+                              <Box w={5} display="flex" justifyContent="center" color="gray.400" fontFamily="mono">@</Box>
+                              <Box>
+                                 <Text fontSize="xs" color="gray.400" textTransform="uppercase">Hostname</Text>
+                                 <Text fontFamily="mono" fontSize="lg" truncate maxW="200px">{connectionInfo.hostname}</Text>
+                              </Box>
+                           </HStack>
+                       </VStack>
+                       
+                       <Text fontSize="xs" color="gray.500" textAlign="center">
+                          Scan this QR code with the ShelfSync mobile app to connect.
+                       </Text>
+                    </VStack>
+                 ) : (
+                    <Text textAlign="center" py={10} color="gray.400">Loading network info...</Text>
+                 )}
+              </Box>
+           </GridItem>
+        </Grid>
+      </Container>
+    </Box>
   );
 }
 
