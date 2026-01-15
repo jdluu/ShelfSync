@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "shelfsync"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -29,10 +30,15 @@ mdns-sd = "0.17.1"
 local-ip-address = "0.6.9"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-store = "2"
+uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+
+[dev-dependencies]
+tempfile = "3.24.0"
 
