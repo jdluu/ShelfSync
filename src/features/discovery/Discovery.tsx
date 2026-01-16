@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Search, Globe, ChevronRight, RefreshCw, Plus } from 'lucide-react';
 import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner } from "@chakra-ui/react";
+import { api } from "../../services/api";
 
 interface Host {
   ip: string;
@@ -22,7 +23,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   const scan = async () => {
     setScanning(true);
     try {
-      const results = await invoke<Host[]>("discover_hosts");
+      const results = await api.network.discoverHosts();
       setHosts(results);
     } catch (e) {
       console.error("Discovery error:", e);
@@ -33,8 +34,15 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
 
   useEffect(() => {
     scan();
-    const interval = setInterval(scan, 5000);
-    return () => clearInterval(interval);
+    
+    // Set up event listener for real-time updates
+    const unlistenPromise = listen<Host[]>("discovery-update", (event) => {
+        setHosts(event.payload);
+    });
+
+    return () => {
+        unlistenPromise.then(unlisten => unlisten());
+    };
   }, []);
 
   const handleManualConnect = () => {

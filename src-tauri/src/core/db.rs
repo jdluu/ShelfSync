@@ -1,36 +1,18 @@
-use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
-use std::fs;
+use rusqlite::{Connection, OpenFlags};
+use crate::models::Book;
+use crate::error::AppError;
 use std::path::Path;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Book {
-    pub id: i64,
-    pub title: String,
-    pub authors: String, // Comma separated string for simplicity in frontend
-    pub path: String,
-    pub cover_url: Option<String>,
-}
-
-pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, String> {
+pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     let lib_path = Path::new(library_path);
-    let original_db_path = lib_path.join("metadata.db");
+    let db_path = lib_path.join("metadata.db");
 
-    if !original_db_path.exists() {
-        return Err(format!("metadata.db not found at {}", library_path));
+    if !db_path.exists() {
+        return Err(AppError::LibraryNotFound(library_path.to_string()));
     }
 
-    // Shadow Copy Logic
-    let temp_dir = std::env::temp_dir();
-    let temp_db_name = format!("shelf_sync_{}.db", uuid::Uuid::new_v4());
-    let temp_db_path = temp_dir.join(temp_db_name);
-
-    fs::copy(&original_db_path, &temp_db_path)
-        .map_err(|e| format!("Failed to copy DB to temp: {}", e))?;
-
-    // Open the copy
-    let conn = Connection::open(&temp_db_path)
-        .map_err(|e| format!("Failed to open temp DB: {}", e))?;
+    // Open the DB in Read-Only mode directly
+    let conn = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
 
     // Query: Books joined with Authors
     // Calibre schema:
@@ -48,7 +30,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, String> {
              JOIN authors a ON bal.author = a.id 
              WHERE bal.book = b.id) as authors
          FROM books b"
-    ).map_err(|e| format!("Failed to prepare query: {}", e))?;
+    )?;
 
     let book_iter = stmt.query_map([], |row| {
         Ok(Book {
@@ -58,16 +40,12 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, String> {
             authors: row.get(3).unwrap_or_default(), // Some books might lose authors if integrity bad, default to empty
             cover_url: None, // Logic for cover URL comes later in backend server phase
         })
-    }).map_err(|e| format!("Query execution failed: {}", e))?;
+    })?;
 
     let mut books = Vec::new();
     for book in book_iter {
-        books.push(book.map_err(|e| format!("Row parse error: {}", e))?);
+        books.push(book?);
     }
-
-    // Clean up
-    // Explicitly close not needed as Drop handles it
-    let _ = fs::remove_file(&temp_db_path);
 
     Ok(books)
 }
@@ -76,6 +54,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, String> {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use rusqlite::Connection;
 
     fn create_mock_calibre_db(path: &Path) {
         let conn = Connection::open(path.join("metadata.db")).unwrap();
@@ -123,6 +102,9 @@ mod tests {
     fn test_get_calibre_metadata_missing_db() {
         let dir = tempdir().unwrap();
         let result = get_calibre_metadata(dir.path().to_str().unwrap());
-        assert!(result.is_err());
+        match result {
+            Err(AppError::LibraryNotFound(_)) => assert!(true),
+            _ => assert!(false, "Expected LibraryNotFound error"),
+        }
     }
 }
