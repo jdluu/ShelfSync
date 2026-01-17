@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { listen } from "@tauri-apps/api/event";
 import { Search, Globe, ChevronRight, RefreshCw, Plus } from 'lucide-react';
 import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner } from "@chakra-ui/react";
-import { api } from "../../services/api";
+import { api } from "@/services/api";
 
 interface Host {
   ip: string;

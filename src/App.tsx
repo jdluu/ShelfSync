@@ -4,13 +4,13 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { writeFile } from "@tauri-apps/plugin-fs";
-import { Book } from "./types";
+import { Book } from "@/types";
 
-import { RoleSelection } from "./features/RoleSelection";
-import { HostDashboard } from "./features/host/HostDashboard";
-import { ClientDashboard } from "./features/client/ClientDashboard";
-import { initDB, getLocalBooks, saveBook } from "./services/local-db";
-import { api } from "./services/api";
+import { RoleSelection } from "@/features/RoleSelection";
+import { HostDashboard } from "@/features/host/HostDashboard";
+import { ClientDashboard } from "@/features/client/ClientDashboard";
+import { initDB, getLocalBooks, saveBook } from "@/services/local-db";
+import { api } from "@/services/api";
 
 const STORE_PATH = "shelfsync_settings.json";
 

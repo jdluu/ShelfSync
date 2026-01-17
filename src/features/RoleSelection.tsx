@@ -1,9 +1,9 @@
 import React from 'react';
 import { Monitor, Smartphone } from 'lucide-react';
 import { Box, VStack, Heading, Text, Container, SimpleGrid, Card, Icon, HStack } from "@chakra-ui/react";
-import { ColorModeButton } from "./ui/color-mode";
-import { Footer } from "./Footer";
-import { SkipLink } from "./SkipLink";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { Footer } from "@/components/Footer";
+import { SkipLink } from "@/components/SkipLink";
 
 interface RoleSelectionProps {
   onSelect: (role: 'host' | 'client') => void;

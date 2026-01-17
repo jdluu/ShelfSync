@@ -5,10 +5,10 @@ import {
 } from "@chakra-ui/react";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
 import QRCode from "react-qr-code";
-import { ColorModeButton } from "../../components/ui/color-mode";
-import { Footer } from "../../components/Footer";
-import { SkipLink } from "../../components/SkipLink";
-import { Book, ConnectionInfo } from "../../types";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { Footer } from "@/components/Footer";
+import { SkipLink } from "@/components/SkipLink";
+import { Book, ConnectionInfo } from "@/types";
 
 interface HostDashboardProps {
   books: Book[];

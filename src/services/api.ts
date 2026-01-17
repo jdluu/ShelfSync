@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Book, ConnectionInfo } from "../types";
+import { Book, ConnectionInfo } from "@/types";
 
 export const api = {
     library: {

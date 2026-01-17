@@ -1,5 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
-import { Book } from "./types";
+import { Book } from "@/types";
 
 const DB_NAME = "shelfsync_client.db";
 
@@ -42,6 +42,9 @@ export async function getLocalBooks(): Promise<Book[]> {
     id: row.id, // local ID
     title: row.title,
     authors: row.authors, 
-    // We treat local books as having just these main fields for display
+    path: row.local_path, // Satisfy Book interface
+    local_path: row.local_path,
+    remote_id: row.remote_id,
+    format: row.format
   }));
 }

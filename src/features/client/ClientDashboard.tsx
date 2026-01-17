@@ -4,11 +4,11 @@ import {
   SimpleGrid, Spinner, Badge, VStack, Alert 
 } from "@chakra-ui/react";
 import { Book as BookIcon } from "lucide-react";
-import { ColorModeButton } from "../../components/ui/color-mode";
-import { Footer } from "../../components/Footer";
-import { SkipLink } from "../../components/SkipLink";
-import { Discovery } from "../discovery/Discovery";
-import { Book } from "../../types";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { Footer } from "@/components/Footer";
+import { SkipLink } from "@/components/SkipLink";
+import { Discovery } from "@/features/discovery/Discovery";
+import { Book } from "@/types";
 
 interface Host {
   ip: string;
