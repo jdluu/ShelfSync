@@ -14,8 +14,6 @@ use tokio_util::io::ReaderStream;
 use crate::models::Book;
 use log::info;
 
-use rand::Rng;
-
 pub struct ServerState {
     pub library_path: Mutex<Option<String>>,
     pub books: Mutex<Vec<Book>>,

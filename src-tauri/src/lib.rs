@@ -15,7 +15,7 @@ use crate::{
     core::db,
 };
 
-struct DiscoveryState {
+pub struct DiscoveryState {
     hosts: Mutex<Vec<ConnectionInfo>>,
 }
 
@@ -69,6 +69,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState { 
             server: server_state, 
             discovery: discovery_state, 
@@ -192,11 +193,6 @@ pub fn run() {
             network::get_connection_info, 
             network::discover_hosts
         ]);
-
-    #[cfg(mobile)]
-    {
-        builder = builder.plugin(tauri_plugin_sql::Builder::default().build());
-    }
 
     builder
         .run(tauri::generate_context!())

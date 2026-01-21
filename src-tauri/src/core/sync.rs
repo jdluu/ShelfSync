@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tauri::{AppHandle, Emitter, Runtime};
@@ -40,7 +40,7 @@ impl SyncManager {
         let active_queue = Arc::new(Mutex::new(Vec::new()));
         let active_queue_clone = active_queue.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let client = Client::new();
             while let Some(task) = rx.recv().await {
                 // Process one task at a time
