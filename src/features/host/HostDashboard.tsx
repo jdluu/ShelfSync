@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Box, Container, HStack, Heading, Text, Button, Card, Icon, 
+  Box, Container, HStack, Heading, Text, Button, Icon, 
   SimpleGrid, Spinner, VStack, Grid, GridItem, Alert 
 } from "@chakra-ui/react";
 import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
@@ -9,6 +9,7 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { Footer } from "@/components/Footer";
 import { SkipLink } from "@/components/SkipLink";
 import { Book, ConnectionInfo } from "@/types";
+import { BookCard } from "@/components/BookCard";
 
 interface HostDashboardProps {
   books: Book[];
@@ -77,13 +78,13 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
               ) : books.length > 0 ? (
                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
                     {books.map((book) => (
-                    <Card.Root key={book.id} bg="bg.subtle" borderColor="border" _hover={{ shadow: "md" }} transition="box-shadow 0.2s">
-                        <Card.Body p={4}>
-                             <Heading size="sm" truncate>{book.title}</Heading>
-                             <Text fontSize="sm" color="fg.muted" truncate mb={2}>{book.authors}</Text>
-                             <Text fontSize="xs" color="fg.subtle" fontFamily="mono" wordBreak="break-all">{book.path}</Text>
-                        </Card.Body>
-                    </Card.Root>
+                        <BookCard 
+                            key={book.id}
+                            book={book}
+                            variant="host-view"
+                            // If we have connection info, we can show covers by pointing to ourselves
+                            host={connectionInfo ? { ip: "localhost", port: 8080 } : undefined}
+                        />
                     ))}
                  </SimpleGrid>
               ) : (
@@ -142,6 +143,17 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                                  <Text fontFamily="mono" fontSize="lg" truncate maxW="200px">{connectionInfo.hostname}</Text>
                               </Box>
                            </HStack>
+
+                           {connectionInfo.pin && (
+                               <Box w="full" p={4} bg="accent.subtle" borderRadius="lg" borderWidth="2px" borderColor="accent.emphasis" mt={2}>
+                                   <VStack gap={0}>
+                                       <Text fontSize="xs" fontWeight="bold" color="accent.emphasis" textTransform="uppercase">Pairing PIN</Text>
+                                       <Text fontSize="3xl" fontWeight="black" letterSpacing="widest" color="accent.emphasis">
+                                            {connectionInfo.pin}
+                                       </Text>
+                                   </VStack>
+                               </Box>
+                           )}
                        </VStack>
                        
                        <Text fontSize="xs" color="fg.subtle" textAlign="center">

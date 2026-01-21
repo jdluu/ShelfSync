@@ -25,20 +25,40 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
             b.id, 
             b.title, 
             b.path, 
-            (SELECT GROUP_CONCAT(a.name, ', ') 
-             FROM books_authors_link bal 
-             JOIN authors a ON bal.author = a.id 
-             WHERE bal.book = b.id) as authors
-         FROM books b"
+            (SELECT GROUP_CONCAT(a.name, ', ') FROM books_authors_link bal JOIN authors a ON bal.author = a.id WHERE bal.book = b.id) as authors,
+            (SELECT GROUP_CONCAT(d.format, ',') FROM data d WHERE d.book = b.id) as formats,
+            s.name as series,
+            b.series_index,
+            (SELECT GROUP_CONCAT(t.name, ',') FROM books_tags_link btl JOIN tags t ON btl.tag = t.id WHERE btl.book = b.id) as tags,
+            p.name as publisher
+         FROM books b
+         LEFT JOIN series s ON b.series = s.id
+         LEFT JOIN books_publishers_link bpl ON b.id = bpl.book
+         LEFT JOIN publishers p ON bpl.publisher = p.id"
     )?;
 
     let book_iter = stmt.query_map([], |row| {
+        let formats_str: Option<String> = row.get(4)?;
+        let formats = formats_str
+            .map(|s| s.split(',').map(|f| f.to_string()).collect())
+            .unwrap_or_default();
+
+        let tags_str: Option<String> = row.get(7)?;
+        let tags = tags_str
+            .map(|s| s.split(',').map(|t| t.to_string()).collect())
+            .unwrap_or_default();
+
         Ok(Book {
             id: row.get(0)?,
             title: row.get(1)?,
             path: row.get(2)?,
-            authors: row.get(3).unwrap_or_default(), // Some books might lose authors if integrity bad, default to empty
-            cover_url: None, // Logic for cover URL comes later in backend server phase
+            authors: row.get(3).unwrap_or_default(),
+            cover_url: None,
+            formats,
+            series: row.get(5)?,
+            series_index: row.get(6).unwrap_or(1.0),
+            tags,
+            publisher: row.get(8)?,
         })
     })?;
 
@@ -60,10 +80,17 @@ mod tests {
         let conn = Connection::open(path.join("metadata.db")).unwrap();
         
         conn.execute(
-            "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT)",
+            "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL)",
             [],
         ).unwrap();
         
+        conn.execute("CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE publishers (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE books_publishers_link (id INTEGER PRIMARY KEY, book INTEGER, publisher INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE data (id INTEGER PRIMARY KEY, book INTEGER, format TEXT)", []).unwrap();
+
         conn.execute(
             "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)",
             [],
