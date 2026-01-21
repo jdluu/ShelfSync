@@ -63,9 +63,14 @@ async fn get_manifest(
 }
 
 async fn get_cover(
+    header_map: header::HeaderMap,
     Path(book_id): Path<i64>,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
+    if !is_authorized(&header_map, &state) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
     let library_path = {
         let guard = state.library_path.lock().unwrap();
         match &*guard {
@@ -292,13 +297,22 @@ mod tests {
         let db_path = path.join("metadata.db");
         let conn = Connection::open(&db_path).unwrap();
 
-        conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT)", []).unwrap();
+        // Create all tables required by get_calibre_metadata query
+        conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL)", []).unwrap();
         conn.execute("CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
         conn.execute("CREATE TABLE books_authors_link (id INTEGER PRIMARY KEY, book INTEGER, author INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE publishers (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE books_publishers_link (id INTEGER PRIMARY KEY, book INTEGER, publisher INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE data (id INTEGER PRIMARY KEY, book INTEGER, format TEXT)", []).unwrap();
 
-        conn.execute("INSERT INTO books (id, title, path) VALUES (1, 'Server Test Book', 'test/book')", []).unwrap();
+        // Insert test data
+        conn.execute("INSERT INTO books (id, title, path, series, series_index) VALUES (1, 'Server Test Book', 'test/book', NULL, 1.0)", []).unwrap();
         conn.execute("INSERT INTO authors (id, name) VALUES (1, 'Tester')", []).unwrap();
         conn.execute("INSERT INTO books_authors_link (book, author) VALUES (1, 1)", []).unwrap();
+        conn.execute("INSERT INTO data (book, format) VALUES (1, 'EPUB')", []).unwrap();
         
         let book_dir = path.join("test/book");
         fs::create_dir_all(&book_dir).unwrap();
@@ -314,6 +328,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
+            pin: "1234".to_string(),
+            authorized_tokens: Mutex::new({
+                let mut set = std::collections::HashSet::new();
+                set.insert("test-token".to_string());
+                set
+            }),
+            app_data_dir: dir.path().to_path_buf(),
         });
 
         // Pre-populate cache because get_manifest now reads from cache!
@@ -327,7 +348,9 @@ mod tests {
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
-        let response = server.get("/api/manifest").await;
+        let response = server.get("/api/manifest")
+            .add_header(header::AUTHORIZATION, "Bearer test-token")
+            .await;
 
         response.assert_status_ok();
         let json = response.json::<Vec<crate::models::Book>>();
@@ -343,6 +366,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
+            pin: "1234".to_string(),
+            authorized_tokens: Mutex::new({
+                let mut set = std::collections::HashSet::new();
+                set.insert("test-token".to_string());
+                set
+            }),
+            app_data_dir: dir.path().to_path_buf(),
         });
 
          // Pre-populate cache
@@ -356,7 +386,9 @@ mod tests {
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
-        let response = server.get("/api/download/1/epub").await;
+        let response = server.get("/api/download/1/epub")
+            .add_header(header::AUTHORIZATION, "Bearer test-token")
+            .await;
 
         response.assert_status_ok();
         response.assert_text("dummy content");
@@ -376,6 +408,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
+            pin: "1234".to_string(),
+            authorized_tokens: Mutex::new({
+                let mut set = std::collections::HashSet::new();
+                set.insert("test-token".to_string());
+                set
+            }),
+            app_data_dir: dir.path().to_path_buf(),
         });
 
          // Pre-populate cache
@@ -389,7 +428,9 @@ mod tests {
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
-        let response = server.get("/api/cover/1").await;
+        let response = server.get("/api/cover/1")
+            .add_header(header::AUTHORIZATION, "Bearer test-token")
+            .await;
 
         response.assert_status_ok();
         response.assert_header("content-type", "image/jpeg");
