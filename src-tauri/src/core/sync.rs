@@ -28,6 +28,7 @@ pub struct SyncTask {
     pub destination_root: PathBuf,
 }
 
+#[derive(Clone)]
 pub struct SyncManager {
     sender: mpsc::Sender<SyncTask>,
     pub active_queue: Arc<Mutex<Vec<Book>>>,
@@ -62,9 +63,16 @@ impl SyncManager {
     }
 
     pub async fn add_tasks(&self, tasks: Vec<SyncTask>) -> Result<(), String> {
-        let mut queue = self.active_queue.lock().unwrap();
-        for task in tasks {
-            queue.push(task.book.clone());
+        // Add books to queue and collect tasks, then drop lock before sending
+        let tasks_to_send: Vec<_> = {
+            let mut queue = self.active_queue.lock().unwrap();
+            tasks.into_iter().map(|task| {
+                queue.push(task.book.clone());
+                task
+            }).collect()
+        }; // Lock is dropped here
+        
+        for task in tasks_to_send {
             self.sender.send(task).await.map_err(|e| e.to_string())?;
         }
         Ok(())

@@ -41,8 +41,13 @@ pub async fn start_bulk_sync(
     destination_root: String,
     state: State<'_, AppState>
 ) -> Result<(), AppError> {
-    let sync_manager_lock = state.sync_manager.lock().unwrap();
-    let sync_manager = sync_manager_lock.as_ref().ok_or_else(|| AppError::Other("Sync manager not initialized".to_string()))?;
+    // Clone the sync manager reference before locking
+    let sync_manager = {
+        let sync_manager_lock = state.sync_manager.lock().unwrap();
+        sync_manager_lock.as_ref()
+            .ok_or_else(|| AppError::Other("Sync manager not initialized".to_string()))?
+            .clone()
+    }; // Lock is dropped here
 
     let tasks = books.into_iter().map(|book| {
         crate::core::sync::SyncTask {

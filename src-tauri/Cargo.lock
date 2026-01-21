@@ -5214,6 +5214,7 @@ dependencies = [
  "axum",
  "axum-test",
  "env_logger",
+ "futures-util",
  "hostname",
  "image",
  "local-ip-address",

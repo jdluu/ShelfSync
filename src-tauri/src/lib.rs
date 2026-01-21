@@ -7,6 +7,7 @@ pub mod error;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, Emitter};
 use log::{info, error};
+use rand::Rng;
 use crate::{
     http::server,
     models::ConnectionInfo,
@@ -36,23 +37,17 @@ pub fn run() {
     let pin_str = pin.to_string();
     info!("Starting server with PIN: {}", pin_str);
 
-    let context = tauri::generate_context!();
-    let app_data_dir = tauri::path::app_data_dir(context.config(), context.default_window_icon()).unwrap();
-    
-    // Create dir if doesn't exist
-    std::fs::create_dir_all(&app_data_dir).ok();
+    // Will get app_data_dir from within setup where we have app handle
+    // For now, use a temporary dir or create app_data_dir in setup
+    let temp_app_data_dir = std::env::temp_dir().join("shelfsync_temp");
 
-    // Init progress DB
-    if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
-        error!("Failed to init progress DB: {}", e);
-    }
 
     let server_state = Arc::new(server::ServerState {
         library_path: Mutex::new(None),
         books: Mutex::new(Vec::new()),
         pin: pin_str,
         authorized_tokens: Mutex::new(std::collections::HashSet::new()),
-        app_data_dir: app_data_dir.clone(),
+        app_data_dir: temp_app_data_dir.clone(), // Will be updated in setup
     });
 
     let discovery_state = Arc::new(DiscoveryState {
@@ -86,6 +81,14 @@ pub fn run() {
             // Initialize Server State from persistent store
             let app_state = app.state::<AppState>();
             if let Ok(app_data_dir) = app.path().app_data_dir() {
+                // Create dir if doesn't exist
+                std::fs::create_dir_all(&app_data_dir).ok();
+                
+                // Init progress DB
+                if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
+                    error!("Failed to init progress DB: {}", e);
+                }
+                
                 let settings_path = app_data_dir.join("shelfsync_settings.json");
                 if settings_path.exists() {
                     if let Ok(content) = std::fs::read_to_string(settings_path) {
@@ -156,6 +159,7 @@ pub fn run() {
                                     ip,
                                     port: info.get_port(),
                                     hostname,
+                                    pin: None,
                                 });
                                 updated = true;
                             }
