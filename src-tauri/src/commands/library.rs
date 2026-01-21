@@ -31,3 +31,29 @@ pub fn set_library_path(path: String, state: State<'_, AppState>) -> Result<(), 
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn start_bulk_sync(
+    books: Vec<Book>, 
+    host_ip: String, 
+    host_port: u16, 
+    token: String, 
+    destination_root: String,
+    state: State<'_, AppState>
+) -> Result<(), AppError> {
+    let sync_manager_lock = state.sync_manager.lock().unwrap();
+    let sync_manager = sync_manager_lock.as_ref().ok_or_else(|| AppError::Other("Sync manager not initialized".to_string()))?;
+
+    let tasks = books.into_iter().map(|book| {
+        crate::core::sync::SyncTask {
+            book,
+            host_ip: host_ip.clone(),
+            host_port,
+            token: token.clone(),
+            destination_root: std::path::PathBuf::from(&destination_root),
+        }
+    }).collect();
+
+    sync_manager.add_tasks(tasks).await.map_err(|e| AppError::Other(e))?;
+    Ok(())
+}

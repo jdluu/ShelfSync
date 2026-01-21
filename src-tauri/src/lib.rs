@@ -20,8 +20,9 @@ struct DiscoveryState {
 
 // wrapper for Tauri state to hold the same Arc
 pub struct AppState {
-    server: server::SharedState,
-    discovery: Arc<DiscoveryState>,
+    pub server: server::SharedState,
+    pub discovery: Arc<DiscoveryState>,
+    pub sync_manager: Mutex<Option<crate::core::sync::SyncManager>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -29,9 +30,29 @@ pub fn run() {
     // Initialize logging
     env_logger::init();
 
+    // Generate random 4-digit PIN
+    let mut rng = rand::rng();
+    let pin: u32 = rng.random_range(1000..10000);
+    let pin_str = pin.to_string();
+    info!("Starting server with PIN: {}", pin_str);
+
+    let context = tauri::generate_context!();
+    let app_data_dir = tauri::path::app_data_dir(context.config(), context.default_window_icon()).unwrap();
+    
+    // Create dir if doesn't exist
+    std::fs::create_dir_all(&app_data_dir).ok();
+
+    // Init progress DB
+    if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
+        error!("Failed to init progress DB: {}", e);
+    }
+
     let server_state = Arc::new(server::ServerState {
         library_path: Mutex::new(None),
         books: Mutex::new(Vec::new()),
+        pin: pin_str,
+        authorized_tokens: Mutex::new(std::collections::HashSet::new()),
+        app_data_dir: app_data_dir.clone(),
     });
 
     let discovery_state = Arc::new(DiscoveryState {
@@ -52,7 +73,12 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState { server: server_state, discovery: discovery_state }) // Manage the state wrapper
+        .plugin(tauri_plugin_notification::init())
+        .manage(AppState { 
+            server: server_state, 
+            discovery: discovery_state, 
+            sync_manager: Mutex::new(None) 
+        })
         .setup(move |app| {
             let handle = app.handle().clone();
             let discovery = discovery_clone;
@@ -82,6 +108,14 @@ pub fn run() {
                 }
             }
             
+            // Init Sync Manager
+            let sync_mgr = crate::core::sync::SyncManager::new(app.handle().clone());
+            {
+                let state = app.state::<AppState>();
+                let mut sm_lock = state.sync_manager.lock().unwrap();
+                *sm_lock = Some(sync_mgr);
+            }
+
             tauri::async_runtime::spawn(async move {
                 let mdns = mdns_sd::ServiceDaemon::new().expect("Failed to create mDNS daemon");
                 
@@ -150,6 +184,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             library::get_books, 
             library::set_library_path, 
+            library::start_bulk_sync,
             network::get_connection_info, 
             network::discover_hosts
         ]);
