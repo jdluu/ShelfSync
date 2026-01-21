@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { listen } from "@tauri-apps/api/event";
-import { Search, Globe, ChevronRight, RefreshCw, Plus } from 'lucide-react';
-import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner } from "@chakra-ui/react";
-import { api } from "@/services/api";
+import React, { useState } from 'react';
+import { Search, Globe, ChevronRight, RefreshCw, Plus, WifiOff } from 'lucide-react';
+import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner, Badge } from "@chakra-ui/react";
+import { useDiscovery } from "@/context/DiscoveryContext";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Host {
   ip: string;
@@ -15,35 +15,9 @@ interface DiscoveryProps {
 }
 
 export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
-  const [hosts, setHosts] = useState<Host[]>([]);
-  const [scanning, setScanning] = useState(false);
+  const { hosts, scanning, scan, knownHosts } = useDiscovery();
   const [manualIp, setManualIp] = useState("");
   const [manualPort, setManualPort] = useState("8080");
-
-  const scan = async () => {
-    setScanning(true);
-    try {
-      const results = await api.network.discoverHosts();
-      setHosts(results);
-    } catch (e) {
-      console.error("Discovery error:", e);
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  useEffect(() => {
-    scan();
-    
-    // Set up event listener for real-time updates
-    const unlistenPromise = listen<Host[]>("discovery-update", (event) => {
-        setHosts(event.payload);
-    });
-
-    return () => {
-        unlistenPromise.then(unlisten => unlisten());
-    };
-  }, []);
 
   const handleManualConnect = () => {
     if (manualIp) {
@@ -102,12 +76,41 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
                 </Card.Root>
             ))
         ) : (
-            <Box textAlign="center" py={12} bg="bg.subtle" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="border">
-                <Text color="fg.muted">No hosts discovered yet.</Text>
-                <Text fontSize="xs" color="fg.subtle" mt={1}>Make sure your host is on the same network.</Text>
-            </Box>
+            <EmptyState 
+                icon={WifiOff}
+                title="No Hosts Found"
+                description="Check if the ShelfSync Host is running on the same network."
+                actionLabel="Scan Again"
+                onAction={scan}
+            />
         )}
       </VStack>
+
+      {knownHosts.length > 0 && !scanning && hosts.length === 0 && (
+          <VStack align="stretch" gap={3}>
+              <Heading size="xs" color="fg.muted">Previous Connections</Heading>
+              {knownHosts.map(host => (
+                  <Card.Root 
+                    key={`history-${host.ip}`} 
+                    size="sm" 
+                    variant="subtle"
+                    onClick={() => onConnect(host)}
+                    cursor="pointer"
+                    _hover={{ bg: "bg.muted" }}
+                  >
+                      <Card.Body px={4} py={3}>
+                          <HStack justify="space-between">
+                              <VStack align="start" gap={0}>
+                                  <Text fontSize="sm" fontWeight="medium">{host.hostname}</Text>
+                                  <Text fontSize="10px" color="fg.subtle">{host.ip}</Text>
+                              </VStack>
+                              <Badge size="xs" variant="surface">History</Badge>
+                          </HStack>
+                      </Card.Body>
+                  </Card.Root>
+              ))}
+          </VStack>
+      )}
 
       <Box pt={4} borderTopWidth="1px" borderColor="border.subtle">
         <Heading size="xs" color="fg.muted" mb={3} display="flex" alignItems="center" gap={2}>
@@ -116,7 +119,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
         </Heading>
         <HStack gap={2}>
             <Input 
-                placeholder="IP Address (e.g. 192.168.1.5)" 
+                placeholder="IP Address" 
                 value={manualIp}
                 onChange={(e) => setManualIp(e.target.value)}
                 flex={1}
