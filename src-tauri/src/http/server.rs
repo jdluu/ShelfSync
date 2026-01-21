@@ -14,18 +14,31 @@ use tokio_util::io::ReaderStream;
 use crate::models::Book;
 use log::info;
 
+use rand::Rng;
+
 pub struct ServerState {
     pub library_path: Mutex<Option<String>>,
     pub books: Mutex<Vec<Book>>,
+    pub pin: String,
+    pub authorized_tokens: Mutex<std::collections::HashSet<String>>,
+    pub app_data_dir: std::path::PathBuf,
 }
 
 pub type SharedState = Arc<ServerState>;
 
 pub async fn run(state: SharedState, port: u16) {
+    // Generate PIN if not already provided in state (though state is created here usually?)
+    // Actually state is passed IN. We should modify how state is created in lib.rs or just read it here.
+    // Wait, state is created in lib.rs. I should check lib.rs.
+    // I cannot change ServerState struct easily without updating initialization in lib.rs.
+    // I will go to lib.rs to initialize the PIN.
+    
     let app = Router::new()
         .route("/api/manifest", get(get_manifest))
         .route("/api/cover/{book_id}", get(get_cover))
         .route("/api/download/{book_id}/{format}", get(download_book))
+        .route("/api/check-pin", axum::routing::post(check_pin))
+        .route("/api/progress", get(get_progress).post(update_progress))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
@@ -36,7 +49,14 @@ pub async fn run(state: SharedState, port: u16) {
 }
 // ...
 
-async fn get_manifest(State(state): State<SharedState>) -> impl IntoResponse {
+async fn get_manifest(
+    header_map: header::HeaderMap,
+    State(state): State<SharedState>
+) -> impl IntoResponse {
+    if !is_authorized(&header_map, &state) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
     // Return cached books directly
     let books = state.books.lock().unwrap();
     Json(books.clone()).into_response()
@@ -94,9 +114,14 @@ async fn get_cover(
 }
 
 async fn download_book(
+    header_map: header::HeaderMap,
     Path((book_id, format)): Path<(i64, String)>,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
+    if !is_authorized(&header_map, &state) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
      let library_path = {
         let guard = state.library_path.lock().unwrap();
         match &*guard {
@@ -117,28 +142,40 @@ async fn download_book(
     // We need to look for a file ending with logic .format (e.g. .epub) in the book's directory.
     let book_dir = FilePath::new(&library_path).join(&book.path);
     
-    // Read dir to find file
-    let mut dir_entries = match tokio::fs::read_dir(&book_dir).await {
-        Ok(d) => d,
-        Err(_) => return (StatusCode::NOT_FOUND, "Book directory not found").into_response(),
-    };
+    // Fallback order: requested -> epub -> pdf -> mobi -> cbz
+    let mut search_formats = vec![format.to_lowercase()];
+    for f in ["epub", "pdf", "mobi", "cbz"] {
+        if !search_formats.contains(&f.to_string()) {
+            search_formats.push(f.to_string());
+        }
+    }
 
-    let target_format = format.to_lowercase();
     let mut found_path = None;
+    let mut found_format = String::new();
 
-    while let Ok(Some(entry)) = dir_entries.next_entry().await {
-        let path = entry.path();
-        if let Some(ext) = path.extension() {
-            if ext.to_string_lossy().to_lowercase() == target_format {
-                found_path = Some(path);
-                break;
+    // Re-scanning dir for each format is inefficient but safe and simple for small dirs
+    for fmt in search_formats {
+        let mut dir_entries = match tokio::fs::read_dir(&book_dir).await {
+            Ok(d) => d,
+            Err(_) => return (StatusCode::NOT_FOUND, "Book directory not found").into_response(),
+        };
+
+        while let Ok(Some(entry)) = dir_entries.next_entry().await {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                if ext.to_string_lossy().to_lowercase() == fmt {
+                    found_path = Some(path);
+                    found_format = fmt;
+                    break;
+                }
             }
         }
+        if found_path.is_some() { break; }
     }
 
     let file_path = match found_path {
         Some(p) => p,
-        None => return (StatusCode::NOT_FOUND, "Format not found").into_response(),
+        None => return (StatusCode::NOT_FOUND, "Format not found (checked: epub, pdf, mobi, cbz)").into_response(),
     };
 
     match File::open(&file_path).await {
@@ -147,10 +184,11 @@ async fn download_book(
             let body = Body::from_stream(stream);
             
             // Determine content type
-            let content_type = match target_format.as_str() {
+            let content_type = match found_format.as_str() {
                 "epub" => "application/epub+zip",
                 "pdf" => "application/pdf",
                 "mobi" => "application/x-mobipocket-ebook",
+                "cbz" => "application/vnd.comicbook+zip",
                  _ => "application/octet-stream",
             };
 
@@ -166,6 +204,76 @@ async fn download_book(
         },
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "File open error").into_response()
     }
+}
+
+#[derive(serde::Deserialize)]
+struct PinRequest {
+    pin: String,
+}
+
+#[derive(serde::Serialize)]
+struct AuthResponse {
+    token: String,
+}
+
+async fn check_pin(
+    State(state): State<SharedState>,
+    Json(payload): Json<PinRequest>,
+) -> impl IntoResponse {
+    if payload.pin == state.pin {
+        let token = uuid::Uuid::new_v4().to_string();
+        state.authorized_tokens.lock().unwrap().insert(token.clone());
+        (StatusCode::OK, Json(AuthResponse { token })).into_response()
+    } else {
+        (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
+    }
+}
+
+async fn get_progress(
+    header_map: header::HeaderMap,
+    State(state): State<SharedState>
+) -> impl IntoResponse {
+    if !is_authorized(&header_map, &state) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
+    match crate::core::progress::get_all_progress(&state.app_data_dir) {
+        Ok(records) => Json(records).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct ProgressUpdate {
+    book_id: i64,
+    status: String,
+}
+
+async fn update_progress(
+    header_map: header::HeaderMap,
+    State(state): State<SharedState>,
+    Json(payload): Json<ProgressUpdate>,
+) -> impl IntoResponse {
+    if !is_authorized(&header_map, &state) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
+    match crate::core::progress::update_progress(&state.app_data_dir, payload.book_id, &payload.status) {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
+    }
+}
+
+fn is_authorized(headers: &header::HeaderMap, state: &SharedState) -> bool {
+    if let Some(auth_header) = headers.get(header::AUTHORIZATION) {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..];
+                return state.authorized_tokens.lock().unwrap().contains(token);
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]
