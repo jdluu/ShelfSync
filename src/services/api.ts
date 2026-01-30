@@ -8,6 +8,9 @@ export const api = {
         
         setLibraryPath: (path: string) => 
             invoke<void>("set_library_path", { path }),
+
+        startBulkSync: (bookIds: number[]) =>
+            invoke<void>("start_bulk_sync", { bookIds }),
     },
     network: {
         getConnectionInfo: () => 

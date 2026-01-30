@@ -28,6 +28,14 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
           <SimpleGrid columns={1} gap={4} w="full">
             <Card.Root 
               onClick={() => onSelect('host')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onSelect('host');
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Select Host Role"
               cursor="pointer"
               bg="bg.subtle"
               borderColor="border"
@@ -50,6 +58,14 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
 
             <Card.Root 
               onClick={() => onSelect('client')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onSelect('client');
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Select Client Role"
               cursor="pointer"
               bg="bg.subtle"
               borderColor="border"

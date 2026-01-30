@@ -3,6 +3,7 @@ import { Search, Globe, ChevronRight, RefreshCw, Plus, WifiOff } from 'lucide-re
 import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner, Badge } from "@chakra-ui/react";
 import { useDiscovery } from "@/context/DiscoveryContext";
 import { EmptyState } from "@/components/EmptyState";
+import { LoadingSpinner } from "@/components/Feedback/LoadingSpinner";
 
 interface Host {
   ip: string;
@@ -48,7 +49,9 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
       </HStack>
 
       <VStack gap={4} align="stretch">
-        {hosts.length > 0 ? (
+        {scanning && hosts.length === 0 ? (
+            <LoadingSpinner message="Searching for local hosts..." />
+        ) : hosts.length > 0 ? (
             hosts.map((host) => (
                 <Card.Root
                     key={`${host.ip}:${host.port}`}

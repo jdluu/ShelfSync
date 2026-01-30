@@ -6,18 +6,34 @@ ShelfSync is a cross-platform desktop and mobile application designed to facilit
 
 The application adheres to a modular architecture that separates concerns between the user interface, domain logic, and infrastructure.
 
+```mermaid
+graph TD
+    User[User] --> Frontend[Frontend (React + Vite)]
+    Frontend -- "Tauri Commands (IPC)" --> Backend[Backend (Rust / Core)]
+    
+    subgraph "Backend Services"
+        Backend --> Discovery[mDNS Discovery]
+        Backend --> HTTPServer[Axum HTTP Server]
+        Backend --> DB[(SQLite + Calibre DB)]
+    end
+    
+    HTTPServer -- "Serve Files / API" --> Peer[Peer Device]
+    Peer -- "Download / Sync" --> HTTPServer
+```
+
 ### Backend (Rust)
-The backend is constructed using Rust and the Tauri SDK. It is organized into distinct layers to ensure maintainability and type safety:
-*   **Core Layer:** Handles domain-specific logic, specifically the interaction with the Calibre SQLite database (`metadata.db`). It utilizes read-only connections to prevent file locking issues and ensure data integrity.
-*   **HTTP Layer:** Implements a local REST API using the Axum framework. This layer serves book metadata, covers, and file downloads to authenticated clients. Image processing is offloaded to blocking threads to maintain server responsiveness.
-*   **Command Layer:** Serves as the interface between the frontend and backend (IPC). These commands are thin adapters that delegate execution to the Core or HTTP layers.
-*   **Infrastructure:** Manages background services, including mDNS (Multicast DNS) for service discovery, allowing devices to locate each other automatically without manual IP configuration.
+The backend is constructed using Rust and the Tauri SDK, organized into distinct layers:
+*   **Core Layer**: Handles domain logic and Calibre SQLite (`metadata.db`) interactions using **Rusqlite**.
+*   **HTTP Layer**: Implements a local REST API using **Axum** and **Tokio**. This layer serves book metadata, covers, and file downloads.
+*   **Command Layer**: Serves as the interface between the frontend and backend (IPC).
+*   **Infrastructure**: Manages background services, including **mdns-sd** (Multicast DNS) for service discovery.
 
 ### Frontend (React + TypeScript)
-The frontend is built with React and structured around feature modules rather than technical layers:
-*   **Features:** Business logic is encapsulated in feature-specific directories (e.g., `host`, `client`, `discovery`).
-*   **Services:** Interaction with the backend is managed through a typed service layer that abstracts the underlying Tauri IPC calls, ensuring strict contract enforcement between Rust and TypeScript.
-*   **Storage:** Local configuration and cached data are managed using persistent stores, ensuring state preservation across application restarts.
+The frontend is built with React and structured around feature modules:
+*   **UI Framework**: Built with **Chakra UI** and **Framer Motion** for a responsive interface.
+*   **Features**: Business logic is encapsulated in feature-specific directories (e.g., `host`, `client`, `discovery`).
+*   **Services**: Interaction with the backend is managed through a typed service layer.
+*   **Storage**: Local configuration is managed using persistent stores (**Tauri Plugin Store**).
 
 ## Features
 

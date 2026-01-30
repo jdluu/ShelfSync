@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import {
   Box, Container, HStack, Heading, Text, Button, Icon,
-  SimpleGrid, Spinner, Badge, VStack, Alert
+  SimpleGrid, Badge, VStack, Alert
 } from "@chakra-ui/react";
 import { Book as BookIcon, Search, WifiOff } from "lucide-react";
 import { ColorModeButton } from "@/components/ui/color-mode";
@@ -12,6 +12,7 @@ import { Book } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { SearchBar } from "@/components/SearchBar";
 import { SortMenu, SortOption } from "@/components/SortMenu";
+import { LoadingSpinner } from "@/components/Feedback/LoadingSpinner";
 import { Toaster } from "@/components/ui/toaster";
 import { useLibrary } from "@/context/LibraryContext";
 import { QueueOverlay } from "@/components/QueueOverlay";
@@ -174,10 +175,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         )}
 
         {loading ? (
-           <Box textAlign="center" py={20}>
-              <Spinner size="xl" color="success" />
-              <Text mt={4} color="fg.muted">Communicating with host...</Text>
-           </Box>
+           <LoadingSpinner message="Communicating with host..." />
         ) : connectedHost ? (
            <VStack align="stretch" gap={6}>
               <HStack justify="space-between" wrap="wrap" gap={4}>

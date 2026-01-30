@@ -8,11 +8,15 @@ import { listen } from "@tauri-apps/api/event";
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 import { Book } from "@/types";
 import { initDB, getLocalBooks, saveBook as saveLocalBook } from "@/services/local-db";
-import { api } from "@/services/api";
 import { Host } from "./DiscoveryContext";
+import { useHostManifest, useLocalLibrary, useCheckPin } from "@/hooks/useLibraryQuery";
 
 const STORE_PATH = "shelfsync_settings.json";
 
+/**
+ * Defines the shape of the Library Context.
+ * Manages application mode, book data, host connections, and synchronization state.
+ */
 export type AppMode = "unselected" | "host" | "client";
 interface LibraryContextType {
   // State
@@ -42,18 +46,52 @@ interface LibraryContextType {
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
+/**
+ * Provides library data and actions to the application.
+ * Handles state initialization, data fetching via React Query hooks, and WebSocket listeners for sync progress.
+ */
 export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [appMode, setAppModeState] = useState<AppMode>("unselected");
   const [libraryPath, setLibraryPath] = useState<string>("");
-  const [books, setBooks] = useState<Book[]>([]);
   const [localBooks, setLocalBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [connectedHost, setConnectedHost] = useState<Host | null>(null);
-  const [authRequired, setAuthRequired] = useState(false);
-  const [pairingHost, setPairingHost] = useState<Host | null>(null);
   const [authTokens, setAuthTokens] = useState<Record<string, string>>({}); 
   const [syncProgress, setSyncProgress] = useState<Record<number, any>>({});
+
+  // Derived credentials
+  const hostKey = connectedHost ? `${connectedHost.ip}:${connectedHost.port}` : "";
+  const token = authTokens[hostKey];
+
+  // --- Queries & Mutations ---
+  const remoteQuery = useHostManifest(connectedHost, token, appMode === "client");
+  const localQuery = useLocalLibrary(appMode === "host" ? libraryPath : null);
+  const checkPinMutation = useCheckPin();
+
+  // --- Derived State ---
+  let books: Book[] = [];
+  let loading = false;
+  let authRequired = false;
+  let pairingHost: Host | null = null;
+  
+  // Manual error state for non-query actions (dialogs, etc)
+  const [manualError, setManualError] = useState<string | null>(null);
+
+  if (appMode === "client") {
+    books = remoteQuery.data || [];
+    loading = remoteQuery.isLoading;
+    if (remoteQuery.error) {
+       if (remoteQuery.error.message === "Unauthorized") {
+           authRequired = true;
+           pairingHost = connectedHost;
+       } 
+    }
+  } else if (appMode === "host") {
+    books = localQuery.data || [];
+    loading = localQuery.isLoading;
+  }
+
+  const error = manualError || (appMode === "client" && remoteQuery.error?.message !== "Unauthorized" ? remoteQuery.error?.message : null) || (appMode === "host" ? localQuery.error?.message : null);
+
 
   // Load Settings on Mount
   useEffect(() => {
@@ -65,13 +103,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (savedMode) setAppModeState(savedMode);
 
         const savedPath = await store.get<string>("library_path");
-        if (savedPath) {
-          setLibraryPath(savedPath);
-          // If we are host, fetch books immediately
-          if (savedMode === "host") {
-            fetchBooks(savedPath);
-          }
-        }
+        if (savedPath) setLibraryPath(savedPath);
         
         const savedTokens = await store.get<Record<string, string>>("auth_tokens");
         if (savedTokens) setAuthTokens(savedTokens);
@@ -117,7 +149,34 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
      };
      setup();
      return () => unlisten?.then((f: any) => f());
-  }, [books]);
+  }, [books]); // Re-subscribe if books change to ensure closure captures new books... ideally we shouldn't rely on this closure
+
+  // Sync Progress on Connect
+  // When remoteQuery succeeds, fetch progress and update local DB
+  useEffect(() => {
+      async function syncProgressEffect() {
+        if (appMode === "client" && connectedHost && token && remoteQuery.isSuccess) {
+             try {
+                const response = await fetch(`http://${connectedHost.ip}:${connectedHost.port}/api/progress`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const progress = await response.json() as { book_id: number, status: string }[];
+                    const db = await import("@/services/local-db");
+                    for (const p of progress) {
+                        await db.updateReadStatus(p.book_id, p.status as any);
+                    }
+                    const stored = await db.getLocalBooks();
+                    setLocalBooks(stored);
+                }
+            } catch (e) {
+                console.error("Failed to sync progress on connect", e);
+            }
+        }
+      }
+      syncProgressEffect();
+  }, [appMode, connectedHost, token, remoteQuery.isSuccess]);
+
 
   const setAppMode = async (mode: AppMode) => {
     setAppModeState(mode);
@@ -127,7 +186,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (mode === "client") {
         setConnectedHost(null);
-        setBooks([]);
+        // books is derived, no need to set
         try {
             await initDB();
             const stored = await getLocalBooks();
@@ -135,123 +194,37 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         } catch (e) {
             console.error("Failed to init local DB:", e);
         }
-    } else if (mode === "host" && libraryPath) {
-        fetchBooks(libraryPath);
-    }
-  };
-
-  const fetchBooks = async (path: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await api.library.getBooks(path);
-      setBooks(result);
-    } catch (e) {
-      console.error("Error fetching books:", e);
-      setError(typeof e === 'string' ? e : "Failed to load library database.");
-    } finally {
-      setLoading(false);
     }
   };
 
   const connectToHost = async (host: Host) => {
-    setLoading(true);
-    setError(null);
-    setAuthRequired(false);
-    setPairingHost(null);
-
-    const hostKey = `${host.ip}:${host.port}`;
-    const token = authTokens[hostKey];
-
-    try {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 5000); 
-
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, {
-            headers,
-            signal: controller.signal
-        });
-        clearTimeout(id);
-        
-        if (response.status === 401) {
-            setAuthRequired(true);
-            setPairingHost(host);
-            setLoading(false);
-            return;
-        }
-
-        if (!response.ok) throw new Error("Failed to fetch manifest");
-        
-        const data = await response.json();
-        setBooks(data);
-        setConnectedHost(host);
-
-        // Fetch Progress
-        try {
-            const progResp = await fetch(`http://${host.ip}:${host.port}/api/progress`, { headers });
-            if (progResp.ok) {
-                const progress = await progResp.json() as { book_id: number, status: string }[];
-                const db = await import("@/services/local-db");
-                for (const p of progress) {
-                    await db.updateReadStatus(p.book_id, p.status as any);
-                }
-                const stored = await db.getLocalBooks();
-                setLocalBooks(stored);
-            }
-        } catch (e) {
-            console.error("Failed to sync progress on connect", e);
-        }
-    } catch (e) {
-        console.error("Connection error:", e);
-        setError("Could not connect to host. Make sure it's running and accessible.");
-    } finally {
-        setLoading(false);
-    }
+    // Just setting the host triggers the query
+    setConnectedHost(host);
   };
 
   const pair = async (pin: string) => {
       if (!pairingHost) return;
-      setLoading(true);
-      setError(null);
-
+      
       try {
-          const response = await fetch(`http://${pairingHost.ip}:${pairingHost.port}/api/check-pin`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pin })
-          });
-
-          if (response.ok) {
-              const { token } = await response.json();
-              const hostKey = `${pairingHost.ip}:${pairingHost.port}`;
-              const newTokens = { ...authTokens, [hostKey]: token };
-              setAuthTokens(newTokens);
-              
-              const store = await load(STORE_PATH);
-              await store.set("auth_tokens", newTokens);
-              await store.save();
-
-              setAuthRequired(false);
-              // Retry connection
-              await connectToHost(pairingHost);
-          } else {
-              setError("Invalid PIN. Please try again.");
-          }
+          const newToken = await checkPinMutation.mutateAsync({ host: pairingHost, pin });
+          
+          const hostKey = `${pairingHost.ip}:${pairingHost.port}`;
+          const newTokens = { ...authTokens, [hostKey]: newToken };
+          setAuthTokens(newTokens);
+          
+          const store = await load(STORE_PATH);
+          await store.set("auth_tokens", newTokens);
+          await store.save();
+          
+          // Auth required will clear on next render because query will retry with new token
       } catch (e) {
-          setError("Failed to verify PIN. Host unreachable.");
-      } finally {
-          setLoading(false);
+          // let the error be handled by the mutation state or caught here
+          console.error("Pairing failed", e);
       }
   };
 
   const disconnect = () => {
       setConnectedHost(null);
-      setBooks([]);
-      setAuthRequired(false);
-      setPairingHost(null);
   };
 
   const syncBook = async (book: Book) => {
@@ -282,7 +255,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
           }
       } catch (e) {
           console.error("Bulk sync failed:", e);
-          setError("Failed to start synchronization.");
+          setManualError("Failed to start synchronization.");
       }
   };
 
@@ -299,10 +272,10 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         const store = await load(STORE_PATH);
         await store.set("library_path", selected);
         await store.save();
-        fetchBooks(selected);
+        // localQuery will automatically refetch because libraryPath changed
       }
     } catch (e) {
-      setError("Failed to open dialog: " + e);
+      setManualError("Failed to open dialog: " + e);
     }
   };
 
@@ -351,7 +324,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         books,
         localBooks,
         loading,
-        error,
+        error: error || null,
         libraryPath,
         connectedHost,
         authRequired,
@@ -373,6 +346,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     </LibraryContext.Provider>
   );
 };
+
 
 export const useLibrary = () => {
   const context = useContext(LibraryContext);

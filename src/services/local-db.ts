@@ -29,8 +29,13 @@ export async function initDB() {
   // We swallow the error if it already exists.
   try {
       await db.execute("ALTER TABLE books ADD COLUMN read_status TEXT DEFAULT 'unread'");
-  } catch (e) {
-      // Column likely already exists
+  } catch (e: any) {
+      const msg = e.toString().toLowerCase();
+      // SQLite error for duplicate column usually contains "duplicate column name"
+      if (!msg.includes("duplicate column name")) {
+          console.error("Migration failed:", e);
+          throw e;
+      }
   }
 }
 
