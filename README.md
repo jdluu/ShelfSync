@@ -8,7 +8,7 @@ The application adheres to a modular architecture that separates concerns betwee
 
 ```mermaid
 graph TD
-    User[User] --> Frontend[Frontend (React + Vite)]
+    User[User] --> Frontend["Frontend (React + Vite)"]
     Frontend -- "Tauri Commands (IPC)" --> Backend[Backend (Rust / Core)]
     
     subgraph "Backend Services"
@@ -32,8 +32,9 @@ The backend is constructed using Rust and the Tauri SDK, organized into distinct
 The frontend is built with React and structured around feature modules:
 *   **UI Framework**: Built with **Chakra UI** and **Framer Motion** for a responsive interface.
 *   **Features**: Business logic is encapsulated in feature-specific directories (e.g., `host`, `client`, `discovery`).
-*   **Services**: Interaction with the backend is managed through a typed service layer.
+*   **State Management**: Asynchronous state, caching, and data fetching are managed using **TanStack Query**.
 *   **Storage**: Local configuration is managed using persistent stores (**Tauri Plugin Store**).
+*   **Database**: Local client-side book tracking and sync status stored in a local SQLite database.
 
 ## Features
 
@@ -41,7 +42,8 @@ The frontend is built with React and structured around feature modules:
 *   **Calibre Integration:** Directly parses standard Calibre library databases to retrieve book metadata, authors, and file paths.
 *   **Automated Discovery:** Utilizes mDNS to automatically detect ShelfSync hosts on the local network, eliminating the need for manual connection setup.
 *   **Efficient Synchronization:** Supports direct download of e-book files (EPUB) from the host to the client device for offline access.
-*   **Optimized Media Delivery:** Server-side image resizing ensures that cover thumbnails are delivered efficiently to mobile clients, reducing bandwidth usage and rendering time.
+*   **Disk-based Image Cache:** Server-side resized thumbnails are cached on disk to provide instant subsequent loads and reduce CPU overhead.
+*   **Secure Device Pairing:** Implements a 4-digit PIN authentication mechanism to prevent unauthorized access to the library.
 *   **Real-time Updates:** The client interface updates in real-time as hosts appear or disappear from the network.
 
 ## Prerequisites
