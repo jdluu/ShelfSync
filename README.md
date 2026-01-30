@@ -9,12 +9,12 @@ The application adheres to a modular architecture that separates concerns betwee
 ```mermaid
 graph TD
     User[User] --> Frontend["Frontend (React + Vite)"]
-    Frontend -- "Tauri Commands (IPC)" --> Backend[Backend (Rust / Core)]
+    Frontend -- "Tauri Commands (IPC)" --> Backend["Backend (Rust / Core)"]
     
     subgraph "Backend Services"
         Backend --> Discovery[mDNS Discovery]
         Backend --> HTTPServer[Axum HTTP Server]
-        Backend --> DB[(SQLite + Calibre DB)]
+        Backend --> DB[("SQLite + Calibre DB")]
     end
     
     HTTPServer -- "Serve Files / API" --> Peer[Peer Device]
