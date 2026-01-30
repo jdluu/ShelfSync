@@ -17,17 +17,20 @@ fn main() {
     conn.execute(
         "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT)",
         [],
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     conn.execute(
         "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)",
         [],
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     conn.execute(
         "CREATE TABLE books_authors_link (id INTEGER PRIMARY KEY, book INTEGER, author INTEGER)",
         [],
-    ).unwrap();
+    )
+    .unwrap();
 
     // Insert mock data
     let books = [
@@ -40,13 +43,31 @@ fn main() {
 
     for (i, (title, author, path)) in books.iter().enumerate() {
         let id = i + 1;
-        conn.execute("INSERT INTO books (id, title, path) VALUES (?, ?, ?)", [id.to_string(), title.to_string(), path.to_string()]).unwrap();
-        
+        conn.execute(
+            "INSERT INTO books (id, title, path) VALUES (?, ?, ?)",
+            [id.to_string(), title.to_string(), path.to_string()],
+        )
+        .unwrap();
+
         // Find or insert author
-        conn.execute("INSERT OR IGNORE INTO authors (name) VALUES (?)", [author.to_string()]).unwrap();
-        let author_id: i64 = conn.query_row("SELECT id FROM authors WHERE name = ?", [author.to_string()], |row| row.get(0)).unwrap();
-        
-        conn.execute("INSERT INTO books_authors_link (book, author) VALUES (?, ?)", [id as i64, author_id]).unwrap();
+        conn.execute(
+            "INSERT OR IGNORE INTO authors (name) VALUES (?)",
+            [author.to_string()],
+        )
+        .unwrap();
+        let author_id: i64 = conn
+            .query_row(
+                "SELECT id FROM authors WHERE name = ?",
+                [author.to_string()],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        conn.execute(
+            "INSERT INTO books_authors_link (book, author) VALUES (?, ?)",
+            [id as i64, author_id],
+        )
+        .unwrap();
     }
 
     // Create dummy files to mimic Calibre structure

@@ -1,6 +1,6 @@
-use rusqlite::{Connection, OpenFlags};
-use crate::models::Book;
 use crate::error::AppError;
+use crate::models::Book;
+use rusqlite::{Connection, OpenFlags};
 use std::path::Path;
 
 pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
@@ -19,7 +19,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // books (id, title, path, ...)
     // authors (id, name, ...)
     // books_authors_link (id, book, author, ...)
-    
+
     let mut stmt = conn.prepare(
         "SELECT 
             b.id, 
@@ -73,29 +73,47 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use rusqlite::Connection;
+    use tempfile::tempdir;
 
     fn create_mock_calibre_db(path: &Path) {
         let conn = Connection::open(path.join("metadata.db")).unwrap();
-        
+
         conn.execute(
             "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL)",
             [],
         ).unwrap();
-        
-        conn.execute("CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
-        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
-        conn.execute("CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)", []).unwrap();
-        conn.execute("CREATE TABLE publishers (id INTEGER PRIMARY KEY, name TEXT)", []).unwrap();
+
+        conn.execute(
+            "CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT)",
+            [],
+        )
+        .unwrap();
+        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", [])
+            .unwrap();
+        conn.execute(
+            "CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "CREATE TABLE publishers (id INTEGER PRIMARY KEY, name TEXT)",
+            [],
+        )
+        .unwrap();
         conn.execute("CREATE TABLE books_publishers_link (id INTEGER PRIMARY KEY, book INTEGER, publisher INTEGER)", []).unwrap();
-        conn.execute("CREATE TABLE data (id INTEGER PRIMARY KEY, book INTEGER, format TEXT)", []).unwrap();
+        conn.execute(
+            "CREATE TABLE data (id INTEGER PRIMARY KEY, book INTEGER, format TEXT)",
+            [],
+        )
+        .unwrap();
 
         conn.execute(
             "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)",
             [],
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         conn.execute(
             "CREATE TABLE books_authors_link (id INTEGER PRIMARY KEY, book INTEGER, author INTEGER)",
             [],
@@ -103,21 +121,41 @@ mod tests {
 
         // Insert mock data
         conn.execute("INSERT INTO books (id, title, path) VALUES (1, 'The Great Gatsby', 'fitzgerald/gatsby')", []).unwrap();
-        conn.execute("INSERT INTO authors (id, name) VALUES (1, 'F. Scott Fitzgerald')", []).unwrap();
-        conn.execute("INSERT INTO books_authors_link (book, author) VALUES (1, 1)", []).unwrap();
+        conn.execute(
+            "INSERT INTO authors (id, name) VALUES (1, 'F. Scott Fitzgerald')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO books_authors_link (book, author) VALUES (1, 1)",
+            [],
+        )
+        .unwrap();
 
-        conn.execute("INSERT INTO books (id, title, path) VALUES (2, '1984', 'orwell/1984')", []).unwrap();
-        conn.execute("INSERT INTO authors (id, name) VALUES (2, 'George Orwell')", []).unwrap();
-        conn.execute("INSERT INTO books_authors_link (book, author) VALUES (2, 2)", []).unwrap();
+        conn.execute(
+            "INSERT INTO books (id, title, path) VALUES (2, '1984', 'orwell/1984')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO authors (id, name) VALUES (2, 'George Orwell')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO books_authors_link (book, author) VALUES (2, 2)",
+            [],
+        )
+        .unwrap();
     }
 
     #[test]
     fn test_get_calibre_metadata() {
         let dir = tempdir().unwrap();
         create_mock_calibre_db(dir.path());
-        
+
         let books = get_calibre_metadata(dir.path().to_str().unwrap()).unwrap();
-        
+
         assert_eq!(books.len(), 2);
         assert_eq!(books[0].title, "The Great Gatsby");
         assert_eq!(books[0].authors, "F. Scott Fitzgerald");

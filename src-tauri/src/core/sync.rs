@@ -1,18 +1,18 @@
-use serde::Serialize;
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
-use tauri::{AppHandle, Emitter, Runtime};
 use crate::models::Book;
-use std::path::PathBuf;
-use std::fs;
 use futures_util::StreamExt;
 use reqwest::Client;
+use serde::Serialize;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter, Runtime};
+use tokio::sync::mpsc;
 
 #[derive(Serialize, Clone, Debug)]
 pub struct SyncProgress {
     pub book_id: i64,
     pub title: String,
-    pub progress: f64, // 0.0 to 1.0
+    pub progress: f64,  // 0.0 to 1.0
     pub status: String, // "downloading", "completed", "error"
     pub error: Option<String>,
     pub queue_position: usize,
@@ -47,7 +47,7 @@ impl SyncManager {
                 if let Err(e) = process_task::<R>(&app, &client, &task, &active_queue_clone).await {
                     eprintln!("Sync error: {}", e);
                 }
-                
+
                 // Remove from active queue
                 let mut queue = active_queue_clone.lock().unwrap();
                 if !queue.is_empty() {
@@ -66,12 +66,14 @@ impl SyncManager {
         // Add books to queue and collect tasks, then drop lock before sending
         let tasks_to_send: Vec<_> = {
             let mut queue = self.active_queue.lock().unwrap();
-            tasks.into_iter().map(|task| {
-                queue.push(task.book.clone());
-                task
-            }).collect()
+            tasks
+                .into_iter()
+                .inspect(|task| {
+                    queue.push(task.book.clone());
+                })
+                .collect()
         }; // Lock is dropped here
-        
+
         for task in tasks_to_send {
             self.sender.send(task).await.map_err(|e| e.to_string())?;
         }
@@ -86,21 +88,32 @@ async fn process_task<R: Runtime>(
     queue: &Arc<Mutex<Vec<Book>>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let book = &task.book;
-    let url = format!("http://{}:{}/api/download/{}/best", task.host_ip, task.host_port, book.id);
-    
+    let url = format!(
+        "http://{}:{}/api/download/{}/best",
+        task.host_ip, task.host_port, book.id
+    );
+
     // Create destination dir
     let dest_path = task.destination_root.join(&book.path);
     if let Some(parent) = dest_path.parent() {
         fs::create_dir_all(parent)?;
     }
 
-    let response = client.get(url)
+    let response = client
+        .get(url)
         .header("Authorization", format!("Bearer {}", task.token))
         .send()
         .await?;
 
     if !response.status().is_success() {
-        emit_progress(app, book, 0.0, "error", Some("Server returned error".to_string()), queue);
+        emit_progress(
+            app,
+            book,
+            0.0,
+            "error",
+            Some("Server returned error".to_string()),
+            queue,
+        );
         return Err("Download failed".into());
     }
 
@@ -139,13 +152,16 @@ fn emit_progress<R: Runtime>(
         (0, q.len()) // Simplified: active task is always at 0
     };
 
-    let _ = app.emit("sync-progress", SyncProgress {
-        book_id: book.id,
-        title: book.title.clone(),
-        progress,
-        status: status.to_string(),
-        error,
-        queue_position: pos,
-        queue_total: total,
-    });
+    let _ = app.emit(
+        "sync-progress",
+        SyncProgress {
+            book_id: book.id,
+            title: book.title.clone(),
+            progress,
+            status: status.to_string(),
+            error,
+            queue_position: pos,
+            queue_total: total,
+        },
+    );
 }

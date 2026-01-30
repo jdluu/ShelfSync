@@ -1,18 +1,18 @@
+use crate::error::AppError;
 use rusqlite::Connection;
 use std::path::Path;
-use crate::error::AppError;
 
 #[derive(serde::Serialize)]
 pub struct ProgressRecord {
     pub book_id: i64,
-    pub status: String, // 'unread', 'reading', 'finished'
+    pub status: String,    // 'unread', 'reading', 'finished'
     pub last_updated: i64, // Unix timestamp
 }
 
 pub fn init_progress_db(app_data_dir: &Path) -> Result<(), AppError> {
     let db_path = app_data_dir.join("progress.db");
     let conn = Connection::open(db_path)?;
-    
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS progress (
             book_id INTEGER PRIMARY KEY,
@@ -21,7 +21,7 @@ pub fn init_progress_db(app_data_dir: &Path) -> Result<(), AppError> {
         )",
         [],
     )?;
-    
+
     Ok(())
 }
 
@@ -42,7 +42,7 @@ pub fn update_progress(app_data_dir: &Path, book_id: i64, status: &str) -> Resul
          WHERE excluded.last_updated >= last_updated",
         rusqlite::params![book_id, status, now],
     )?;
-    
+
     Ok(())
 }
 
@@ -51,17 +51,19 @@ pub fn get_all_progress(app_data_dir: &Path) -> Result<Vec<ProgressRecord>, AppE
     if !db_path.exists() {
         return Ok(Vec::new());
     }
-    
+
     let conn = Connection::open(db_path)?;
     let mut stmt = conn.prepare("SELECT book_id, status, last_updated FROM progress")?;
-    
-    let records = stmt.query_map([], |row| {
-        Ok(ProgressRecord {
-            book_id: row.get(0)?,
-            status: row.get(1)?,
-            last_updated: row.get(2)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
-    
+
+    let records = stmt
+        .query_map([], |row| {
+            Ok(ProgressRecord {
+                book_id: row.get(0)?,
+                status: row.get(1)?,
+                last_updated: row.get(2)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
     Ok(records)
 }

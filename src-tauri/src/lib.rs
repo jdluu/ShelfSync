@@ -1,19 +1,19 @@
 pub mod commands;
 pub mod core;
+pub mod error;
 pub mod http;
 pub mod models;
-pub mod error;
 
-use std::sync::{Arc, Mutex};
-use tauri::{Manager, Emitter};
-use log::{info, error};
-use rand::Rng;
 use crate::{
-    http::server,
-    models::ConnectionInfo,
     commands::{library, network},
     core::db,
+    http::server,
+    models::ConnectionInfo,
 };
+use log::{error, info};
+use rand::Rng;
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, Manager};
 
 pub struct DiscoveryState {
     hosts: Mutex<Vec<ConnectionInfo>>,
@@ -41,7 +41,6 @@ pub fn run() {
     // For now, use a temporary dir or create app_data_dir in setup
     let temp_app_data_dir = std::env::temp_dir().join("shelfsync_temp");
 
-
     let server_state = Arc::new(server::ServerState {
         library_path: Mutex::new(None),
         books: Mutex::new(Vec::new()),
@@ -53,7 +52,7 @@ pub fn run() {
     let discovery_state = Arc::new(DiscoveryState {
         hosts: Mutex::new(Vec::new()),
     });
-    
+
     // Spawn server task
     let state_clone = server_state.clone();
     tauri::async_runtime::spawn(async move {
@@ -70,10 +69,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .manage(AppState { 
-            server: server_state, 
-            discovery: discovery_state, 
-            sync_manager: Mutex::new(None) 
+        .manage(AppState {
+            server: server_state,
+            discovery: discovery_state,
+            sync_manager: Mutex::new(None),
         })
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -84,12 +83,12 @@ pub fn run() {
             if let Ok(app_data_dir) = app.path().app_data_dir() {
                 // Create dir if doesn't exist
                 std::fs::create_dir_all(&app_data_dir).ok();
-                
+
                 // Init progress DB
                 if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
                     error!("Failed to init progress DB: {}", e);
                 }
-                
+
                 let settings_path = app_data_dir.join("shelfsync_settings.json");
                 if settings_path.exists() {
                     if let Ok(content) = std::fs::read_to_string(settings_path) {
@@ -97,9 +96,10 @@ pub fn run() {
                             if let Some(path) = json.get("library_path").and_then(|v| v.as_str()) {
                                 info!("Auto-loading library from: {}", path);
                                 if let Ok(books) = db::get_calibre_metadata(path) {
-                                    let mut path_lock = app_state.server.library_path.lock().unwrap();
+                                    let mut path_lock =
+                                        app_state.server.library_path.lock().unwrap();
                                     *path_lock = Some(path.to_string());
-                                    
+
                                     let mut books_lock = app_state.server.books.lock().unwrap();
                                     *books_lock = books;
                                     info!("Library auto-loaded successfully.");
@@ -111,7 +111,7 @@ pub fn run() {
                     }
                 }
             }
-            
+
             // Init Sync Manager
             let sync_mgr = crate::core::sync::SyncManager::new(app.handle().clone());
             {
@@ -122,12 +122,12 @@ pub fn run() {
 
             tauri::async_runtime::spawn(async move {
                 let mdns = mdns_sd::ServiceDaemon::new().expect("Failed to create mDNS daemon");
-                
+
                 // 1. Broadcast
                 let machine_name = hostname::get()
                     .map(|h| h.to_string_lossy().to_string())
                     .unwrap_or_else(|_| "ShelfSync-Host".to_string());
-                
+
                 let service_type = "_shelfsync._tcp.local.";
                 let instance_name = format!("ShelfSync on {}", machine_name);
                 let my_ip = local_ip_address::local_ip().unwrap_or("127.0.0.1".parse().unwrap());
@@ -141,10 +141,12 @@ pub fn run() {
                     my_ip.to_string(),
                     8080,
                     &properties[..],
-                ).expect("Valid mDNS service info");
+                )
+                .expect("Valid mDNS service info");
 
-                mdns.register(service_info).expect("Failed to register mDNS service");
-                
+                mdns.register(service_info)
+                    .expect("Failed to register mDNS service");
+
                 // 2. Browse
                 let receiver = mdns.browse(service_type).expect("Failed to browse");
                 while let Ok(event) = receiver.recv_async().await {
@@ -152,9 +154,14 @@ pub fn run() {
                     match event {
                         mdns_sd::ServiceEvent::ServiceResolved(info) => {
                             let mut hosts = discovery.hosts.lock().unwrap();
-                            let ip = info.get_addresses().iter().next().map(|a| a.to_string()).unwrap_or_default();
+                            let ip = info
+                                .get_addresses()
+                                .iter()
+                                .next()
+                                .map(|a| a.to_string())
+                                .unwrap_or_default();
                             let hostname = info.get_fullname().to_string();
-                            
+
                             if !hosts.iter().any(|h| h.ip == ip) {
                                 hosts.push(ConnectionInfo {
                                     ip,
@@ -187,10 +194,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            library::get_books, 
-            library::set_library_path, 
+            library::get_books,
+            library::set_library_path,
             library::start_bulk_sync,
-            network::get_connection_info, 
+            network::get_connection_info,
             network::discover_hosts
         ]);
 

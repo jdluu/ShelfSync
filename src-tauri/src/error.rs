@@ -4,22 +4,22 @@ use serde::{Serialize, Serializer};
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] rusqlite::Error),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Library not found: {0}")]
     LibraryNotFound(String),
-    
+
     #[error("Unknown error: {0}")]
     Unknown(String),
-    
+
     #[error("Other error: {0}")]
     Other(String),
 }
 
-// Implement Serialize manually or via `serde_repr` if needed, 
-// but for Tauri simple string serialization of the error message is often enough 
+// Implement Serialize manually or via `serde_repr` if needed,
+// but for Tauri simple string serialization of the error message is often enough
 // OR we can serialize it as a struct { code, message }.
 impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
