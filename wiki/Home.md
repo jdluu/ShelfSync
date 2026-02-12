@@ -1,16 +1,18 @@
 # Welcome to the ShelfSync Wiki
 
-ShelfSync is a cross-platform desktop and mobile application designed to facilitate the synchronization of e-book libraries between devices on a local network.
+ShelfSync is a cross-platform desktop and mobile application designed to facilitate the synchronization of Calibre e-book libraries between devices on a local network. This wiki provides technical documentation, installation guides, and usage instructions for the ShelfSync platform.
 
-## Getting Started
+## Documentation Navigation
 
-- [System Architecture](System-Architecture)
+### General Information
+- [Core Features](Features)
 - [Installation Guide](Installation)
-- [Usage Guide](Usage)
+- [Usage Instructions](Usage)
 - [Troubleshooting](Troubleshooting)
 
-## Developer Documentation
-
-- [Contributing](Contributing)
+### Technical Details
+- [System Architecture](System-Architecture)
 - [API Reference](API-Reference)
 - [Testing Strategy](Testing)
+
+The project aims to provide a seamless, private, and efficient way to manage personal digital libraries without relying on cloud-based intermediaries.
