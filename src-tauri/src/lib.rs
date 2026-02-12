@@ -78,6 +78,51 @@ pub fn run() {
             let handle = app.handle().clone();
             let discovery = discovery_clone;
 
+            // System Tray Setup
+            let quit_i = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
+            let show_i = tauri::menu::MenuItem::with_id(app, "show", "Show ShelfSync", true, None::<&str>).unwrap();
+            let hide_i = tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>).unwrap();
+            let menu = tauri::menu::Menu::with_items(app, &[&show_i, &hide_i, &tauri::menu::PredefinedMenuItem::separator(app).unwrap(), &quit_i]).unwrap();
+
+            let _tray = tauri::tray::TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            window.show().unwrap();
+                            window.set_focus().unwrap();
+                        }
+                    }
+                    "hide" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            window.hide().unwrap();
+                        }
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| match event {
+                    tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        ..
+                    } => {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                window.hide().unwrap();
+                            } else {
+                                window.show().unwrap();
+                                window.set_focus().unwrap();
+                            }
+                        }
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
             // Initialize Server State from persistent store
             let app_state = app.state::<AppState>();
             if let Ok(app_data_dir) = app.path().app_data_dir() {
@@ -202,6 +247,18 @@ pub fn run() {
         ]);
 
     builder
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // If it's the main window, we hide it instead of closing
+                if window.label() == "main" {
+                    #[cfg(not(target_os = "android"))]
+                    {
+                        window.hide().unwrap();
+                        api.prevent_close();
+                    }
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

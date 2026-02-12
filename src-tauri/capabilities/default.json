@@ -11,6 +11,7 @@
     "dialog:default",
     "notification:default",
     "http:default",
-    "sql:default"
+    "sql:default",
+    "core:tray:default"
   ]
 }
