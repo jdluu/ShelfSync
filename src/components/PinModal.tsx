@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
-import { 
-  Box, VStack, Heading, Text, Input, Button, 
-  HStack, Portal, Center 
-} from "@chakra-ui/react";
 import { Lock } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 
 interface PinModalProps {
   hostName: string;
@@ -12,12 +9,7 @@ interface PinModalProps {
   loading?: boolean;
 }
 
-export const PinModal: React.FC<PinModalProps> = ({ 
-  hostName, 
-  onPair, 
-  onCancel, 
-  loading 
-}) => {
+export const PinModal: React.FC<PinModalProps> = ({ hostName, onPair, onCancel, loading }) => {
   const [pin, setPin] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,71 +20,53 @@ export const PinModal: React.FC<PinModalProps> = ({
   };
 
   return (
-    <Portal>
-      <Box 
-        position="fixed" 
-        top={0} 
-        left={0} 
-        right={0} 
-        bottom={0} 
-        bg="blackAlpha.600" 
-        backdropFilter="blur(4px)"
-        zIndex={1000}
-      >
-        <Center h="full">
-          <Box 
-            bg="bg.panel" 
-            p={8} 
-            borderRadius="xl" 
-            boxShadow="2xl" 
-            maxW="sm" 
-            w="full"
-            borderWidth="1px"
-            borderColor="border"
-          >
-            <VStack gap={6} as="form" onSubmit={handleSubmit}>
-              <Box bg="accent.subtle" p={4} borderRadius="full">
-                <Lock size={32} color="var(--chakra-colors-accent-emphasis)" />
-              </Box>
-              
-              <VStack gap={1} textAlign="center">
-                <Heading size="lg">Pairing Required</Heading>
-                <Text color="fg.muted" fontSize="sm">
-                  Enter the 4-digit PIN displayed on <strong>{hostName}</strong>
-                </Text>
-              </VStack>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-base-200 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-base-300">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex justify-center">
+            <div className="bg-primary/20 p-4 rounded-full">
+              <Lock size={32} className="text-primary" />
+            </div>
+          </div>
 
-              <Input 
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').substring(0, 4))}
-                placeholder="0000"
-                size="lg"
-                textAlign="center"
-                fontSize="2xl"
-                fontWeight="bold"
-                letterSpacing="widest"
-                autoFocus
-                disabled={loading}
-              />
+          <div className="text-center flex flex-col gap-1">
+            <h2 className="text-2xl font-bold">Pairing Required</h2>
+            <p className="text-sm text-base-content/60">
+              Enter the 4-digit PIN displayed on <strong>{hostName}</strong>
+            </p>
+          </div>
 
-              <HStack w="full" gap={3}>
-                <Button variant="ghost" flex={1} onClick={onCancel} disabled={loading}>
-                  Cancel
-                </Button>
-                <Button 
-                  colorPalette="blue" 
-                  flex={1} 
-                  type="submit" 
-                  loading={loading}
-                  disabled={pin.length < 4}
-                >
-                  Pair Device
-                </Button>
-              </HStack>
-            </VStack>
-          </Box>
-        </Center>
-      </Box>
-    </Portal>
+          <input
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").substring(0, 4))}
+            placeholder="0000"
+            className="input input-lg text-center text-2xl font-bold tracking-widest w-full bg-base-100"
+            disabled={loading}
+          />
+
+          <div className="flex w-full gap-3">
+            <button
+              type="button"
+              className="btn btn-ghost flex-1"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary flex-1"
+              disabled={pin.length < 4 || loading}
+            >
+              {loading ? (
+                <span className="loading loading-spinner text-primary-content"></span>
+              ) : (
+                "Pair Device"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };

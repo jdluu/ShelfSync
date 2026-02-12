@@ -1,15 +1,10 @@
-import React from 'react';
-import { 
-  Box, Container, HStack, Heading, Text, Button, Icon, 
-  SimpleGrid, Spinner, VStack, Grid, GridItem, Alert 
-} from "@chakra-ui/react";
-import { FolderOpen, Book as BookIcon, Network, Wifi } from "lucide-react";
+import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
+import type React from "react";
 import QRCode from "react-qr-code";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
 import { SkipLink } from "@/components/SkipLink";
-import { Book, ConnectionInfo } from "@/types";
-import { BookCard } from "@/components/BookCard";
+import type { Book, ConnectionInfo } from "@/types/core";
 
 interface HostDashboardProps {
   books: Book[];
@@ -31,144 +26,122 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   onChangeRole,
 }) => {
   return (
-    <>
-    <SkipLink />
-    <Box as="main" id="main-content" minH="100vh" bg="bg.canvas" color="fg" p={6} pb={16}>
-      <Container maxW="container.xl">
-        <Grid templateColumns={{ base: "1fr", md: "1fr 320px" }} gap={6}>
-           <GridItem>
-              <HStack justify="space-between" mb={8} align="start">
-                 <Box>
-                    <Heading size="2xl" display="flex" alignItems="center" gap={2}>
-                        <Icon color="accent" asChild><BookIcon /></Icon>
-                        ShelfSync Host
-                    </Heading>
-                    <Text color="fg.muted">Local Replica Sync Engine</Text>
-                    <Button onClick={onChangeRole} variant="ghost" size="xs" color="fg.subtle" mt={2}>
-                        Change Role
-                    </Button>
-                 </Box>
+    <div className="min-h-screen flex flex-col bg-base-100 font-sans selection:bg-primary/30">
+      <SkipLink />
 
-                 <HStack gap={2}>
-                    <ColorModeButton />
-                    <VStack align="end" gap={2}>
-                      <Button onClick={onSelectFolder} colorPalette="blue">
-                          <Icon mr={2} asChild><FolderOpen /></Icon>
-                          {libraryPath ? "Change Library" : "Select Library"}
-                      </Button>
-                      <Text fontSize="xs" fontFamily="mono" color="fg.subtle" maxW="300px" truncate>
-                          {libraryPath || "No library selected"}
-                      </Text>
-                    </VStack>
-                 </HStack>
-              </HStack>
+      <Header title="Host Dashboard" onChangeRole={onChangeRole} />
 
-              {error && (
-                <Alert.Root status="error" mb={6}>
-                    <Alert.Indicator />
-                    <Alert.Title>{error}</Alert.Title>
-                </Alert.Root>
-               )}
-
-              {loading ? (
-                 <Box textAlign="center" py={20}>
-                    <Spinner size="lg" />
-                    <Text mt={2}>Loading library...</Text>
-                 </Box>
-              ) : books.length > 0 ? (
-                 <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
-                    {books.map((book) => (
-                        <BookCard 
-                            key={book.id}
-                            book={book}
-                            variant="host-view"
-                            // If we have connection info, we can show covers by pointing to ourselves
-                            host={connectionInfo ? { ip: "localhost", port: 8080 } : undefined}
-                        />
-                    ))}
-                 </SimpleGrid>
-              ) : (
-                 <Box textAlign="center" py={20} bg="bg.subtle" borderRadius="xl" borderWidth="1px" borderStyle="dashed" borderColor="border">
-                    {libraryPath ? (
-                        <Text color="fg.muted">No books found in this library.</Text>
-                    ) : (
-                        <VStack>
-                            <Text color="fg" fontWeight="medium">Welcome to ShelfSync Host</Text>
-                            <Text color="fg.subtle" fontSize="sm">Select your Calibre library folder to begin.</Text>
-                        </VStack>
-                    )}
-                 </Box>
+      {/* Main Content */}
+      <main id="main-content" className="flex-grow p-4 sm:p-8 flex items-start justify-center">
+        <div className="container max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+            {/* Library Selection Card */}
+            <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden flex flex-col items-center justify-center p-12 text-center gap-8 relative overflow-hidden group">
+              {loading && (
+                <div className="absolute inset-0 bg-base-200/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                </div>
               )}
-           </GridItem>
 
-           <GridItem>
-              <Box bg="bg.subtle" p={6} borderRadius="xl" borderWidth="1px" borderColor="border">
-                 <Heading size="md" mb={4} display="flex" alignItems="center" gap={2}>
-                    <Icon color="success" asChild><Network /></Icon>
-                    Connectivity
-                 </Heading>
-                 
-                 {connectionInfo ? (
-                    <VStack align="stretch" gap={6}>
-                       <Box bg="white" p={4} borderRadius="lg" display="flex" justifyContent="center">
-                          <QRCode 
-                            value={JSON.stringify(connectionInfo)}
-                            size={200}
-                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                            viewBox={`0 0 256 256`}
-                          />
-                       </Box>
+              <div className="relative">
+                <div className="w-32 h-32 rounded-3xl bg-base-300 flex items-center justify-center group-hover:bg-primary/5 transition-all duration-300">
+                  <Folder className="w-16 h-16 text-base-content/40 group-hover:text-primary/70 transition-colors" />
+                </div>
+              </div>
 
-                       <VStack gap={3}>
-                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
-                              <Icon color="fg.subtle" asChild><Wifi /></Icon>
-                              <Box>
-                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Host IP</Text>
-                                 <Text fontFamily="mono" fontSize="lg">{connectionInfo.ip}</Text>
-                              </Box>
-                           </HStack>
+              <div className="space-y-6 w-full max-w-sm">
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={onSelectFolder}
+                    className="btn btn-primary btn-lg w-full shadow-lg group active:scale-95 transition-transform"
+                    disabled={loading}
+                  >
+                    {libraryPath ? "Select Library" : "Select Library"}
+                  </button>
+                  {error && (
+                    <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
+                  )}
+                </div>
 
-                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
-                              <Box w={5} display="flex" justifyContent="center" color="fg.subtle" fontFamily="mono">:</Box>
-                              <Box>
-                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Port</Text>
-                                 <Text fontFamily="mono" fontSize="lg">{connectionInfo.port}</Text>
-                              </Box>
-                           </HStack>
+                <div className="space-y-2">
+                  <p className="text-base-content/40 font-medium text-xs uppercase tracking-wider">
+                    {libraryPath ? "No library selected." : "No library selected."}
+                  </p>
+                  <p className="text-sm text-base-content/60 px-4 line-clamp-2 break-all font-mono">
+                    {libraryPath || "Choose your Calibre library folder to begin."}
+                  </p>
+                  {books.length > 0 && (
+                    <p className="text-[10px] text-success font-bold uppercase tracking-widest mt-2">
+                      {books.length} Books Found
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                           <HStack p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border">
-                              <Box w={5} display="flex" justifyContent="center" color="fg.subtle" fontFamily="mono">@</Box>
-                              <Box>
-                                 <Text fontSize="xs" color="fg.subtle" textTransform="uppercase">Hostname</Text>
-                                 <Text fontFamily="mono" fontSize="lg" truncate maxW="200px">{connectionInfo.hostname}</Text>
-                              </Box>
-                           </HStack>
+            {/* Connectivity Section */}
+            <div className="card bg-base-200/40 border border-base-300 shadow-xl overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-base-300 flex items-center gap-3 bg-base-200/20">
+                <Network className="w-6 h-6 text-primary" />
+                <h2 className="text-xl font-bold tracking-tight">Connectivity</h2>
+              </div>
 
-                           {connectionInfo.pin && (
-                               <Box w="full" p={4} bg="accent.subtle" borderRadius="lg" borderWidth="2px" borderColor="accent.emphasis" mt={2}>
-                                   <VStack gap={0}>
-                                       <Text fontSize="xs" fontWeight="bold" color="accent.emphasis" textTransform="uppercase">Pairing PIN</Text>
-                                       <Text fontSize="3xl" fontWeight="black" letterSpacing="widest" color="accent.emphasis">
-                                            {connectionInfo.pin}
-                                       </Text>
-                                   </VStack>
-                               </Box>
-                           )}
-                       </VStack>
-                       
-                       <Text fontSize="xs" color="fg.subtle" textAlign="center">
-                          Scan this QR code with the ShelfSync mobile app to connect.
-                       </Text>
-                    </VStack>
-                 ) : (
-                    <Text textAlign="center" py={10} color="fg.muted">Loading network info...</Text>
-                 )}
-              </Box>
-           </GridItem>
-        </Grid>
-      </Container>
-    </Box>
-    <Footer />
-    </>
+              <div className="card-body p-8 flex flex-col justify-between gap-8 h-full">
+                {connectionInfo ? (
+                  <>
+                    {/* QR Code */}
+                    <div className="flex justify-center grow items-center">
+                      <div className="bg-white p-6 rounded-2xl shadow-xl ring-1 ring-black/5">
+                        <QRCode
+                          value={JSON.stringify(connectionInfo)}
+                          size={220}
+                          style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                          viewBox={`0 0 256 256`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Network Info Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
+                      <div className="bg-base-300/30 p-4 rounded-xl border border-base-300 flex items-center justify-between group hover:bg-base-300/50 transition-colors">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-base-content/40 uppercase tracking-wider">
+                            Host IP
+                          </p>
+                          <p className="text-xl font-bold font-mono text-base-content/90 tracking-tight">
+                            {connectionInfo.ip}
+                          </p>
+                        </div>
+                        <Monitor className="w-6 h-6 text-base-content/20 group-hover:text-primary/40 transition-colors" />
+                      </div>
+
+                      <div className="bg-base-300/30 p-4 rounded-xl border border-base-300 flex items-center justify-between group hover:bg-base-300/50 transition-colors">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-base-content/40 uppercase tracking-wider">
+                            Port
+                          </p>
+                          <p className="text-xl font-bold font-mono text-base-content/90 tracking-tight">
+                            {connectionInfo.port}
+                          </p>
+                        </div>
+                        <ChevronsUpDown className="w-6 h-6 text-base-content/20 group-hover:text-primary/40 transition-colors" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4 grow">
+                    <span className="loading loading-ring loading-lg text-primary"></span>
+                    <p className="text-base-content/40 font-medium">Initializing network...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
   );
 };

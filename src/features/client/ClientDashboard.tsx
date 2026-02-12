@@ -1,28 +1,16 @@
-import React, { useEffect } from 'react';
-import {
-  Box, Container, HStack, Heading, Text, Button, Icon,
-  SimpleGrid, Badge, VStack, Alert
-} from "@chakra-ui/react";
-import { Book as BookIcon, Search, WifiOff } from "lucide-react";
-import { ColorModeButton } from "@/components/ui/color-mode";
-import { Footer } from "@/components/Footer";
-import { SkipLink } from "@/components/SkipLink";
-import { Discovery } from "@/features/discovery/Discovery";
-import { Book } from "@/types";
+import { Search, WifiOff } from "lucide-react";
+import React, { useEffect } from "react";
 import { BookCard } from "@/components/BookCard";
-import { SearchBar } from "@/components/SearchBar";
-import { SortMenu, SortOption } from "@/components/SortMenu";
-import { LoadingSpinner } from "@/components/Feedback/LoadingSpinner";
-import { Toaster } from "@/components/ui/toaster";
-import { useLibrary } from "@/context/LibraryContext";
-import { QueueOverlay } from "@/components/QueueOverlay";
 import { EmptyState } from "@/components/EmptyState";
-
-interface Host {
-  ip: string;
-  port: number;
-  hostname: string;
-}
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { QueueOverlay } from "@/components/QueueOverlay";
+import { SearchBar } from "@/components/SearchBar";
+import { SkipLink } from "@/components/SkipLink";
+import { SortMenu, type SortOption } from "@/components/SortMenu";
+import { useLibrary } from "@/context/LibraryContext";
+import { Discovery } from "@/features/discovery/Discovery";
+import type { Book, Host } from "@/types/core";
 
 interface ClientDashboardProps {
   books: Book[];
@@ -58,34 +46,35 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
 
   const filterAndSort = (list: Book[]) => {
-      let result = [...list];
+    let result = [...list];
 
-      // Filter
-      if (searchTerm) {
-          const lower = searchTerm.toLowerCase();
-          result = result.filter(b =>
-              b.title.toLowerCase().includes(lower) ||
-              b.authors.toLowerCase().includes(lower) ||
-              (b.series && b.series.toLowerCase().includes(lower)) ||
-              (b.tags && b.tags.some(t => t.toLowerCase().includes(lower)))
-          );
+    // Filter
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      result = result.filter(
+        (b) =>
+          b.title.toLowerCase().includes(lower) ||
+          b.authors.toLowerCase().includes(lower) ||
+          b.series?.toLowerCase().includes(lower) ||
+          b.tags?.some((t) => t.toLowerCase().includes(lower)),
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortOption === "title") return a.title.localeCompare(b.title);
+      if (sortOption === "author") return a.authors.localeCompare(b.authors);
+      if (sortOption === "recent") return (b.id || 0) - (a.id || 0);
+      if (sortOption === "series") {
+        const sA = a.series || "";
+        const sB = b.series || "";
+        if (sA !== sB) return sA.localeCompare(sB);
+        return (a.series_index || 0) - (b.series_index || 0);
       }
+      return 0;
+    });
 
-      // Sort
-      result.sort((a, b) => {
-          if (sortOption === "title") return a.title.localeCompare(b.title);
-          if (sortOption === "author") return a.authors.localeCompare(b.authors);
-          if (sortOption === "recent") return (b.id || 0) - (a.id || 0);
-          if (sortOption === "series") {
-              const sA = a.series || "";
-              const sB = b.series || "";
-              if (sA !== sB) return sA.localeCompare(sB);
-              return (a.series_index || 0) - (b.series_index || 0);
-          }
-          return 0;
-      });
-
-      return result;
+    return result;
   };
 
   const filteredRemoteBooks = filterAndSort(books);
@@ -93,15 +82,15 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-            setSelectionMode(false);
-            setSelectedIds(new Set());
-        }
-        if (selectionMode && (e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            const allFilteredIds = new Set(filteredRemoteBooks.map(b => b.id));
-            setSelectedIds(allFilteredIds);
-        }
+      if (e.key === "Escape") {
+        setSelectionMode(false);
+        setSelectedIds(new Set());
+      }
+      if (selectionMode && (e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const allFilteredIds = new Set(filteredRemoteBooks.map((b) => b.id));
+        setSelectedIds(allFilteredIds);
+      }
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
@@ -119,7 +108,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   };
 
   const startBulkSync = async () => {
-    const toSync = books.filter(b => selectedIds.has(b.id));
+    const toSync = books.filter((b) => selectedIds.has(b.id));
     await syncBooks(toSync);
     setSelectionMode(false);
     setSelectedIds(new Set());
@@ -127,167 +116,201 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
   return (
     <>
-    <SkipLink />
-    <Toaster />
-    <Box as="main" id="main-content" minH="100vh" bg="bg.canvas" color="fg" p={6} pb={16}>
-      <Container maxW="container.xl">
-        <HStack justify="space-between" mb={8}>
-           <Box>
-              <Heading size="2xl" display="flex" alignItems="center" gap={2}>
-                  <Icon color="success" asChild><BookIcon /></Icon>
-                  ShelfSync Client
-              </Heading>
-              {connectedHost && (
-                  <Text color="fg.muted">Connected to {connectedHost.hostname} ({connectedHost.ip})</Text>
-              )}
-           </Box>
-           <HStack>
-              <ColorModeButton />
-              {connectedHost && (
-                  <Button 
-                    onClick={() => {
-                        setSelectionMode(!selectionMode);
-                        setSelectedIds(new Set());
-                    }} 
-                    variant={selectionMode ? "solid" : "outline"} 
-                    size="sm"
-                    colorPalette={selectionMode ? "blue" : "gray"}
-                   >
-                       {selectionMode ? "Cancel Selection" : "Select Multiple"}
-                   </Button>
-               )}
-              {connectedHost && (
-                  <Button onClick={onDisconnect} variant="subtle" size="sm">
-                      Disconnect
-                  </Button>
-              )}
-              <Button onClick={onChangeRole} variant="ghost" size="sm" color="fg.muted">
-                  Change Role
-              </Button>
-           </HStack>
-        </HStack>
+      <SkipLink />
+      <Header
+        title="Client Dashboard"
+        onChangeRole={onChangeRole}
+        actions={
+          connectedHost && (
+            <div className="flex items-center gap-2 mr-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  setSelectedIds(new Set());
+                }}
+                className={`btn btn-sm ${selectionMode ? "btn-primary" : "btn-outline"}`}
+              >
+                {selectionMode ? "Cancel Selection" : "Select Multiple"}
+              </button>
+              <button
+                type="button"
+                onClick={onDisconnect}
+                className="btn btn-sm btn-ghost border border-base-300"
+              >
+                Disconnect
+              </button>
+            </div>
+          )
+        }
+      />
 
-        {error && (
-          <Alert.Root status="error" mb={6}>
-            <Alert.Indicator />
-            <Alert.Title>{error}</Alert.Title>
-          </Alert.Root>
-        )}
+      <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
+        <div className="container mx-auto max-w-7xl">
+          {connectedHost && (
+            <div className="mb-6 sm:mb-8 p-4 bg-primary/5 border border-primary/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-widest">
+                  Connected To
+                </p>
+                <p className="text-lg sm:text-xl font-bold text-base-content/90 break-all leading-tight">
+                  {connectedHost.hostname}{" "}
+                  <span className="opacity-40 sm:ml-1 font-mono text-xs sm:text-sm block sm:inline">
+                    ({connectedHost.ip})
+                  </span>
+                </p>
+              </div>
+              <div className="badge badge-success badge-md sm:badge-lg gap-2 font-bold px-3 sm:px-4 py-3 shrink-0">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                Live Sync
+              </div>
+            </div>
+          )}
 
-        {loading ? (
-           <LoadingSpinner message="Communicating with host..." />
-        ) : connectedHost ? (
-           <VStack align="stretch" gap={6}>
-              <HStack justify="space-between" wrap="wrap" gap={4}>
-                  <HStack>
-                    <Heading size="lg">Available Books (Remote)</Heading>
-                    <Badge colorPalette="green" variant="solid">Live Sync</Badge>
-                  </HStack>
-                  <HStack>
-                      <SearchBar value={searchTerm} onChange={setSearchTerm} />
-                      <SortMenu value={sortOption} onChange={setSortOption} />
-                  </HStack>
-              </HStack>
+          {error && (
+            <div role="alert" className="alert alert-error mb-6">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                role="img"
+                aria-label="Error"
+              >
+                <title>Error</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
 
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
-                    {filteredRemoteBooks.map((book) => (
-                    <BookCard 
-                        key={book.id} 
-                        book={book} 
-                        host={connectedHost}
-                        variant="remote"
-                        onAction={handleSync}
-                        selected={selectedIds.has(book.id)}
-                        selectable={selectionMode}
-                        onSelect={() => toggleSelection(book.id)}
-                        syncStatus={syncProgress[book.id]}
-                        actionLabel="Sync to Replica"
-                        actionColor="blue"
-                    />
-                  ))}
-              </SimpleGrid>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <span className="loading loading-ring loading-lg text-primary"></span>
+              <p className="text-base-content/40 font-medium tracking-wide">
+                Communicating with host...
+              </p>
+            </div>
+          ) : connectedHost ? (
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl sm:text-2xl font-bold">Available Books</h2>
+                  <span className="badge badge-success badge-sm sm:badge-lg text-white">
+                    Live Sync
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="flex-grow sm:flex-initial">
+                    <SearchBar value={searchTerm} onChange={setSearchTerm} />
+                  </div>
+                  <SortMenu value={sortOption} onChange={setSortOption} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRemoteBooks.map((book) => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    host={connectedHost}
+                    variant="remote"
+                    onAction={handleSync}
+                    selected={selectedIds.has(book.id)}
+                    selectable={selectionMode}
+                    onSelect={() => toggleSelection(book.id)}
+                    syncStatus={syncProgress[book.id]}
+                    actionLabel="Sync to Replica"
+                    actionColor="blue"
+                  />
+                ))}
+              </div>
 
               {connectedHost && filteredRemoteBooks.length === 0 && !loading && (
-                  <VStack py={12}>
-                      <EmptyState 
-                          icon={Search}
-                          title="No Books Found"
-                          description={searchTerm ? `No results for "${searchTerm}" in this library.` : "This library appears to be empty."}
-                          actionLabel={searchTerm ? "Clear Search" : undefined}
-                          onAction={() => setSearchTerm("")}
-                      />
-                  </VStack>
+                <div className="py-12">
+                  <EmptyState
+                    icon={Search}
+                    title="No Books Found"
+                    description={
+                      searchTerm
+                        ? `No results for "${searchTerm}" in this library.`
+                        : "This library appears to be empty."
+                    }
+                    actionLabel={searchTerm ? "Clear Search" : undefined}
+                    onAction={() => setSearchTerm("")}
+                  />
+                </div>
               )}
-           </VStack>
-        ) : (
-           <VStack align="stretch" gap={12}>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-12">
               <Discovery onConnect={onConnect} />
-              
+
               {localBooks.length > 0 && (
-                  <Box pt={8} borderTopWidth="1px" borderColor="border.subtle">
-                       <Heading size="lg" mb={6}>Local Library (Offline)</Heading>
-                       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={4}>
-                          {filteredLocalBooks.map((book) => (
-                              <BookCard 
-                                key={book.id} 
-                                book={book}
-                                variant="local"
-                                onAction={() => onOpenBook(book.local_path!)}
-                                onToggleStatus={onToggleStatus}
-                                actionLabel="Read"
-                                actionColor="green"
-                            />
-                          ))}
-                       </SimpleGrid>
-                  </Box>
+                <div className="pt-8 border-t border-base-300">
+                  <h2 className="text-2xl font-bold mb-6">Local Library (Offline)</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredLocalBooks.map((book) => (
+                      <BookCard
+                        key={book.id}
+                        book={book}
+                        variant="local"
+                        onAction={() => onOpenBook(book.local_path || "")}
+                        onToggleStatus={onToggleStatus}
+                        actionLabel="Read"
+                        actionColor="green"
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
 
-              <VStack py={12}>
-                  <EmptyState 
-                      icon={WifiOff}
-                      title="Not Connected"
-                      description="Connect to a host to browse and sync books."
-                  />
-              </VStack>
-           </VStack>
-        )}
-      </Container>
-    </Box>
-    {selectionMode && selectedIds.size > 0 && (
-        <Box 
-            position="fixed" 
-            bottom={6} 
-            left="50%" 
-            transform="translateX(-50%)" 
-            zIndex={2500}
-            bg="bg.panel"
-            p={4}
-            borderRadius="xl"
-            boxShadow="2xl"
-            borderWidth="1px"
-            borderColor="blue.500"
-            minW="400px"
-        >
-            <HStack justify="space-between">
-                <HStack gap={4}>
-                    <Text fontWeight="bold">{selectedIds.size} books selected</Text>
-                    <HStack gap={2}>
-                        <Button variant="ghost" size="xs" onClick={() => setSelectedIds(new Set(filteredRemoteBooks.map(b => b.id)))}>
-                            Select All {searchTerm ? "(Filtered)" : ""}
-                        </Button>
-                        <Button variant="ghost" size="xs" onClick={() => setSelectedIds(new Set())}>
-                            Select None
-                        </Button>
-                    </HStack>
-                </HStack>
-                <HStack gap={3}>
-                    <Button colorPalette="blue" size="sm" onClick={startBulkSync}>Sync Selected to Device</Button>
-                </HStack>
-            </HStack>
-        </Box>
-    )}
-    <QueueOverlay progress={syncProgress} />
-    <Footer />
+              <div className="py-12">
+                <EmptyState
+                  icon={WifiOff}
+                  title="Not Connected"
+                  description="Connect to a host to browse and sync books."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[2500] bg-base-100 p-4 rounded-xl shadow-2xl border border-primary w-[calc(100%-2rem)] max-w-md">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <span className="font-bold">{selectedIds.size} selected</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  None
+                </button>
+              </div>
+            </div>
+            <button type="button" className="btn btn-primary w-full" onClick={startBulkSync}>
+              Sync Selected to Device
+            </button>
+          </div>
+        </div>
+      )}
+      <QueueOverlay progress={syncProgress} />
+      <Footer />
     </>
   );
 };

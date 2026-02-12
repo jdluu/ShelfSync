@@ -1,6 +1,5 @@
-import React from 'react';
-import { Input, HStack, Box } from "@chakra-ui/react";
 import { Search } from "lucide-react";
+import type React from "react";
 
 interface SearchBarProps {
   value: string;
@@ -8,26 +7,23 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ 
-  value, 
-  onChange, 
-  placeholder = "Search books..." 
+export const SearchBar: React.FC<SearchBarProps> = ({
+  value,
+  onChange,
+  placeholder = "Search books...",
 }) => {
   return (
-    <HStack w="full" maxW="md" gap={2} position="relative">
-      <Box position="absolute" left={3} zIndex={1} color="fg.muted" pointerEvents="none">
+    <div className="relative w-full max-w-md">
+      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-base-content/50">
         <Search size={18} />
-      </Box>
-      <Input 
-        pl={10} 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} 
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        variant="subtle"
-        bg="bg.subtle"
-        borderColor="border"
-        _focus={{ borderColor: "accent", bg: "bg.canvas" }}
+        className="input input-bordered w-full pl-10 bg-base-200 focus:bg-base-100 focus:border-accent transition-colors duration-200"
       />
-    </HStack>
+    </div>
   );
 };

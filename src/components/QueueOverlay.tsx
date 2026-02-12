@@ -1,100 +1,87 @@
-import React from 'react';
-import { Box, HStack, VStack, Text, Progress, Icon, Portal } from "@chakra-ui/react";
-import { Download, CheckCircle, AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Download } from "lucide-react";
+import type React from "react";
 
+interface SyncItem {
+  book_id: number;
+  title: string;
+  status: string;
+  progress: number;
+}
 
 interface QueueOverlayProps {
-    progress: Record<number, any>;
-    onClose?: () => void;
+  progress: Record<number, SyncItem>;
+  onClose?: () => void;
 }
 
 export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
-    // Get all active or recently completed items
-    const items = Object.values(progress).filter((p: any) => p.status !== "idle");
-    
-    // Sort to show active first
-    items.sort((a: any, b: any) => {
-        if (a.status === "downloading") return -1;
-        if (b.status === "downloading") return 1;
-        return 0;
-    });
+  // Get all active or recently completed items
+  const items = Object.values(progress).filter((p) => p.status !== "idle");
 
-    if (items.length === 0) return null;
+  // Sort to show active first
+  items.sort((a, b) => {
+    if (a.status === "downloading") return -1;
+    if (b.status === "downloading") return 1;
+    return 0;
+  });
 
-    const completedCount = items.filter((p: any) => p.status === "completed").length;
-    const totalCount = items.length;
+  if (items.length === 0) return null;
 
-    return (
-        <Portal>
-            <Box 
-                position="fixed" 
-                bottom={6} 
-                right={6} 
-                zIndex={3000}
-                w="320px"
-                maxH="400px"
-                bg="bg.panel"
-                borderRadius="xl"
-                boxShadow="2xl"
-                borderWidth="1px"
-                borderColor="border"
-                overflow="hidden"
-                display="flex"
-                flexDirection="column"
-                backdropFilter="blur(10px)"
-            >
-                <Box p={4} borderBottomWidth="1px" bg="bg.subtle">
-                    <HStack justify="space-between">
-                        <HStack gap={2}>
-                            <Icon as={Download} color="blue.500" />
-                            <VStack align="start" gap={0}>
-                                <Text fontWeight="bold" fontSize="sm">Sync Progress</Text>
-                                <Text fontSize="xs" color="fg.muted">
-                                    {completedCount} of {totalCount} syncs finished
-                                </Text>
-                            </VStack>
-                        </HStack>
-                    </HStack>
-                </Box>
+  const completedCount = items.filter((p) => p.status === "completed").length;
+  const totalCount = items.length;
 
-                <VStack p={2} gap={2} align="stretch" overflowY="auto">
-                    {items.slice(0, 5).map((p: any) => (
-                        <Box key={p.book_id} p={3} borderRadius="lg" bg="bg.muted">
-                            <VStack align="stretch" gap={2}>
-                                <HStack justify="space-between" w="full">
-                                    <Text fontSize="xs" fontWeight="semibold" truncate maxW="200px">
-                                        {p.title}
-                                    </Text>
-                                    <StatusIcon status={p.status} />
-                                </HStack>
+  return (
+    <div className="fixed bottom-6 right-6 z-50 w-80 max-h-[400px] bg-base-100 rounded-xl shadow-2xl border border-base-300 flex flex-col overflow-hidden backdrop-blur-md">
+      <div className="p-4 border-b border-base-200 bg-base-200/50">
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2 items-center">
+            <Download className="text-info" />
+            <div className="flex flex-col">
+              <span className="font-bold text-sm">Sync Progress</span>
+              <span className="text-xs text-base-content/60">
+                {completedCount} of {totalCount} syncs finished
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                                {p.status === "downloading" && (
-                                    <VStack gap={1} align="stretch">
-                                        <Progress.Root value={p.progress * 100} size="xs" colorPalette="blue" borderRadius="full">
-                                            <Progress.Track />
-                                        </Progress.Root>
-                                        <HStack justify="space-between">
-                                            <Text fontSize="10px" color="fg.subtle">Downloading...</Text>
-                                            <Text fontSize="10px" color="fg.subtle">{Math.round(p.progress * 100)}%</Text>
-                                        </HStack>
-                                    </VStack>
-                                )}
-                            </VStack>
-                        </Box>
-                    ))}
-                    {items.length > 5 && (
-                        <Text fontSize="xs" textAlign="center" py={1} color="fg.subtle">
-                            + {items.length - 5} more in queue
-                        </Text>
-                    )}
-                </VStack>
-            </Box>
-        </Portal>
-    );
+      <div className="p-2 gap-2 flex flex-col overflow-y-auto">
+        {items.slice(0, 5).map((p) => (
+          <div key={p.book_id} className="p-3 rounded-lg bg-base-200">
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between w-full items-center">
+                <span className="text-xs font-semibold truncate max-w-[200px]">{p.title}</span>
+                <StatusIcon status={p.status} />
+              </div>
+
+              {p.status === "downloading" && (
+                <div className="flex flex-col gap-1 w-full">
+                  <progress
+                    className="progress progress-info w-full h-1"
+                    value={p.progress * 100}
+                    max="100"
+                  ></progress>
+                  <div className="flex justify-between text-[10px] text-base-content/60">
+                    <span>Downloading...</span>
+                    <span>{Math.round(p.progress * 100)}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {items.length > 5 && (
+          <div className="text-xs text-center py-1 text-base-content/50">
+            + {items.length - 5} more in queue
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
-    if (status === "completed") return <Icon as={CheckCircle} color="green.500" size="sm" />;
-    if (status === "error") return <Icon as={AlertCircle} color="red.500" size="sm" />;
-    return <Box className="spinner" w="12px" h="12px" border="2px solid" borderTopColor="blue.500" borderColor="gray.200" borderRadius="full" />;
+  if (status === "completed") return <CheckCircle className="text-success w-4 h-4" />;
+  if (status === "error") return <AlertCircle className="text-error w-4 h-4" />;
+  return <span className="loading loading-spinner loading-xs text-info"></span>;
 };

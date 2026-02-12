@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Search, Globe, ChevronRight, RefreshCw, Plus, WifiOff } from 'lucide-react';
-import { Box, Heading, Button, HStack, Input, VStack, Text, Card, Icon, Spinner, Badge } from "@chakra-ui/react";
-import { useDiscovery } from "@/context/DiscoveryContext";
+import { ChevronRight, Globe, Plus, RefreshCw, Search, WifiOff } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSpinner } from "@/components/Feedback/LoadingSpinner";
+import { useDiscovery } from "@/context/DiscoveryContext";
 
 interface Host {
   ip: string;
@@ -24,128 +24,115 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
     if (manualIp) {
       onConnect({
         ip: manualIp,
-        port: parseInt(manualPort),
-        hostname: "Manual Connection"
+        port: parseInt(manualPort, 10),
+        hostname: "Manual Connection",
       });
     }
   };
 
   return (
-    <VStack gap={8} align="stretch">
-      <HStack justify="space-between">
-        <Heading size="lg" display="flex" alignItems="center" gap={2}>
-            <Icon color="success" asChild><Search /></Icon>
-            Discover Hosts
-        </Heading>
-        <Button 
-            onClick={scan}
-            disabled={scanning}
-            variant="surface"
-            size="sm"
-        >
-            {scanning ? <Spinner size="sm" /> : <Icon asChild><RefreshCw /></Icon>}
-            Refresh
-        </Button>
-      </HStack>
+    <div className="flex flex-col gap-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Search className="text-success" />
+          Discover Hosts
+        </h2>
+        <button type="button" onClick={scan} disabled={scanning} className="btn btn-sm btn-outline">
+          {scanning ? <span className="loading loading-spinner loading-xs"></span> : <RefreshCw />}
+          Refresh
+        </button>
+      </div>
 
-      <VStack gap={4} align="stretch">
+      <div className="flex flex-col gap-4">
         {scanning && hosts.length === 0 ? (
-            <LoadingSpinner message="Searching for local hosts..." />
+          <LoadingSpinner message="Searching for local hosts..." />
         ) : hosts.length > 0 ? (
-            hosts.map((host) => (
-                <Card.Root
-                    key={`${host.ip}:${host.port}`}
-                    onClick={() => onConnect(host)}
-                    cursor="pointer"
-                    _hover={{ bg: "bg.muted" }}
-                    transition="background 0.2s"
-                    bg="bg.subtle"
-                    borderColor="border"
-                >
-                    <Card.Body py={4}>
-                      <HStack justify="space-between">
-                        <HStack gap={4}>
-                            <Box w={10} h={10} borderRadius="full" bg="bg.muted" display="flex" alignItems="center" justifyContent="center">
-                                <Icon color="success" w={5} h={5} asChild><Globe /></Icon>
-                            </Box>
-                            <Box>
-                                <Text fontWeight="semibold">{host.hostname}</Text>
-                                <Text fontSize="xs" color="fg.muted" fontFamily="mono">{host.ip}:{host.port}</Text>
-                            </Box>
-                        </HStack>
-                        <Icon color="fg.subtle" asChild><ChevronRight /></Icon>
-                      </HStack>
-                    </Card.Body>
-                </Card.Root>
-            ))
+          hosts.map((host) => (
+            <button
+              type="button"
+              key={`${host.ip}:${host.port}`}
+              onClick={() => onConnect(host)}
+              className="card bg-base-200 border border-base-300 hover:bg-base-300 transition-colors cursor-pointer w-full text-left"
+            >
+              <div className="card-body py-4 flex flex-row items-center justify-between">
+                <div className="flex gap-4 items-center">
+                  <div className="w-10 h-10 rounded-full bg-base-300 flex items-center justify-center">
+                    <Globe className="text-success w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{host.hostname}</p>
+                    <p className="text-xs text-base-content/60 font-mono">
+                      {host.ip}:{host.port}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="text-base-content/50" />
+              </div>
+            </button>
+          ))
         ) : (
-            <EmptyState 
-                icon={WifiOff}
-                title="No Hosts Found"
-                description="Check if the ShelfSync Host is running on the same network."
-                actionLabel="Scan Again"
-                onAction={scan}
-            />
+          <EmptyState
+            icon={WifiOff}
+            title="No Hosts Found"
+            description="Check if the ShelfSync Host is running on the same network."
+            actionLabel="Scan Again"
+            onAction={scan}
+          />
         )}
-      </VStack>
+      </div>
 
       {knownHosts.length > 0 && !scanning && hosts.length === 0 && (
-          <VStack align="stretch" gap={3}>
-              <Heading size="xs" color="fg.muted">Previous Connections</Heading>
-              {knownHosts.map(host => (
-                  <Card.Root 
-                    key={`history-${host.ip}`} 
-                    size="sm" 
-                    variant="subtle"
-                    onClick={() => onConnect(host)}
-                    cursor="pointer"
-                    _hover={{ bg: "bg.muted" }}
-                  >
-                      <Card.Body px={4} py={3}>
-                          <HStack justify="space-between">
-                              <VStack align="start" gap={0}>
-                                  <Text fontSize="sm" fontWeight="medium">{host.hostname}</Text>
-                                  <Text fontSize="10px" color="fg.subtle">{host.ip}</Text>
-                              </VStack>
-                              <Badge size="xs" variant="surface">History</Badge>
-                          </HStack>
-                      </Card.Body>
-                  </Card.Root>
-              ))}
-          </VStack>
+        <div className="flex flex-col gap-3">
+          <h3 className="text-xs font-bold text-base-content/60 uppercase">Previous Connections</h3>
+          {knownHosts.map((host) => (
+            <button
+              type="button"
+              key={`history-${host.ip}`}
+              className="card card-side card-compact bg-base-100 border border-base-200 hover:bg-base-200 cursor-pointer p-2 items-center w-full text-left"
+              onClick={() => onConnect(host)}
+            >
+              <div className="card-body px-4 py-3 w-full">
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium">{host.hostname}</p>
+                    <p className="text-[10px] text-base-content/50">{host.ip}</p>
+                  </div>
+                  <span className="badge badge-xs badge-ghost">History</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
       )}
 
-      <Box pt={4} borderTopWidth="1px" borderColor="border.subtle">
-        <Heading size="xs" color="fg.muted" mb={3} display="flex" alignItems="center" gap={2}>
-            <Icon asChild><Plus /></Icon>
-            Manual Connection
-        </Heading>
-        <HStack gap={2}>
-            <Input 
-                placeholder="IP Address" 
-                value={manualIp}
-                onChange={(e) => setManualIp(e.target.value)}
-                flex={1}
-                bg="bg.subtle"
-                borderColor="border"
-            />
-            <Input 
-                placeholder="Port" 
-                value={manualPort}
-                onChange={(e) => setManualPort(e.target.value)}
-                w={24}
-                bg="bg.subtle"
-                borderColor="border"
-            />
-            <Button 
-                onClick={handleManualConnect}
-                disabled={!manualIp}
-                colorPalette="green"
-            >
-                Connect
-            </Button>
-        </HStack>
-      </Box>
-    </VStack>
+      <div className="pt-4 border-t border-base-300">
+        <h3 className="text-xs font-bold text-base-content/60 mb-3 flex items-center gap-2 uppercase">
+          <Plus className="w-4 h-4" />
+          Manual Connection
+        </h3>
+        <div className="flex gap-2">
+          <input
+            placeholder="IP Address"
+            value={manualIp}
+            onChange={(e) => setManualIp(e.target.value)}
+            className="input input-bordered flex-1 bg-base-200"
+          />
+          <input
+            placeholder="Port"
+            value={manualPort}
+            onChange={(e) => setManualPort(e.target.value)}
+            className="input input-bordered w-24 bg-base-200"
+          />
+          <button
+            type="button"
+            onClick={handleManualConnect}
+            disabled={!manualIp}
+            className="btn btn-success text-white"
+          >
+            Connect
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };

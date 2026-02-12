@@ -1,12 +1,7 @@
-import React, { useState } from 'react';
-import { Card, Box, Image, Heading, Text, VStack, Button, Icon, HStack, Badge, Checkbox, Progress } from "@chakra-ui/react";
 import { Book as BookIcon } from "lucide-react";
-import { Book } from "@/types";
-
-interface Host {
-  ip: string;
-  port: number;
-}
+import type React from "react";
+import { useState } from "react";
+import type { Book, Host } from "@/types/core";
 
 interface BookCardProps {
   book: Book;
@@ -17,198 +12,195 @@ interface BookCardProps {
   selectable?: boolean;
   selected?: boolean;
   onSelect?: () => void;
-  syncStatus?: { progress: number, status: string };
+  syncStatus?: { progress: number; status: string };
   actionLabel?: string;
   actionColor?: string;
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ 
-  book, 
-  host, 
-  variant, 
-  onAction, 
+export const BookCard: React.FC<BookCardProps> = ({
+  book,
+  host,
+  variant,
+  onAction,
   onToggleStatus,
   selectable,
   selected,
   onSelect,
   syncStatus,
-  actionLabel, 
-  actionColor = "blue" 
+  actionLabel,
+  actionColor = "blue",
 }) => {
   const [imgError, setImgError] = useState(false);
 
   // Construct cover URL if we have a host
-  const coverUrl = host 
-    ? `http://${host.ip}:${host.port}/api/cover/${book.id}`
-    : undefined;
+  const coverUrl = host ? `http://${host.ip}:${host.port}/api/cover/${book.id}` : undefined;
 
   const getStatusColor = (status?: string) => {
-      if (status === 'finished') return "green";
-      if (status === 'reading') return "blue";
-      return "gray";
+    if (status === "finished") return "badge-success";
+    if (status === "reading") return "badge-info";
+    return "badge-ghost";
   };
 
   const isDownloading = syncStatus?.status === "downloading";
 
   return (
-    <Card.Root 
-        bg={selected ? "blue.subtle" : "bg.subtle"} 
-        borderColor={selected ? "blue.500" : "border"} 
-        _hover={{ shadow: "md", cursor: selectable ? "pointer" : "default" }} 
-        transition="all 0.2s" 
-        overflow="hidden"
-        onClick={selectable ? onSelect : undefined}
+    // biome-ignore lint/a11y/noStaticElementInteractions: dynamic interactive element
+    <div
+      className={`card bg-base-200 border transition-all duration-200 overflow-hidden ${
+        selected
+          ? "border-primary bg-primary/10 shadow-md"
+          : "border-base-300 hover:shadow-md hover:bg-base-300"
+      } ${selectable ? "cursor-pointer" : ""}`}
+      onClick={selectable ? onSelect : undefined}
+      onKeyDown={
+        selectable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                onSelect?.();
+              }
+            }
+          : undefined
+      }
+      role={selectable ? "button" : undefined}
+      tabIndex={selectable ? 0 : undefined}
     >
-      <Card.Body p={4} position="relative">
+      <div className="card-body p-4 relative">
         {selectable && (
-            <Box position="absolute" top={2} right={2} zIndex={10}>
-                <Checkbox.Root checked={selected} colorPalette="blue" size="lg">
-                    <Checkbox.HiddenInput />
-                    <Checkbox.Control />
-                </Checkbox.Root>
-            </Box>
+          <div className="absolute top-2 right-2 z-10">
+            <input
+              type="checkbox"
+              checked={selected}
+              className="checkbox checkbox-primary"
+              readOnly
+            />
+          </div>
         )}
-        <HStack align="start" gap={4}>
-          <Box 
-            w={20} 
-            h={28} 
-            bg="bg.muted" 
-            borderRadius="md" 
-            flexShrink={0} 
-            overflow="hidden"
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center"
-            position="relative"
-            shadow="sm"
-          >
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm">
             {!imgError && coverUrl ? (
-              <Image 
-                src={coverUrl} 
+              <img
+                src={coverUrl}
                 alt={`Cover of ${book.title}`}
-                objectFit="cover"
-                w="full"
-                h="full"
+                className="w-full h-full object-cover"
                 onError={() => setImgError(true)}
               />
             ) : (
-               <Icon color="fg.subtle" w={8} h={8} asChild><BookIcon /></Icon>
+              <BookIcon className="w-8 h-8 text-base-content/50" />
             )}
 
             {isDownloading && (
-                <Box 
-                    position="absolute" 
-                    bottom={0} 
-                    left={0} 
-                    right={0} 
-                    bg="blackAlpha.700" 
-                    p={1}
-                >
-                    <Progress.Root value={syncStatus!.progress * 100} size="sm" colorPalette="blue">
-                        <Progress.Track bg="whiteAlpha.300">
-                          <Progress.Range />
-                        </Progress.Track>
-                    </Progress.Root>
-                </Box>
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
+                <progress
+                  className="progress progress-primary w-full h-1.5"
+                  value={(syncStatus?.progress || 0) * 100}
+                  max="100"
+                ></progress>
+              </div>
             )}
-          </Box>
-          
-          <VStack align="start" gap={1} flex={1} overflow="hidden">
-            <Heading size="sm" truncate w="full" title={book.title}>{book.title}</Heading>
-            <Text fontSize="sm" color="fg.muted" truncate w="full" title={book.authors}>{book.authors}</Text>
-            
+          </div>
+
+          <div className="flex flex-col gap-1 flex-1 overflow-hidden">
+            <h3 className="text-sm font-bold truncate w-full" title={book.title}>
+              {book.title}
+            </h3>
+            <p className="text-sm text-base-content/60 truncate w-full" title={book.authors}>
+              {book.authors}
+            </p>
+
             {book.series && (
-                <Text fontSize="xs" fontWeight="bold" color="accent.fg" mt={-1}>
-                    {book.series} #{book.series_index}
-                </Text>
+              <p className="text-xs font-bold text-accent -mt-0.5">
+                {book.series} #{book.series_index}
+              </p>
             )}
 
             {book.tags && book.tags.length > 0 && (
-                <HStack wrap="wrap" gap={1} mt={1}>
-                    {book.tags.slice(0, 3).map(tag => (
-                        <Badge key={tag} size="xs" variant="surface" colorPalette="gray" fontSize="9px">
-                            {tag}
-                        </Badge>
-                    ))}
-                    {book.tags.length > 3 && (
-                        <Text fontSize="10px" color="fg.subtle">+{book.tags.length - 3}</Text>
-                    )}
-                </HStack>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {book.tags.slice(0, 3).map((tag) => (
+                  <div key={tag} className="badge badge-xs badge-ghost text-[9px]">
+                    {tag}
+                  </div>
+                ))}
+                {book.tags.length > 3 && (
+                  <span className="text-[10px] text-base-content/50">+{book.tags.length - 3}</span>
+                )}
+              </div>
             )}
-            
+
             {variant === "host-view" && (
-                <Text fontSize="xs" color="fg.subtle" fontFamily="mono" wordBreak="break-all" lineClamp={2}>
-                    {book.path}
-                </Text>
+              <p className="text-xs text-base-content/50 font-mono break-all line-clamp-2">
+                {book.path}
+              </p>
             )}
 
             {variant === "local" && (
-                <HStack mt={1}>
-                    <Badge size="sm" variant="surface" colorPalette="gray">Downloaded</Badge>
-                    {onToggleStatus && (
-                        <Badge 
-                            size="sm" 
-                            variant="solid" 
-                            colorPalette={getStatusColor(book.read_status)}
-                            cursor="pointer"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleStatus(book);
-                            }}
-                        >
-                            {book.read_status || 'unread'}
-                        </Badge>
-                    )}
-                </HStack>
+              <div className="flex flex-wrap gap-1 mt-1">
+                <div className="badge badge-sm badge-ghost">Downloaded</div>
+                {onToggleStatus && (
+                  // biome-ignore lint/a11y/useSemanticElements: dynamic interactive element
+                  <div
+                    className={`badge badge-sm cursor-pointer ${getStatusColor(book.read_status)}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleStatus(book);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        onToggleStatus(book);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    {book.read_status || "unread"}
+                  </div>
+                )}
+              </div>
             )}
 
             {variant === "remote" && book.formats && (
-               <HStack mt={1} wrap="wrap" gap={1}>
-                  {book.formats.map(fmt => (
-                      <Badge key={fmt} size="xs" variant="outline" colorPalette="blue">
-                          {fmt.toUpperCase()}
-                      </Badge>
-                  ))}
-               </HStack>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {book.formats.map((fmt) => (
+                  <div key={fmt} className="badge badge-xs badge-outline badge-info">
+                    {fmt.toUpperCase()}
+                  </div>
+                ))}
+              </div>
             )}
 
             {variant === "remote" && (
-                <HStack w="full" mt={2} gap={2}>
-                    {onAction && (
-                        <Button 
-                          size="xs" 
-                          colorPalette="blue" 
-                          flex={1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAction(book);
-                          }}
-                          disabled={isDownloading}
-                          loading={isDownloading}
-                        >
-                          {isDownloading ? "Syncing..." : "Sync"}
-                        </Button>
-                    )}
-                </HStack>
+              <div className="w-full mt-2 flex gap-2">
+                {onAction && (
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-primary flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAction(book);
+                    }}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? "Syncing..." : "Sync"}
+                  </button>
+                )}
+              </div>
             )}
 
             {variant === "local" && onAction && actionLabel && (
-                <Button 
-                  size="xs" 
-                  colorPalette={actionColor} 
-                  mt={2}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAction(book);
-                  }}
-                  w="full"
-                >
-                  {actionLabel}
-                </Button>
+              <button
+                type="button"
+                className={`btn btn-xs mt-2 w-full ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction(book);
+                }}
+              >
+                {actionLabel}
+              </button>
             )}
-          </VStack>
-        </HStack>
-      </Card.Body>
-    </Card.Root>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
