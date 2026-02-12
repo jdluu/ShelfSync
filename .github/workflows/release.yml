@@ -175,14 +175,14 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
         run: |
-          import os
+          import os, uuid
           version = os.getenv('VERSION')
           path = 'CHANGELOG.md'
           if not os.path.exists(path):
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                   f.write('notes=No changelog found.\n')
               exit(0)
-          with open(path, 'r') as f:
+          with open(path, 'r', encoding='utf-8') as f:
               lines = f.readlines()
           content = []
           started = False
@@ -194,10 +194,13 @@ jobs:
               if line.startswith(f'## {version}'):
                   started = True
           output = "".join(content).strip()
-          # Escape for GH Output
-          output = output.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D')
+          
+          # Use multiline output syntax
+          delimiter = f"EOF_{uuid.uuid4().hex}"
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'notes={output}\n')
+              f.write(f"notes<<{delimiter}\n")
+              f.write(output + "\n")
+              f.write(f"{delimiter}\n")
 
       - name: Create Release and Tag
         uses: softprops/action-gh-release@v2
