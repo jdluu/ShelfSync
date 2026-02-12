@@ -1,7 +1,6 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
-import { Book } from "@/types";
-import { Host } from "@/context/DiscoveryContext";
+import type { Book, Host } from "@/types/core";
 
 // --- Keys ---
 /**
@@ -23,17 +22,13 @@ export const libraryKeys = {
  * @param enabled - Whether the query should run (e.g., only in client mode).
  * @returns A query result containing the list of books.
  */
-export const useHostManifest = (
-  host: Host | null,
-  token: string | undefined,
-  enabled: boolean
-) => {
+export const useHostManifest = (host: Host | null, token: string | undefined, enabled: boolean) => {
   return useQuery({
     queryKey: libraryKeys.manifest(host ? `${host.ip}:${host.port}` : ""),
     queryFn: async () => {
       if (!host) throw new Error("No host selected");
       const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (token) headers.Authorization = `Bearer ${token}`;
 
       const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, {
         headers,
@@ -51,10 +46,10 @@ export const useHostManifest = (
     },
     enabled: enabled && !!host,
     retry: (failureCount, error) => {
-        // Don't retry on 401s
-        if (error.message === "Unauthorized") return false;
-        return failureCount < 3;
-    }
+      // Don't retry on 401s
+      if (error.message === "Unauthorized") return false;
+      return failureCount < 3;
+    },
   });
 };
 
