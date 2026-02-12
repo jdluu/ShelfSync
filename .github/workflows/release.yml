@@ -116,7 +116,7 @@ jobs:
         if: github.event.inputs.dry_run == 'false'
         run: pnpm install --frozen-lockfile
       - name: setup Android signing
-        if: github.event.inputs.dry_run == 'false' && secrets.ANDROID_KEY_BASE64 != ''
+        if: github.event.inputs.dry_run == 'false' && env.ANDROID_KEY_BASE64 != ''
         env:
           ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
