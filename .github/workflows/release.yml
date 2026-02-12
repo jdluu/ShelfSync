@@ -6,6 +6,11 @@ on:
         description: 'Version to release (e.g. 1.0.0)'
         required: true
         type: string
+      dry_run:
+        description: 'Dry Run? (Simulates builds with dummy files)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-desktop:
@@ -24,25 +29,48 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
+
+      # Standard Build Flow
       - name: install Rust stable
+        if: github.event.inputs.dry_run == 'false'
         uses: dtolnay/rust-toolchain@stable
       - name: Rust cache
+        if: github.event.inputs.dry_run == 'false'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
       - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-22.04' && github.event.inputs.dry_run == 'false'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev javascriptcoregtk-4.1-dev
       - name: install frontend dependencies
+        if: github.event.inputs.dry_run == 'false'
         run: pnpm install --frozen-lockfile
       - name: Build Desktop
+        if: github.event.inputs.dry_run == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
         run: pnpm tauri build
+
+      # Dry Run Flow (Mocking)
+      - name: Mock Desktop Artifacts
+        if: github.event.inputs.dry_run == 'true'
+        shell: bash
+        run: |
+          mkdir -p src-tauri/target/release/bundle/deb
+          mkdir -p src-tauri/target/release/bundle/appimage
+          mkdir -p src-tauri/target/release/bundle/dmg
+          mkdir -p src-tauri/target/release/bundle/nsis
+          mkdir -p src-tauri/target/release/bundle/msi
+          touch src-tauri/target/release/bundle/deb/mock.deb
+          touch src-tauri/target/release/bundle/appimage/mock.AppImage
+          touch src-tauri/target/release/bundle/dmg/mock.dmg
+          touch src-tauri/target/release/bundle/nsis/mock.exe
+          touch src-tauri/target/release/bundle/msi/mock.msi
+
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -66,25 +94,32 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
+
+      # Standard Build Flow
       - name: Setup Java
+        if: github.event.inputs.dry_run == 'false'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
       - name: Setup Android SDK
+        if: github.event.inputs.dry_run == 'false'
         uses: android-actions/setup-android@v3
       - name: install Rust stable
+        if: github.event.inputs.dry_run == 'false'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
       - name: Rust cache
+        if: github.event.inputs.dry_run == 'false'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
       - name: install frontend dependencies
+        if: github.event.inputs.dry_run == 'false'
         run: pnpm install --frozen-lockfile
       - name: setup Android signing
-        if: github.event_name != 'pull_request' && env.ANDROID_KEY_BASE64 != ''
+        if: github.event.inputs.dry_run == 'false' && secrets.ANDROID_KEY_BASE64 != ''
         env:
           ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -97,6 +132,7 @@ jobs:
             base64 -d <<< "$ANDROID_KEY_BASE64" > upload-keystore.jks
             echo "storeFile=upload-keystore.jks" >> keystore.properties
       - name: Build Android (AAB & APK)
+        if: github.event.inputs.dry_run == 'false'
         run: |
             export NDK_HOME=$ANDROID_NDK_HOME
             pnpm tauri android init
@@ -106,6 +142,16 @@ jobs:
             else
               pnpm tauri android build --apk
             fi
+
+      # Dry Run Flow (Mocking)
+      - name: Mock Android Artifacts
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          mkdir -p src-tauri/gen/android/app/build/outputs/apk/universal/release
+          mkdir -p src-tauri/gen/android/app/build/outputs/bundle/release
+          touch src-tauri/gen/android/app/build/outputs/apk/universal/release/mock.apk
+          touch src-tauri/gen/android/app/build/outputs/bundle/release/mock.aab
+
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -155,13 +201,17 @@ jobs:
           output = output.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f'notes={output}\n')
+
       - name: Create Release and Tag
         uses: softprops/action-gh-release@v1
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          TAG_PREFIX: ${{ github.event.inputs.dry_run == 'true' && 'test-v' || 'v' }}
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: Release v${{ github.event.inputs.version }}
+          tag_name: ${{ env.TAG_PREFIX }}${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.dry_run == 'true' && 'MOCK ' || '' }}Release v${{ github.event.inputs.version }}
           body: ${{ steps.changelog.outputs.notes }}
-          draft: false
-          prerelease: false
+          draft: ${{ github.event.inputs.dry_run == 'true' }}
+          prerelease: ${{ github.event.inputs.dry_run == 'true' }}
           files: artifacts/**/*
           token: ${{ secrets.GITHUB_TOKEN }}
