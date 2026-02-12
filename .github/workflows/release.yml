@@ -38,6 +38,10 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Build Desktop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
         run: pnpm tauri build
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
@@ -79,11 +83,29 @@ jobs:
           workspaces: './src-tauri -> target'
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build Android APK
+      - name: setup Android signing
+        if: github.event_name != 'pull_request' && env.ANDROID_KEY_BASE64 != ''
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+            mkdir -p src-tauri/gen/android
+            cd src-tauri/gen/android
+            echo "keyAlias=$ANDROID_KEY_ALIAS" > keystore.properties
+            echo "password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+            base64 -d <<< "$ANDROID_KEY_BASE64" > upload-keystore.jks
+            echo "storeFile=upload-keystore.jks" >> keystore.properties
+      - name: Build Android (AAB & APK)
         run: |
             export NDK_HOME=$ANDROID_NDK_HOME
             pnpm tauri android init
-            pnpm tauri android build --apk
+            if [ -f "src-tauri/gen/android/keystore.properties" ]; then
+              pnpm tauri android build --aab
+              pnpm tauri android build --apk
+            else
+              pnpm tauri android build --apk
+            fi
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -91,6 +113,7 @@ jobs:
           path: |
             src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
             src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/release/*.aab
 
   publish:
     needs: [build-desktop, build-android]
@@ -103,11 +126,41 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Extract Changelog
+        id: changelog
+        shell: python
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          import os
+          version = os.getenv('VERSION')
+          path = 'CHANGELOG.md'
+          if not os.path.exists(path):
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('notes=No changelog found.\n')
+              exit(0)
+          with open(path, 'r') as f:
+              lines = f.readlines()
+          content = []
+          started = False
+          for line in lines:
+              if line.startswith('## ') and started:
+                  break
+              if started:
+                  content.append(line)
+              if line.startswith(f'## {version}'):
+                  started = True
+          output = "".join(content).strip()
+          # Escape for GH Output
+          output = output.replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'notes={output}\n')
       - name: Create Release and Tag
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: Release v${{ github.event.inputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
           draft: false
           prerelease: false
           files: artifacts/**/*
