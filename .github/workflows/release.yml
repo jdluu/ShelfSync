@@ -200,7 +200,7 @@ jobs:
               f.write(f'notes={output}\n')
 
       - name: Create Release and Tag
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           TAG_PREFIX: ${{ github.event.inputs.dry_run == 'true' && 'test-v' || 'v' }}
