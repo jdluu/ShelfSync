@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
-import type { Book, Host } from "@/types/core";
+import { api, httpClient } from "@/services/api";
+import type { Host } from "@/types/core";
 
 // --- Keys ---
 /**
@@ -17,32 +17,20 @@ export const libraryKeys = {
 /**
  * Fetches the book manifest from a remote host.
  *
- * @param host - The connected host object.
- * @param token - The authentication token.
- * @param enabled - Whether the query should run (e.g., only in client mode).
- * @returns A query result containing the list of books.
+ * @summary Integrates with React Query to fetch and cache a remote books manifest.
+ * @param {Host | null} host - The connected host object containing IP and port.
+ * @param {string | undefined} token - The authentication bearer token.
+ * @param {boolean} enabled - Flag to control when the query executes.
+ * @returns {UseQueryResult<Book[]>} A query result object containing the remote books payload.
+ * @throws {Error} Yields an error if the host is missing or if network authentication fails.
+ * @sideEffects Triggers a network request via `httpClient.getManifest` and caches the result.
  */
 export const useHostManifest = (host: Host | null, token: string | undefined, enabled: boolean) => {
   return useQuery({
     queryKey: libraryKeys.manifest(host ? `${host.ip}:${host.port}` : ""),
     queryFn: async () => {
       if (!host) throw new Error("No host selected");
-      const headers: Record<string, string> = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-
-      const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, {
-        headers,
-      });
-
-      if (response.status === 401) {
-        throw new Error("Unauthorized");
-      }
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch manifest");
-      }
-
-      return response.json() as Promise<Book[]>;
+      return httpClient.getManifest(host, token);
     },
     enabled: enabled && !!host,
     retry: (failureCount, error) => {
@@ -56,8 +44,11 @@ export const useHostManifest = (host: Host | null, token: string | undefined, en
 /**
  * Fetches books from the local Calibre database (Host Mode).
  *
- * @param libraryPath - The absolute path to the Calibre library.
- * @returns A query result containing the list of books.
+ * @summary Queries the local SQLite metadata database for all known calibre books.
+ * @param {string | null} libraryPath - The absolute filesystem path to the Calibre library.
+ * @returns {UseQueryResult<Book[]>} A query result containing the array of local Book structures.
+ * @throws {Error} Throws an error if the library path is null or if the SQLite read fails.
+ * @sideEffects Executes a Tauri IPC call to invoke the `get_books` Rust backend command.
  */
 export const useLocalLibrary = (libraryPath: string | null) => {
   return useQuery({
@@ -71,25 +62,17 @@ export const useLocalLibrary = (libraryPath: string | null) => {
 };
 
 /**
- * Verifies the PIN with the host to get an auth token.
+ * Verifies the PIN with the host to authenticate a new client.
  *
- * @returns A mutation to verify the PIN and retrieve the token.
+ * @summary Provides a React Query mutation to submit a PIN and receive a long-lived auth token.
+ * @returns {UseMutationResult<string, Error, { host: Host; pin: string }>} A mutation handle to execute the PIN check.
+ * @throws {Error} Resolves to an error state if the PIN is invalid or the host rejects the connection.
+ * @sideEffects Sends a POST request to the target host and may mutate UI state upon completion.
  */
 export const useCheckPin = () => {
   return useMutation({
     mutationFn: async ({ host, pin }: { host: Host; pin: string }) => {
-      const response = await fetch(`http://${host.ip}:${host.port}/api/check-pin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Invalid PIN");
-      }
-
-      const data = await response.json();
-      return data.token as string;
+      return httpClient.checkPin(host, pin);
     },
   });
 };
