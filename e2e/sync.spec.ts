@@ -9,7 +9,7 @@ test.describe("Multi-Instance Sync", () => {
     // Mock the folder selection dialog to return a dummy path
     await hostPage.evaluate(() => {
       // @ts-expect-error
-      window.__TAURI_INVOKE__ = async (cmd, args) => {
+      window.__TAURI_INVOKE__ = async (cmd, _args) => {
         if (cmd === "plugin:dialog|open") {
           return "C:/Mock/CalibreLibrary";
         }
@@ -35,7 +35,7 @@ test.describe("Multi-Instance Sync", () => {
     // Let's mock the discovery results in the client page.
     await clientPage.evaluate(() => {
       // @ts-expect-error
-      window.__TAURI_INVOKE__ = async (cmd, args) => {
+      window.__TAURI_INVOKE__ = async (cmd, _args) => {
         if (cmd === "plugin:network|discover_hosts") {
           return [{ ip: "127.0.0.1", port: 1422, hostname: "TestHost" }];
         }
@@ -62,14 +62,13 @@ test.describe("Multi-Instance Sync", () => {
       // @ts-expect-error
       const original = window.__TAURI_INVOKE__;
       // @ts-expect-error
-      window.__TAURI_INVOKE__ = async (cmd, args) => {
+      window.__TAURI_INVOKE__ = async (cmd, _args) => {
         if (cmd === "plugin:network|get_host_manifest") {
           return [{ id: 1, title: "Test Book", authors: "Test Author", size: 1024 }];
         }
         if (cmd === "start_bulk_sync") {
           return { status: "started" };
         }
-        // @ts-expect-error
         return original ? original(cmd, _args) : null;
       };
     });
