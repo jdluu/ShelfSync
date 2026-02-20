@@ -6,38 +6,25 @@ import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
 import { RoleSelection } from "@/features/RoleSelection";
 
-function AppContent() {
+function InitializingView() {
+  return (
+    <div className="h-screen w-screen flex items-center justify-center bg-base-100">
+      <div className="flex flex-col items-center gap-4">
+        <span className="loading loading-spinner loading-xl text-primary"></span>
+        <p className="text-lg font-medium text-base-content/60">Initializing ShelfSync...</p>
+      </div>
+    </div>
+  );
+}
+
+function useAppContentState() {
   const [role, setRole] = useState<"host" | "client" | null>(null);
-  const {
-    books,
-    localBooks,
-    loading: libraryLoading,
-    error: libraryError,
-    libraryPath,
-    selectLibraryFolder,
-    syncBook,
-    toggleReadStatus,
-    openLocalBook,
-    authRequired,
-    pairingHost,
-    pair,
-    connectedHost,
-    connectToHost,
-    disconnect,
-    setAppMode,
-  } = useLibrary();
-
-  const {
-    myConnectionInfo,
-    // error: connectionError, // Discovery doesn't expose error
-  } = useDiscovery();
-
+  const library = useLibrary();
+  const discovery = useDiscovery();
   const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
-    // Check if we have a stored role or library path
     const init = async () => {
-      // Small delay for smooth startup
       setTimeout(() => setAppLoading(false), 500);
     };
     init();
@@ -46,38 +33,36 @@ function AppContent() {
   const handleRoleSelect = async (selectedRole: "host" | "client") => {
     setRole(selectedRole);
     if (selectedRole === "host") {
-      await setAppMode("host");
+      await library.setAppMode("host");
     } else {
-      await setAppMode("client");
+      await library.setAppMode("client");
     }
   };
 
   const handleChangeRole = async () => {
-    await setAppMode("unselected");
+    await library.setAppMode("unselected");
     if (role === "client") {
-      disconnect();
+      library.disconnect();
     }
     setRole(null);
   };
 
-  if (appLoading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-base-100">
-        <div className="flex flex-col items-center gap-4">
-          <span className="loading loading-spinner loading-xl text-primary"></span>
-          <p className="text-lg font-medium text-base-content/60">Initializing ShelfSync...</p>
-        </div>
-      </div>
-    );
-  }
+  return { role, appLoading, library, discovery, handleRoleSelect, handleChangeRole };
+}
 
-  if (authRequired) {
+function AppContent() {
+  const { role, appLoading, library, discovery, handleRoleSelect, handleChangeRole } =
+    useAppContentState();
+
+  if (appLoading) return <InitializingView />;
+
+  if (library.authRequired) {
     return (
       <PinModal
-        hostName={pairingHost?.hostname || "Unknown Host"}
-        onPair={pair}
-        onCancel={disconnect}
-        loading={libraryLoading}
+        hostName={library.pairingHost?.hostname || "Unknown Host"}
+        onPair={library.pair}
+        onCancel={library.disconnect}
+        loading={library.loading}
       />
     );
   }
@@ -89,12 +74,12 @@ function AppContent() {
   if (role === "host") {
     return (
       <HostDashboard
-        books={books}
-        loading={libraryLoading}
-        error={libraryError}
-        libraryPath={libraryPath}
-        connectionInfo={myConnectionInfo}
-        onSelectFolder={selectLibraryFolder}
+        books={library.books}
+        loading={library.loading}
+        error={library.error}
+        libraryPath={library.libraryPath}
+        connectionInfo={discovery.myConnectionInfo}
+        onSelectFolder={library.selectLibraryFolder}
         onChangeRole={handleChangeRole}
       />
     );
@@ -102,16 +87,16 @@ function AppContent() {
 
   return (
     <ClientDashboard
-      books={books}
-      localBooks={localBooks}
-      loading={libraryLoading}
-      error={libraryError}
-      connectedHost={connectedHost}
-      onConnect={connectToHost}
-      onDisconnect={disconnect}
-      onSync={syncBook}
-      onOpenBook={openLocalBook}
-      onToggleStatus={toggleReadStatus}
+      books={library.books}
+      localBooks={library.localBooks}
+      loading={library.loading}
+      error={library.error}
+      connectedHost={library.connectedHost}
+      onConnect={library.connectToHost}
+      onDisconnect={library.disconnect}
+      onSync={library.syncBook}
+      onOpenBook={library.openLocalBook}
+      onToggleStatus={library.toggleReadStatus}
       onChangeRole={handleChangeRole}
     />
   );
