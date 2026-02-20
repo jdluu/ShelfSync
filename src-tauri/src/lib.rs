@@ -79,10 +79,23 @@ pub fn run() {
             let discovery = discovery_clone;
 
             // System Tray Setup
-            let quit_i = tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
-            let show_i = tauri::menu::MenuItem::with_id(app, "show", "Show ShelfSync", true, None::<&str>).unwrap();
-            let hide_i = tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>).unwrap();
-            let menu = tauri::menu::Menu::with_items(app, &[&show_i, &hide_i, &tauri::menu::PredefinedMenuItem::separator(app).unwrap(), &quit_i]).unwrap();
+            let quit_i =
+                tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
+            let show_i =
+                tauri::menu::MenuItem::with_id(app, "show", "Show ShelfSync", true, None::<&str>)
+                    .unwrap();
+            let hide_i =
+                tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>).unwrap();
+            let menu = tauri::menu::Menu::with_items(
+                app,
+                &[
+                    &show_i,
+                    &hide_i,
+                    &tauri::menu::PredefinedMenuItem::separator(app).unwrap(),
+                    &quit_i,
+                ],
+            )
+            .unwrap();
 
             let _tray = tauri::tray::TrayIconBuilder::new()
                 .menu(&menu)

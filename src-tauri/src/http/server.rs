@@ -54,7 +54,11 @@ pub async fn run(state: SharedState, port: u16) {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let val = format!("0.0.0.0:{}", port);
+    let local_ip = local_ip_address::local_ip()
+        .map(|ip| ip.to_string())
+        .unwrap_or_else(|_| "127.0.0.1".to_string());
+
+    let val = format!("{}:{}", local_ip, port);
     let listener = match tokio::net::TcpListener::bind(&val).await {
         Ok(l) => l,
         Err(e) => {
@@ -184,13 +188,20 @@ async fn download_book(
         }
     };
 
-    match File::open(&file_path).await {
+    build_file_response(&file_path, &found_format)
+        .await
+        .into_response()
+}
+
+// Helper block
+async fn build_file_response(file_path: &FilePath, found_format: &str) -> axum::response::Response {
+    match File::open(file_path).await {
         Ok(file) => {
             let stream = ReaderStream::new(file);
             let body = Body::from_stream(stream);
 
             // Determine content type
-            let content_type = match found_format.as_str() {
+            let content_type = match found_format {
                 "epub" => "application/epub+zip",
                 "pdf" => "application/pdf",
                 "mobi" => "application/x-mobipocket-ebook",
@@ -250,28 +261,34 @@ async fn get_cached_or_resized_cover(
     tokio::task::spawn_blocking(move || {
         // Ensure cache directory exists
         std::fs::create_dir_all(&cache_dir_owned).map_err(|_| "Failed to create cache dir")?;
-
-        let img = image::open(&cover_path_owned).map_err(|_| "Failed to open image")?;
-        // Resize to a reasonable thumbnail size (maintaining aspect ratio)
-        // 300x450 is good for the UI cards
-        let resized = img.resize(300, 450, image::imageops::FilterType::Lanczos3);
-
-        // Save to cache
-        resized
-            .save(&cache_file_path_owned)
-            .map_err(|_| "Failed to save to cache")?;
-
-        // Write to bytes for response
-        let mut bytes: Vec<u8> = Vec::new();
-        let mut cursor = std::io::Cursor::new(&mut bytes);
-        resized
-            .write_to(&mut cursor, image::ImageFormat::Jpeg)
-            .map_err(|_| "Failed to encode image")?;
-
-        Ok::<Vec<u8>, String>(bytes)
+        resize_and_save_cover(&cover_path_owned, &cache_file_path_owned)
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+fn resize_and_save_cover(
+    src_path: &std::path::Path,
+    dest_path: &std::path::Path,
+) -> Result<Vec<u8>, String> {
+    let img = image::open(src_path).map_err(|_| "Failed to open image")?;
+    // Resize to a reasonable thumbnail size (maintaining aspect ratio)
+    // 300x450 is good for the UI cards
+    let resized = img.resize(300, 450, image::imageops::FilterType::Lanczos3);
+
+    // Save to cache
+    resized
+        .save(dest_path)
+        .map_err(|_| "Failed to save to cache")?;
+
+    // Write to bytes for response
+    let mut bytes: Vec<u8> = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut bytes);
+    resized
+        .write_to(&mut cursor, image::ImageFormat::Jpeg)
+        .map_err(|_| "Failed to encode image")?;
+
+    Ok(bytes)
 }
 
 /// Helper to find a book file in the specified directory.
@@ -322,12 +339,12 @@ async fn find_book_file(
     found_path.map(|p| (p, found_format))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct PinRequest {
     pin: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct AuthResponse {
     token: String,
 }
@@ -375,7 +392,7 @@ async fn get_progress(
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 struct ProgressUpdate {
     book_id: i64,
     status: String,
@@ -607,5 +624,114 @@ mod tests {
         // Ensure we got some bytes back
         let bytes = response.as_bytes();
         assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_check_pin() {
+        let dir = tempdir().unwrap();
+        setup_mock_lib(dir.path());
+
+        let state = Arc::new(ServerState {
+            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
+            books: Mutex::new(Vec::new()),
+            pin: "1234".to_string(),
+            authorized_tokens: Mutex::new(std::collections::HashSet::new()),
+            app_data_dir: dir.path().to_path_buf(),
+        });
+
+        let app = Router::new()
+            .route("/api/check-pin", axum::routing::post(check_pin))
+            .with_state(state.clone());
+
+        let server = TestServer::new(app).unwrap();
+
+        // Arrange
+        let payload = PinRequest {
+            pin: "1234".to_string(),
+        };
+        let bad_payload = PinRequest {
+            pin: "9999".to_string(),
+        };
+
+        // Act & Assert (Success)
+        let response = server.post("/api/check-pin").json(&payload).await;
+        response.assert_status_ok();
+        let auth_resp = response.json::<AuthResponse>();
+        assert!(!auth_resp.token.is_empty());
+
+        // Act & Assert (Failure)
+        let response_fail = server.post("/api/check-pin").json(&bad_payload).await;
+        response_fail.assert_status(StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_progress_endpoints() {
+        let dir = tempdir().unwrap();
+        setup_mock_lib(dir.path());
+
+        // Additional initialization for tracking reading state outside of core db
+        {
+            let db_path = dir.path().join("progress.db");
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS progress (
+                    book_id INTEGER PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    last_updated INTEGER NOT NULL
+                )",
+                [],
+            )
+            .unwrap();
+        }
+
+        let state = Arc::new(ServerState {
+            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
+            books: Mutex::new(Vec::new()),
+            pin: "1234".to_string(),
+            authorized_tokens: Mutex::new({
+                let mut set = std::collections::HashSet::new();
+                set.insert("test-token".to_string());
+                set
+            }),
+            app_data_dir: dir.path().to_path_buf(),
+        });
+
+        let app = Router::new()
+            .route("/api/progress", get(get_progress).post(update_progress))
+            .with_state(state);
+
+        let server = TestServer::new(app).unwrap();
+
+        // Arrange
+        let payload = ProgressUpdate {
+            book_id: 1,
+            status: "reading".to_string(),
+        };
+
+        // Act & Assert Updates
+        let update_resp = server
+            .post("/api/progress")
+            .add_header(header::AUTHORIZATION, "Bearer test-token")
+            .json(&payload)
+            .await;
+        update_resp.assert_status_ok();
+
+        // Act & Assert State Retained
+        let get_resp = server
+            .get("/api/progress")
+            .add_header(header::AUTHORIZATION, "Bearer test-token")
+            .await;
+        get_resp.assert_status_ok();
+
+        #[derive(serde::Deserialize)]
+        struct Progress {
+            book_id: i64,
+            status: String,
+        }
+        let progress_list = get_resp.json::<Vec<Progress>>();
+
+        assert_eq!(progress_list.len(), 1);
+        assert_eq!(progress_list[0].book_id, 1);
+        assert_eq!(progress_list[0].status, "reading");
     }
 }
