@@ -44,6 +44,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   const isDownloading = syncStatus?.status === "downloading";
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: semantic element used
     // biome-ignore lint/a11y/noStaticElementInteractions: dynamic interactive element
     <div
       className={`card bg-base-200 border transition-all duration-200 overflow-hidden ${
@@ -52,15 +53,6 @@ export const BookCard: React.FC<BookCardProps> = ({
           : "border-base-300 hover:shadow-md hover:bg-base-300"
       } ${selectable ? "cursor-pointer" : ""}`}
       onClick={selectable ? onSelect : undefined}
-      onKeyDown={
-        selectable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                onSelect?.();
-              }
-            }
-          : undefined
-      }
       role={selectable ? "button" : undefined}
       tabIndex={selectable ? 0 : undefined}
     >
@@ -85,7 +77,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 onError={() => setImgError(true)}
               />
             ) : (
-              <BookIcon className="w-8 h-8 text-base-content/50" />
+              <BookIcon className="w-8 h-8 text-base-content/50" aria-hidden="true" />
             )}
 
             {isDownloading && (
@@ -136,24 +128,16 @@ export const BookCard: React.FC<BookCardProps> = ({
               <div className="flex flex-wrap gap-1 mt-1">
                 <div className="badge badge-sm badge-ghost">Downloaded</div>
                 {onToggleStatus && (
-                  // biome-ignore lint/a11y/useSemanticElements: dynamic interactive element
-                  <div
+                  <button
+                    type="button"
                     className={`badge badge-sm cursor-pointer ${getStatusColor(book.read_status)}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleStatus(book);
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation();
-                        onToggleStatus(book);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
                   >
                     {book.read_status || "unread"}
-                  </div>
+                  </button>
                 )}
               </div>
             )}
