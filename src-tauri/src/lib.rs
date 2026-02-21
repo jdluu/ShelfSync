@@ -28,6 +28,12 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize rustls crypto provider
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install default crypto provider");
+
     // Initialize logging
     env_logger::init();
 
