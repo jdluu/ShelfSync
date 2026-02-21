@@ -396,12 +396,21 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
 
               {/* About Section */}
               <section className="pt-4 border-t border-base-300">
-                 <div className="flex flex-col gap-1">
-                   {hostIp && (
-                     <p className="text-[10px] font-mono text-base-content/40">HOST IP: {hostIp}</p>
-                   )}
-                   <p className="text-[10px] font-mono text-base-content/40">VERSION: 1.0.0 (Release)</p>
-                 </div>
+                <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
+                  <h4 className="text-[10px] font-bold text-base-content/40 uppercase tracking-widest">System Information</h4>
+                  <div className="space-y-1">
+                    {hostIp && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-base-content/50 uppercase">Host IP</span>
+                        <span className="text-[10px] font-mono font-bold text-base-content/70">{hostIp}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-base-content/50 uppercase">Version</span>
+                      <span className="text-[10px] font-mono font-bold text-base-content/70">1.0.0 (Stable)</span>
+                    </div>
+                  </div>
+                </div>
               </section>
             </div>
           )}
