@@ -35,7 +35,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
                     Share your library with other devices on your local network.
                   </p>
                 </div>
-                <div className="btn btn-primary mt-2 sm:mt-4 px-8 sm:px-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity btn-sm sm:btn-md">
+                <div className="btn btn-primary mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md group-hover:scale-105">
                   Select Role
                 </div>
               </div>
@@ -57,7 +57,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
                     Access and sync books from an active ShelfSync host.
                   </p>
                 </div>
-                <div className="btn btn-success mt-2 sm:mt-4 px-8 sm:px-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity btn-sm sm:btn-md">
+                <div className="btn btn-success mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md group-hover:scale-105">
                   Select Role
                 </div>
               </div>
