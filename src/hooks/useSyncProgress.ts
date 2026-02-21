@@ -3,7 +3,7 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { isPermissionGranted, sendNotification } from "@tauri-apps/plugin-notification";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { getLocalBooks, saveBook as saveLocalBook } from "@/services/local-db";
+import { getLocalBooks, saveBook as saveLocalBook } from "@/services/localDb";
 import type { Book } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
 

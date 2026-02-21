@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api, httpClient } from "@/services/api";
+import { api, httpClient } from "@/services/apiClient";
 import type { Host } from "@/types/core";
 
 // --- Keys ---
