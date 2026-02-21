@@ -122,12 +122,13 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-            mkdir -p src-tauri/gen/android
-            cd src-tauri/gen/android
-            echo "keyAlias=$ANDROID_KEY_ALIAS" > keystore.properties
-            echo "password=$ANDROID_KEY_PASSWORD" >> keystore.properties
-            base64 -d <<< "$ANDROID_KEY_BASE64" > upload-keystore.jks
-            echo "storeFile=upload-keystore.jks" >> keystore.properties
+            mkdir -p src-tauri/gen/android/app
+            cd src-tauri/gen/android/app
+            echo "shelfsync.key.alias=$ANDROID_KEY_ALIAS" > keystore.properties
+            echo "shelfsync.key.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+            echo "shelfsync.keystore.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+            base64 -d <<< "$ANDROID_KEY_BASE64" > shelfsync-release.jks
+            echo "shelfsync.keystore.path=shelfsync-release.jks" >> keystore.properties
       - name: Build Android (AAB & APK)
         if: github.event.inputs.dry_run == 'false'
         run: |
