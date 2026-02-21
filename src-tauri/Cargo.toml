@@ -64,4 +64,6 @@ strip = true
 panic = "abort"
 opt-level = "s"
 
-
+[[bin]]
+name = "mock_gen"
+path = "src/bin/mock_gen.rs"
