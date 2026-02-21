@@ -188,8 +188,15 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
     } else {
       effectiveTheme = t;
     }
-    document.documentElement.setAttribute("data-theme", effectiveTheme);
+    const documentElement = document.documentElement;
+    documentElement.setAttribute("data-theme", effectiveTheme);
     localStorage.setItem("theme-preference", t);
+
+    // Update system theme color for mobile status bars/etc
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", effectiveTheme === "dark" ? "#1d232a" : "#ffffff");
+    }
   };
 
   useEffect(() => {

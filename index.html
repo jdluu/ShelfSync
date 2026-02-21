@@ -22,6 +22,26 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon.png" />
+
+    <!-- Early Theme Initialization -->
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme-preference') || 'system';
+          let effectiveTheme = theme;
+          if (theme === 'system') {
+            effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', effectiveTheme);
+          
+          // Also set theme-color meta tag early
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.setAttribute('content', effectiveTheme === 'dark' ? '#1d232a' : '#ffffff');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
 
   <body>
