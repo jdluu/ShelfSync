@@ -15,7 +15,7 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "test:e2e": "run-p test:e2e:dev test:e2e:run",
+    "test:e2e": "run-p --race test:e2e:dev test:e2e:run",
     "test:e2e:dev": "cross-env WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=\"--remote-debugging-port=1422\" tauri dev",
     "test:e2e:run": "wait-on tcp:1422 -t 60000 && playwright test"
   },

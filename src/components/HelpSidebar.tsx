@@ -367,13 +367,15 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => 
 
         {/* Footer */}
         <div className="p-4 border-t border-base-300 bg-base-200/40 flex flex-col gap-2">
-          <button
-            type="button"
+          <a
+            href="https://github.com/jdluu/ShelfSync/wiki"
+            target="_blank"
+            rel="noopener noreferrer"
             className="btn btn-ghost btn-sm justify-start gap-3 opacity-70 hover:opacity-100 group"
           >
             <FileText className="w-4 h-4 group-hover:text-primary" />
             <span className="text-xs font-semibold">Full Documentation</span>
-          </button>
+          </a>
         </div>
       </aside>
     </>

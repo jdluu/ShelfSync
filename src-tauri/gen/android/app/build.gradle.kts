@@ -24,6 +24,26 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("SHELM_KEYSTORE_PATH") 
+                ?: tauriProperties.getProperty("shelfsync.keystore.path")
+            val keystorePassword = System.getenv("SHELM_KEYSTORE_PASSWORD") 
+                ?: tauriProperties.getProperty("shelfsync.keystore.password")
+            val keyAliasStr = System.getenv("SHELM_KEY_ALIAS") 
+                ?: tauriProperties.getProperty("shelfsync.key.alias")
+            val keyPasswordStr = System.getenv("SHELM_KEY_PASSWORD") 
+                ?: tauriProperties.getProperty("shelfsync.key.password")
+
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                keyAlias = keyAliasStr
+                keyPassword = keyPasswordStr
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -38,6 +58,7 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
