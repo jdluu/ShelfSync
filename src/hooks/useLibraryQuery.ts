@@ -8,7 +8,7 @@ import type { Host } from "@/types/core";
  */
 export const libraryKeys = {
   all: ["library"] as const,
-  manifest: (host: string) => [...libraryKeys.all, "manifest", host] as const,
+  manifest: (host: string, token?: string) => [...libraryKeys.all, "manifest", host, token || "no-token"] as const,
   local: (path: string) => [...libraryKeys.all, "local", path] as const,
 };
 
@@ -27,7 +27,7 @@ export const libraryKeys = {
  */
 export const useHostManifest = (host: Host | null, token: string | undefined, enabled: boolean) => {
   return useQuery({
-    queryKey: libraryKeys.manifest(host ? `${host.ip}:${host.port}` : ""),
+    queryKey: libraryKeys.manifest(host ? `${host.ip}:${host.port}` : "", token),
     queryFn: async () => {
       if (!host) throw new Error("No host selected");
 

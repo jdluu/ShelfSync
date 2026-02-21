@@ -113,6 +113,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         pairingHost = connectedHost;
       }
     }
+    loading = remoteQuery.isLoading || checkPinMutation.isPending;
   } else if (appMode === "host") {
     books = localQuery.data || [];
     loading = localQuery.isLoading;
@@ -220,9 +221,9 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       await store.save();
 
       // Auth required will clear on next render because query will retry with new token
-    } catch (e) {
-      // let the error be handled by the mutation state or caught here
+    } catch (e: any) {
       console.error("Pairing failed", e);
+      dispatch({ type: "SET_MANUAL_ERROR", payload: e.message || "Pairing failed. Please check the PIN and try again." });
     }
   };
 
