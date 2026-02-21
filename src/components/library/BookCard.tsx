@@ -36,7 +36,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   // Construct cover URL if we have a host
   const coverUrl = host ? `http://${host.ip}:${host.port}/api/cover/${book.id}` : undefined;
 
-  const getStatusColor = (status?: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
     if (status === "finished") return "badge-success";
     if (status === "reading") return "badge-info";
     return "badge-ghost";

@@ -13,10 +13,20 @@ export const api = {
     /**
      * Retrieves the list of books from the specified Calibre library path.
      */
-    getBooks: (libraryPath: string) =>
-      safeInvoke<Book[]>("get_books", { libraryPath }, []).then((res) =>
-        BookSchema.array().parse(res),
-      ),
+    getBooks: (libraryPath: string) => {
+      const trimmedPath = libraryPath.trim();
+      if (!trimmedPath) return Promise.resolve([]);
+
+      return safeInvoke<Book[]>("get_books", { libraryPath: trimmedPath }, [])
+        .then((res) => {
+          const result = BookSchema.array().safeParse(res);
+          if (!result.success) {
+            console.error("Zod Validation Failed for getBooks:", result.error);
+            throw new Error(`Data Validation Error: ${result.error.message}`);
+          }
+          return result.data;
+        });
+    },
 
     /**
      * Sets the root path for the host's Calibre library.

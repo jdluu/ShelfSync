@@ -10,7 +10,6 @@ import { useCheckPin, useHostManifest, useLocalLibrary } from "@/hooks/useLibrar
 import { useSyncProgress } from "@/hooks/useSyncProgress";
 import { httpClient } from "@/services/apiClient";
 import { getLocalBooks, initDB } from "@/services/localDb";
-import { useAppStore } from "@/store/appStore";
 import type { Book, Host } from "@/types/core";
 import type { AppMode, LibraryContextType } from "@/types/library";
 import { isTauri, safeInvoke, safeStoreLoad } from "@/utils/tauri";
@@ -136,6 +135,8 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     async function loadSettings() {
       try {
+        // Ensure local DB is ready
+        await initDB();
         const store = await safeStoreLoad(STORE_PATH);
 
         // TEST HOOK: If Playwright sets this flag, clear the store.
@@ -144,25 +145,14 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
           await store.save();
         }
 
-        const [savedMode, savedPath, savedTokens] = await Promise.all([
-          store.get<AppMode>("app_mode"),
+        const [savedPath, savedTokens] = await Promise.all([
           store.get<string>("library_path"),
           store.get<Record<string, string>>("auth_tokens"),
         ]);
 
         const nextState: Partial<State> = {};
-        if (savedMode) {
-          nextState.appMode = savedMode;
-          // Sync with global UI store
-          useAppStore.getState().setRole(savedMode);
-        }
         if (savedPath) nextState.libraryPath = savedPath;
         if (savedTokens) nextState.authTokens = savedTokens;
-
-        if (savedMode === "client") {
-          await initDB();
-          nextState.localBooks = await getLocalBooks();
-        }
 
         dispatch({ type: "SET_ALL", payload: nextState });
       } catch (e) {
@@ -195,9 +185,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const setAppMode = async (mode: AppMode) => {
     dispatch({ type: "SET_MODE", payload: mode });
-    const store = await safeStoreLoad(STORE_PATH);
-    await store.set("app_mode", mode);
-    await store.save();
+
 
     if (mode === "client") {
       dispatch({ type: "SET_CONNECTED_HOST", payload: null });

@@ -3,18 +3,18 @@ export interface Book {
   title: string;
   authors: string;
   path: string; // Relative path on Host (Calibre structure)
-  formats?: string[]; // Available formats from Host
-  cover_url?: string; // Constructed URL (optional)
-  series?: string;
-  series_index?: number;
-  tags?: string[];
-  publisher?: string;
+  formats?: string[] | null; // Available formats from Host
+  cover_url?: string | null; // Constructed URL (optional)
+  series?: string | null;
+  series_index?: number | null;
+  tags?: string[] | null;
+  publisher?: string | null;
 
   // Client-side only extensions
-  local_path?: string;
-  remote_id?: number;
-  format?: string;
-  read_status?: "unread" | "reading" | "finished";
+  local_path?: string | null;
+  remote_id?: number | null;
+  format?: string | null;
+  read_status?: "unread" | "reading" | "finished" | null;
 }
 
 export interface ConnectionInfo {
