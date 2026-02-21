@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
 
   return (
     <>
-      <header className="navbar bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center h-16 sticky top-0 z-[1000]">
+      <header className="navbar bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center sticky top-0 z-[1000]" style={{ paddingTop: 'calc(var(--safe-area-top, 0px) + 1.25rem)' }}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Library className="w-8 h-8 text-primary" />

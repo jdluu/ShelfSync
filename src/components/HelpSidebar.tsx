@@ -203,7 +203,10 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => 
         }`}
       >
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-base-300 flex items-center justify-between bg-base-200/50">
+        <div 
+          className="p-4 sm:p-6 border-b border-base-300 flex items-center justify-between bg-base-200/50"
+          style={{ paddingTop: 'calc(var(--safe-area-top, 0px) + 2rem)' }}
+        >
           <div className="flex items-center gap-2">
             {activeArticleId && (
               <button
@@ -366,7 +369,10 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => 
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-base-300 bg-base-200/40 flex flex-col gap-2">
+        <div 
+          className="p-4 border-t border-base-300 bg-base-200/40 flex flex-col gap-2"
+          style={{ paddingBottom: 'calc(var(--safe-area-bottom, 0px) + 2rem)' }}
+        >
           <a
             href="https://github.com/jdluu/ShelfSync/wiki"
             target="_blank"

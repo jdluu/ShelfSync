@@ -128,6 +128,17 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                         <ChevronsUpDown className="w-6 h-6 text-base-content/20 group-hover:text-primary/40 transition-colors" />
                       </div>
                     </div>
+
+                    {connectionInfo.pin && (
+                      <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 flex flex-col items-center gap-1 mt-4">
+                        <p className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">
+                          Pairing PIN
+                        </p>
+                        <p className="text-3xl font-black tracking-[0.5em] text-primary ml-[0.5em]">
+                          {connectionInfo.pin}
+                        </p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 gap-4 grow">

@@ -16,7 +16,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
       <Header title="Choose Your Role" />
 
       {/* Main Content */}
-      <main id="main-content" className="flex-grow flex items-center justify-center p-4 sm:p-6">
+      <main id="main-content" className="flex-grow flex flex-col p-4 sm:p-6 pt-8 sm:pt-12">
         <div className="container max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {/* Host Card */}

@@ -8,7 +8,13 @@ import { RoleSelection } from "@/features/RoleSelection";
 
 function InitializingView() {
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-base-100">
+    <div 
+      className="h-screen w-screen flex items-center justify-center bg-base-100"
+      style={{ 
+        paddingTop: 'var(--safe-area-top, 0px)',
+        paddingBottom: 'var(--safe-area-bottom, 0px)' 
+      }}
+    >
       <div className="flex flex-col items-center gap-4">
         <span className="loading loading-spinner loading-xl text-primary"></span>
         <p className="text-lg font-medium text-base-content/60">Initializing ShelfSync...</p>
