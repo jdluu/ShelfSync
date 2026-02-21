@@ -13,6 +13,13 @@ val tauriProperties = Properties().apply {
     }
 }
 
+val keystoreProperties = Properties().apply {
+    val propFile = file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+
 android {
     compileSdk = 36
     namespace = "com.j2013.shelfsync"
@@ -26,13 +33,17 @@ android {
     }
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("SHELM_KEYSTORE_PATH") 
+            val keystorePath = System.getenv("SHELF_KEYSTORE_PATH") 
+                ?: keystoreProperties.getProperty("shelfsync.keystore.path")
                 ?: tauriProperties.getProperty("shelfsync.keystore.path")
-            val keystorePassword = System.getenv("SHELM_KEYSTORE_PASSWORD") 
+            val keystorePassword = System.getenv("SHELF_KEYSTORE_PASSWORD") 
+                ?: keystoreProperties.getProperty("shelfsync.keystore.password")
                 ?: tauriProperties.getProperty("shelfsync.keystore.password")
-            val keyAliasStr = System.getenv("SHELM_KEY_ALIAS") 
+            val keyAliasStr = System.getenv("SHELF_KEY_ALIAS") 
+                ?: keystoreProperties.getProperty("shelfsync.key.alias")
                 ?: tauriProperties.getProperty("shelfsync.key.alias")
-            val keyPasswordStr = System.getenv("SHELM_KEY_PASSWORD") 
+            val keyPasswordStr = System.getenv("SHELF_KEY_PASSWORD") 
+                ?: keystoreProperties.getProperty("shelfsync.key.password")
                 ?: tauriProperties.getProperty("shelfsync.key.password")
 
             if (keystorePath != null) {

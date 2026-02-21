@@ -31,3 +31,6 @@ src-tauri/target/
 playwright-report/
 test-results/
 
+# Android Secrets
+*.jks
+*.keystore
