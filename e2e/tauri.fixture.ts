@@ -4,14 +4,14 @@ export const test = base.extend<{
   page: Page;
   newTauriPage: () => Promise<Page>;
 }>({
-  page: async (_, use) => {
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires object destructuring
+  page: async ({}, use) => {
     const browser = await chromium.connectOverCDP("http://localhost:1422");
     const context = browser.contexts()[0];
     const page = context.pages()[0];
 
-    // biome-ignore lint/suspicious/noExplicitAny: test backdoor
     await page.addInitScript(() => {
-      (window as any).__TEST_RESET__ = true;
+      (window as unknown as { __TEST_RESET__: boolean }).__TEST_RESET__ = true;
     });
     await page.reload();
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -19,7 +19,8 @@ export const test = base.extend<{
 
     await use(page);
   },
-  newTauriPage: async (_, use) => {
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires object destructuring
+  newTauriPage: async ({}, use) => {
     const browser = await chromium.connectOverCDP("http://localhost:1422");
     const context = browser.contexts()[0];
 

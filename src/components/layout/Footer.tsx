@@ -2,9 +2,9 @@ import { Github } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer 
+    <footer
       className="footer footer-center p-6 bg-base-100 border-t border-base-300 text-base-content/40"
-      style={{ paddingBottom: 'calc(var(--safe-area-bottom, 0px) + 2rem)' }}
+      style={{ paddingBottom: "calc(var(--safe-area-bottom, 0px) + 2rem)" }}
     >
       <div className="w-full max-w-7xl flex flex-col sm:flex-row justify-between items-center gap-4">
         <p className="text-sm font-medium">

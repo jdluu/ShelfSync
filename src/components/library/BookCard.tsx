@@ -31,6 +31,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   actionColor = "blue",
 }) => {
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   // Construct cover URL if we have a host
   const coverUrl = host ? `http://${host.ip}:${host.port}/api/cover/${book.id}` : undefined;
@@ -44,15 +45,20 @@ export const BookCard: React.FC<BookCardProps> = ({
   const isDownloading = syncStatus?.status === "downloading";
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: semantic element used
-    // biome-ignore lint/a11y/noStaticElementInteractions: dynamic interactive element
+    // biome-ignore lint/a11y/noStaticElementInteractions: role is dynamically assigned
     <div
-      className={`card bg-base-200 border transition-all duration-200 overflow-hidden ${
+      className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 ${
         selected
           ? "border-primary bg-primary/10 shadow-md"
           : "border-base-300 hover:shadow-md hover:bg-base-300"
       } ${selectable ? "cursor-pointer" : ""}`}
       onClick={selectable ? onSelect : undefined}
+      onKeyDown={(e) => {
+        if (selectable && onSelect && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       role={selectable ? "button" : undefined}
       tabIndex={selectable ? 0 : undefined}
     >
@@ -70,12 +76,23 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div className="flex items-start gap-4">
           <div className="w-20 h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm">
             {!imgError && coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={`Cover of ${book.title}`}
-                className="w-full h-full object-cover"
-                onError={() => setImgError(true)}
-              />
+              <>
+                {!imgLoaded && (
+                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300" />
+                )}
+                <img
+                  src={coverUrl}
+                  alt={`Cover of ${book.title}`}
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    imgLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  onError={() => {
+                    setImgError(true);
+                    setImgLoaded(true);
+                  }}
+                  onLoad={() => setImgLoaded(true)}
+                />
+              </>
             ) : (
               <BookIcon className="w-8 h-8 text-base-content/50" aria-hidden="true" />
             )}

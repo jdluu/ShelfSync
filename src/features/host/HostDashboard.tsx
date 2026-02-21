@@ -1,9 +1,9 @@
 import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
 import type React from "react";
 import QRCode from "react-qr-code";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { SkipLink } from "@/components/SkipLink";
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { SkipLink } from "@/components/layout/SkipLink";
 import type { Book, ConnectionInfo } from "@/types/core";
 
 interface HostDashboardProps {

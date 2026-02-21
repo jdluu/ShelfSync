@@ -1,8 +1,8 @@
 import { Monitor, Smartphone } from "lucide-react";
 import type React from "react";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { SkipLink } from "@/components/SkipLink";
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { SkipLink } from "@/components/layout/SkipLink";
 
 interface RoleSelectionProps {
   onSelect: (role: "host" | "client") => void;

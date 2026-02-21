@@ -1,9 +1,9 @@
 import { ChevronRight, Globe, Plus, RefreshCw, Search, WifiOff } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { EmptyState } from "@/components/EmptyState";
-import { LoadingSpinner } from "@/components/Feedback/LoadingSpinner";
-import { useDiscovery } from "@/context/DiscoveryContext";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { useDiscovery } from "@/contexts/DiscoveryContext";
 
 interface Host {
   ip: string;
@@ -43,9 +43,12 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" aria-live="polite" aria-busy={scanning}>
         {scanning && hosts.length === 0 ? (
-          <LoadingSpinner message="Searching for local hosts..." />
+          <div className="flex flex-col gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         ) : hosts.length > 0 ? (
           hosts.map((host) => (
             <button

@@ -1,5 +1,6 @@
-import { safeInvoke } from "@/utils/tauri";
 import type { Book, ConnectionInfo, Host } from "@/types/core";
+import { BookSchema, ConnectionInfoSchema } from "@/types/schemas";
+import { safeInvoke } from "@/utils/tauri";
 
 /**
  * Central API interface for communicating with the Tauri backend.
@@ -13,19 +14,19 @@ export const api = {
      * Retrieves the list of books from the specified Calibre library path.
      */
     getBooks: (libraryPath: string) =>
-      safeInvoke<Book[]>("get_books", { libraryPath }, []),
+      safeInvoke<Book[]>("get_books", { libraryPath }, []).then((res) =>
+        BookSchema.array().parse(res),
+      ),
 
     /**
      * Sets the root path for the host's Calibre library.
      */
-    setLibraryPath: (path: string) =>
-      safeInvoke<void>("set_library_path", { path }),
+    setLibraryPath: (path: string) => safeInvoke<void>("set_library_path", { path }),
 
     /**
      * Triggers a bulk synchronization for the specified book IDs.
      */
-    startBulkSync: (bookIds: number[]) =>
-      safeInvoke<void>("start_bulk_sync", { bookIds }),
+    startBulkSync: (bookIds: number[]) => safeInvoke<void>("start_bulk_sync", { bookIds }),
   },
   /**
    * Network and discovery commands.
@@ -40,13 +41,15 @@ export const api = {
         port: 1420,
         hostname: "Browser",
         pin: "0000",
-      }),
+      }).then((res) => ConnectionInfoSchema.parse(res)),
 
     /**
      * Discovers other active ShelfSync hosts on the local network.
      */
     discoverHosts: () =>
-      safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []),
+      safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []).then((res) =>
+        ConnectionInfoSchema.array().parse(res),
+      ),
   },
 };
 

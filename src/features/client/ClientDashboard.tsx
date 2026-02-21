@@ -1,14 +1,15 @@
 import { Search, WifiOff } from "lucide-react";
 import React, { useEffect } from "react";
-import { BookCard } from "@/components/BookCard";
-import { EmptyState } from "@/components/EmptyState";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
-import { QueueOverlay } from "@/components/QueueOverlay";
-import { SearchBar } from "@/components/SearchBar";
-import { SkipLink } from "@/components/SkipLink";
-import { SortMenu, type SortOption } from "@/components/SortMenu";
-import { useLibrary } from "@/context/LibraryContext";
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { SkipLink } from "@/components/layout/SkipLink";
+import { BookCard } from "@/components/library/BookCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { QueueOverlay } from "@/components/ui/QueueOverlay";
+import { SearchBar } from "@/components/ui/SearchBar";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
+import { useLibrary } from "@/contexts/LibraryContext";
 import { Discovery } from "@/features/discovery/Discovery";
 import type { Book, Host } from "@/types/core";
 
@@ -190,11 +191,17 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           )}
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <span className="loading loading-ring loading-lg text-primary"></span>
-              <p className="text-base-content/40 font-medium tracking-wide">
-                Communicating with host...
-              </p>
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
             </div>
           ) : connectedHost ? (
             <div className="flex flex-col gap-6">

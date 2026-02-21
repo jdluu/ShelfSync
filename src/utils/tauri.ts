@@ -4,7 +4,7 @@
 export const isTauri = (): boolean => {
   return Boolean(
     typeof window !== "undefined" &&
-      (window as any).__TAURI_INTERNALS__ !== undefined
+      (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== undefined,
   );
 };
 
@@ -14,18 +14,18 @@ export const isTauri = (): boolean => {
  */
 export async function safeInvoke<T>(
   command: string,
-  args?: Record<string, any>,
-  defaultValue?: T
+  args?: Record<string, unknown>,
+  defaultValue?: T,
 ): Promise<T> {
   if (isTauri()) {
     const { invoke } = await import("@tauri-apps/api/core");
     return invoke<T>(command, args);
   }
-  
+
   if (defaultValue !== undefined) {
     return defaultValue;
   }
-  
+
   throw new Error(`Tauri invoke "${command}" called outside of Tauri environment.`);
 }
 
@@ -35,11 +35,11 @@ export async function safeInvoke<T>(
  */
 interface Store {
   get: <T>(key: string) => Promise<T | null>;
-  set: (key: string, value: any) => Promise<void>;
+  set: (key: string, value: unknown) => Promise<void>;
   save: () => Promise<void>;
   clear: () => Promise<void>;
-  onKeyChange: (key: string, callback: (value: any) => void) => () => void;
-  onChange: (callback: (key: string, value: any) => void) => () => void;
+  onKeyChange: (key: string, callback: (value: unknown) => void) => () => void;
+  onChange: (callback: (key: string, value: unknown) => void) => () => void;
 }
 
 export async function safeStoreLoad(path: string): Promise<Store> {
@@ -54,7 +54,7 @@ export async function safeStoreLoad(path: string): Promise<Store> {
       const val = localStorage.getItem(`mock_store_${path}_${key}`);
       return val ? (JSON.parse(val) as T) : null;
     },
-    set: async (key: string, value: any) => {
+    set: async (key: string, value: unknown) => {
       localStorage.setItem(`mock_store_${path}_${key}`, JSON.stringify(value));
     },
     save: async () => {},

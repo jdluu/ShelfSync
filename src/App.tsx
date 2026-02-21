@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
-import { PinModal } from "@/components/PinModal";
-import { DiscoveryProvider, useDiscovery } from "@/context/DiscoveryContext";
-import { LibraryProvider, useLibrary } from "@/context/LibraryContext";
+import { PinModal } from "@/components/ui/PinModal";
+import { DiscoveryProvider, useDiscovery } from "@/contexts/DiscoveryContext";
+import { LibraryProvider, useLibrary } from "@/contexts/LibraryContext";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
-import { RoleSelection } from "@/features/RoleSelection";
+import { RoleSelection } from "@/features/role-selection/RoleSelection";
+import { useAppStore } from "@/store/appStore";
 
 function InitializingView() {
   return (
-    <div 
+    <div
       className="h-screen w-screen flex items-center justify-center bg-base-100"
-      style={{ 
-        paddingTop: 'var(--safe-area-top, 0px)',
-        paddingBottom: 'var(--safe-area-bottom, 0px)' 
+      style={{
+        paddingTop: "var(--safe-area-top, 0px)",
+        paddingBottom: "var(--safe-area-bottom, 0px)",
       }}
     >
       <div className="flex flex-col items-center gap-4">
@@ -24,7 +25,8 @@ function InitializingView() {
 }
 
 function useAppContentState() {
-  const [role, setRole] = useState<"host" | "client" | null>(null);
+  const role = useAppStore((state) => state.role);
+  const setRole = useAppStore((state) => state.setRole);
   const library = useLibrary();
   const discovery = useDiscovery();
   const [appLoading, setAppLoading] = useState(true);
@@ -50,7 +52,7 @@ function useAppContentState() {
     if (role === "client") {
       library.disconnect();
     }
-    setRole(null);
+    setRole("unselected");
   };
 
   return { role, appLoading, library, discovery, handleRoleSelect, handleChangeRole };
@@ -73,7 +75,7 @@ function AppContent() {
     );
   }
 
-  if (!role) {
+  if (role === "unselected") {
     return <RoleSelection onSelect={handleRoleSelect} />;
   }
 
