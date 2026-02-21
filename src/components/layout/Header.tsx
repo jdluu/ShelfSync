@@ -1,7 +1,7 @@
-import { HelpCircle, Library, Moon, Sun } from "lucide-react";
+import { Library, Settings as SettingsIcon } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
-import { HelpSidebar } from "./HelpSidebar";
+import { useState } from "react";
+import { SettingsSidebar } from "./SettingsSidebar";
 
 interface HeaderProps {
   title: string;
@@ -10,33 +10,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) => {
-  const [theme, setTheme] = useState<"light" | "dark">(
-    (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "dark",
-  );
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-  };
-
-  useEffect(() => {
-    // Sync with attribute if changed externally (e.g. system preference)
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === "data-theme") {
-          const newTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark";
-          if (newTheme && newTheme !== theme) {
-            setTheme(newTheme);
-          }
-        }
-      });
-    });
-
-    observer.observe(document.documentElement, { attributes: true });
-    return () => observer.disconnect();
-  }, [theme]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <>
@@ -53,48 +27,25 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
           <span className="text-lg font-medium text-base-content/80 hidden sm:block">{title}</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           {actions}
-          {onChangeRole && (
-            <button
-              type="button"
-              onClick={onChangeRole}
-              className="btn btn-primary btn-sm px-3 sm:px-4 font-semibold shadow-sm"
-              aria-label="Change Role"
-            >
-              <span className="hidden sm:inline">Change Role</span>
-              <span className="sm:hidden">Role</span>
-            </button>
-          )}
-
-          <div className="flex items-center gap-0 sm:gap-1">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="btn btn-ghost btn-xs sm:btn-sm btn-circle"
-              title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-            >
-              {theme === "light" ? (
-                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/70" />
-              ) : (
-                <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/70" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsHelpOpen(true)}
-              className="btn btn-ghost btn-xs sm:btn-sm px-1 sm:px-2 gap-1 sm:gap-2 font-medium opacity-70 hover:opacity-100"
-              aria-label="Help"
-            >
-              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden md:inline">Help</span>
-            </button>
-          </div>
+          
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="btn btn-ghost btn-sm btn-circle hover:bg-base-200"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="w-5 h-5 opacity-70" />
+          </button>
         </div>
       </header>
 
-      <HelpSidebar isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <SettingsSidebar 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        onChangeRole={onChangeRole}
+      />
     </>
   );
 };

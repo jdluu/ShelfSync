@@ -1,6 +1,6 @@
-import { ArrowLeft, BookOpen, FileText, Library, Wifi, X } from "lucide-react";
+import { ArrowLeft, FileText, Library, Moon, Settings, Sun, User, Wifi, X } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface HelpArticle {
   id: string;
@@ -92,7 +92,7 @@ const ARTICLES: Record<string, HelpArticle> = {
           </li>
           <li>Check your antivirus software settings if discovery consistently fails.</li>
           <li>
-            The default port is <strong>1422</strong>; ensure this port is not being used by another
+            The default port is <strong>8080</strong>; ensure this port is not being used by another
             app.
           </li>
         </ul>
@@ -168,17 +168,39 @@ const ARTICLES: Record<string, HelpArticle> = {
   },
 };
 
-interface HelpSidebarProps {
+interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onChangeRole?: () => void;
+  hostIp?: string;
 }
 
-export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => {
+export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClose, onChangeRole, hostIp }) => {
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">(
+    (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "dark",
+  );
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
+  };
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const currentTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark";
+      if (currentTheme && currentTheme !== theme) {
+        setTheme(currentTheme);
+      }
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [theme]);
 
   const handleClose = () => {
     onClose();
-    // Reset to list view after a delay so the transition is smooth
     setTimeout(() => setActiveArticleId(null), 300);
   };
 
@@ -186,26 +208,24 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => 
 
   return (
     <>
-      {/* Backdrop */}
       <button
         type="button"
-        aria-label="Close sidebar"
+        aria-label="Close settings"
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] transition-opacity duration-300 ${
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={handleClose}
       />
 
-      {/* Sidebar */}
       <aside
-        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-base-100 shadow-2xl z-[2001] transition-transform duration-300 border-l border-base-300 flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-85 bg-base-100 shadow-2xl z-[2001] transition-transform duration-300 border-l border-base-300 flex flex-col ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
         <div
           className="p-4 sm:p-6 border-b border-base-300 flex items-center justify-between bg-base-200/50"
-          style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 2rem)" }}
+          style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 1.5rem)" }}
         >
           <div className="flex items-center gap-2">
             {activeArticleId && (
@@ -213,174 +233,147 @@ export const HelpSidebar: React.FC<HelpSidebarProps> = ({ isOpen, onClose }) => 
                 type="button"
                 onClick={() => setActiveArticleId(null)}
                 className="btn btn-ghost btn-xs btn-circle mr-1"
-                title="Back to Help Topics"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             )}
-            <h2 className="text-2xl font-bold tracking-tight">
-              {activeArticleId ? "Help Article" : "ShelfSync Help"}
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+              {activeArticleId ? "Help Article" : "Settings"}
             </h2>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="btn btn-ghost btn-sm btn-circle hover:bg-base-300"
+            className="btn btn-ghost btn-sm btn-circle"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-grow overflow-y-auto p-4">
+        <div className="flex-grow overflow-y-auto p-4 sm:p-6">
           {activeArticle ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <h3 className="text-xl font-bold text-primary">{activeArticle.title}</h3>
-              <div className="text-base-content/90 leading-relaxed">{activeArticle.content}</div>
+              <h3 className="text-lg font-bold text-primary">{activeArticle.title}</h3>
+              <div className="text-sm text-base-content/90 leading-relaxed">{activeArticle.content}</div>
               <button
                 type="button"
                 onClick={() => setActiveArticleId(null)}
-                className="btn btn-outline btn-sm w-full gap-2 mt-8"
+                className="btn btn-ghost btn-sm w-full gap-2 mt-4"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Topics
+                Back to Settings
               </button>
             </div>
           ) : (
-            <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
-              {/* Getting Started */}
-              <div className="collapse collapse-arrow bg-base-200/30 border border-base-300/50 rounded-xl">
-                <input type="radio" name="help-accordion" defaultChecked />
-                <div className="collapse-title flex items-center gap-4 py-4 pr-12">
-                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                    <BookOpen className="w-5 h-5" />
+            <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
+              {/* Appearance Section */}
+              <section>
+                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Appearance</h3>
+                <div 
+                  className="flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 cursor-pointer hover:bg-base-200 transition-colors"
+                  onClick={toggleTheme}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                      {theme === "dark" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{theme === "dark" ? "Dark Mode" : "Light Mode"}</p>
+                      <p className="text-xs text-base-content/50">Switch display theme</p>
+                    </div>
                   </div>
-                  <span className="font-bold">Getting Started</span>
+                  <input 
+                    type="checkbox" 
+                    className="toggle toggle-primary toggle-sm" 
+                    checked={theme === "dark"} 
+                    readOnly
+                  />
                 </div>
-                <div className="collapse-content px-14 pb-4">
-                  <ul className="space-y-3 pt-2">
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("select_library")}
-                        className="text-sm text-base-content/70 hover:text-primary transition-colors text-left w-full"
-                      >
-                        How to select a library?
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("setup_host")}
-                        className="text-sm text-base-content/70 hover:text-primary transition-colors text-left w-full"
-                      >
-                        Setting up your first host
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              </section>
 
-              {/* Troubleshooting */}
-              <div className="collapse collapse-arrow bg-base-200/30 border border-base-300/50 rounded-xl">
-                <input type="radio" name="help-accordion" />
-                <div className="collapse-title flex items-center gap-4 py-4 pr-12">
-                  <div className="p-2 bg-success/10 rounded-lg text-success">
-                    <Wifi className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold">Troubleshooting Connection</span>
-                </div>
-                <div className="collapse-content px-14 pb-4">
-                  <ul className="space-y-3 pt-2 text-sm text-base-content/70">
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("not_found")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        Client cannot find host
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("firewall")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        Firewall issues
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("ip_changes")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        IP address changes
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              {/* Roles Section */}
+              {onChangeRole && (
+                <section>
+                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Session</h3>
+                  <button 
+                    className="w-full flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 hover:bg-base-200 transition-colors"
+                    onClick={() => {
+                      handleClose();
+                      onChangeRole();
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-secondary/10 rounded-lg text-secondary">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-sm">Switch Role</p>
+                        <p className="text-xs text-base-content/50">Return to role selection</p>
+                      </div>
+                    </div>
+                    <ArrowLeft className="w-4 h-4 rotate-180 opacity-30" />
+                  </button>
+                </section>
+              )}
 
-              {/* Library Management */}
-              <div className="collapse collapse-arrow bg-base-200/30 border border-base-300/50 rounded-xl">
-                <input type="radio" name="help-accordion" />
-                <div className="collapse-title flex items-center gap-4 py-4 pr-12">
-                  <div className="p-2 bg-warning/10 rounded-lg text-warning">
-                    <Library className="w-5 h-5" />
-                  </div>
-                  <span className="font-bold">Library Management</span>
+              {/* Help Section */}
+              <section>
+                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Support & Help</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <button 
+                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    onClick={() => setActiveArticleId("setup_host")}
+                  >
+                    <Wifi className="w-4 h-4 text-success" />
+                    <span className="text-sm font-medium">Setting up Host</span>
+                  </button>
+                  <button 
+                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    onClick={() => setActiveArticleId("select_library")}
+                  >
+                    <Library className="w-4 h-4 text-info" />
+                    <span className="text-sm font-medium">Selecting Library</span>
+                  </button>
+                  <button 
+                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    onClick={() => setActiveArticleId("not_found")}
+                  >
+                    <Settings className="w-4 h-4 text-warning" />
+                    <span className="text-sm font-medium">Troubleshooting</span>
+                  </button>
                 </div>
-                <div className="collapse-content px-14 pb-4">
-                  <ul className="space-y-3 pt-2 text-sm text-base-content/70">
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("add_books")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        Adding new books
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("sync_metadata")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        Syncing metadata
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setActiveArticleId("delete_books")}
-                        className="hover:text-primary transition-colors text-left w-full"
-                      >
-                        Deleting books
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              </section>
+
+              {/* About Section */}
+              <section className="pt-4 border-t border-base-300">
+                 <div className="flex flex-col gap-1">
+                   {hostIp && (
+                     <p className="text-[10px] font-mono text-base-content/40">HOST IP: {hostIp}</p>
+                   )}
+                   <p className="text-[10px] font-mono text-base-content/40">VERSION: 1.0.0 (Release)</p>
+                 </div>
+              </section>
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div
-          className="p-4 border-t border-base-300 bg-base-200/40 flex flex-col gap-2"
-          style={{ paddingBottom: "calc(var(--safe-area-bottom, 0px) + 2rem)" }}
+          className="p-4 border-t border-base-300 bg-base-200/40"
+          style={{ paddingBottom: "calc(var(--safe-area-bottom, 0px) + 1.5rem)" }}
         >
           <a
             href="https://github.com/jdluu/ShelfSync/wiki"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-ghost btn-sm justify-start gap-3 opacity-70 hover:opacity-100 group"
+            className="btn btn-ghost btn-sm w-full justify-between group"
           >
-            <FileText className="w-4 h-4 group-hover:text-primary" />
-            <span className="text-xs font-semibold">Full Documentation</span>
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 group-hover:text-primary" />
+              <span className="text-xs font-semibold">Full Documentation</span>
+            </div>
+            <ArrowLeft className="w-3 h-3 rotate-180 opacity-50" />
           </a>
         </div>
       </aside>
