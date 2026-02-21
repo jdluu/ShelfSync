@@ -33,11 +33,13 @@ The backend is constructed using Rust and the Tauri SDK, organized into distinct
 
 ### Frontend (React + TypeScript)
 The frontend is built with React and structured around feature modules:
-*   **UI Framework**: Built with **Chakra UI** and **Framer Motion** for a responsive interface.
+*   **UI Framework**: Built with **Tailwind CSS**, **DaisyUI**, and **Lucide React** for an accessible and responsive interface featuring skeleton loading sequences.
 *   **Features**: Business logic is encapsulated in feature-specific directories (e.g., `host`, `client`, `discovery`).
-*   **State Management**: Asynchronous state, caching, and data fetching are managed using **TanStack Query**.
+*   **State Management**: Asynchronous state, caching, and data fetching are managed using **TanStack Query** alongside **Zustand** for local UI state.
+*   **Validation**: Strict runtime payload validation across the Tauri IPC boundary using **Zod**.
 *   **Storage**: Local configuration is managed using persistent stores (**Tauri Plugin Store**).
 *   **Database**: Local client-side book tracking and sync status stored in a local SQLite database.
+*   **Testing**: Automated unit testing powered by **Vitest** with centralized Tauri mocked boundaries.
 
 ## Features
 
