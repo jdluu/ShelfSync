@@ -1,5 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
-import { load } from "@tauri-apps/plugin-store";
+import { isTauri, safeStoreLoad } from "@/utils/tauri";
 import React, {
   createContext,
   type ReactNode,
@@ -31,7 +30,7 @@ export const DiscoveryProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const updateKnownHosts = useCallback(async (newHosts: Host[]) => {
     try {
-      const store = await load("shelfsync_settings.json");
+      const store = await safeStoreLoad("shelfsync_settings.json");
       const current = (await store.get<Host[]>("known_hosts")) || [];
       const merged = [...current];
 
@@ -72,7 +71,7 @@ export const DiscoveryProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     const loadInitial = async () => {
       try {
-        const store = await load("shelfsync_settings.json");
+        const store = await safeStoreLoad("shelfsync_settings.json");
         const saved = await store.get<Host[]>("known_hosts");
         if (saved) setKnownHosts(saved);
       } catch (e) {
@@ -81,13 +80,20 @@ export const DiscoveryProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
     loadInitial();
 
-    const unlistenPromise = listen<Host[]>("discovery-update", (event) => {
-      setActiveHosts(event.payload);
-      updateKnownHosts(event.payload);
-    });
+    let unlisten: (() => void) | undefined;
+    if (isTauri()) {
+      import("@tauri-apps/api/event").then(({ listen }) => {
+        listen<Host[]>("discovery-update", (event) => {
+          setActiveHosts(event.payload);
+          updateKnownHosts(event.payload);
+        }).then((u) => {
+          unlisten = u;
+        });
+      });
+    }
 
     return () => {
-      unlistenPromise.then((unlisten) => unlisten());
+      if (unlisten) unlisten();
     };
   }, [refreshConnectionInfo, scan, updateKnownHosts]);
 

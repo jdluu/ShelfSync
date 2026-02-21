@@ -1,9 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
-import { appDataDir } from "@tauri-apps/api/path";
-import { open } from "@tauri-apps/plugin-dialog";
-import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { load } from "@tauri-apps/plugin-store";
+import { isTauri, safeInvoke, safeStoreLoad } from "@/utils/tauri";
 import React, {
   createContext,
   type ReactNode,
@@ -140,7 +135,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     async function loadSettings() {
       try {
-        const store = await load(STORE_PATH);
+        const store = await safeStoreLoad(STORE_PATH);
 
         // TEST HOOK: If Playwright sets this flag, clear the store.
         if (window.__TEST_RESET__) {
@@ -195,7 +190,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const setAppMode = async (mode: AppMode) => {
     dispatch({ type: "SET_MODE", payload: mode });
-    const store = await load(STORE_PATH);
+    const store = await safeStoreLoad(STORE_PATH);
     await store.set("app_mode", mode);
     await store.save();
 
@@ -227,7 +222,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       const newTokens = { ...authTokens, [hostKey]: newToken };
       dispatch({ type: "SET_AUTH_TOKENS", payload: newTokens });
 
-      const store = await load(STORE_PATH);
+      const store = await safeStoreLoad(STORE_PATH);
       await store.set("auth_tokens", newTokens);
       await store.save();
 
@@ -258,8 +253,11 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!token) return;
 
     try {
-      const destRoot = await appDataDir();
-      await invoke("start_bulk_sync", {
+      const destRoot = isTauri()
+        ? await (await import("@tauri-apps/api/path")).appDataDir()
+        : "";
+
+      await safeInvoke("start_bulk_sync", {
         books: booksToSync,
         hostIp: connectedHost.ip,
         hostPort: connectedHost.port,
@@ -268,10 +266,15 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       // Request notification permission if needed
-      const permission = await isPermissionGranted();
-      if (!permission) {
-        const permission = await requestPermission();
-        console.log("Notification permission:", permission);
+      if (isTauri()) {
+        const { isPermissionGranted, requestPermission } = await import(
+          "@tauri-apps/plugin-notification"
+        );
+        const permission = await isPermissionGranted();
+        if (!permission) {
+          const permission = await requestPermission();
+          console.log("Notification permission:", permission);
+        }
       }
     } catch (e) {
       console.error("Bulk sync failed:", e);
@@ -284,12 +287,21 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       // TEST HOOK: Bypass the native system OS dialog
       if (window.__TEST_MOCK_LIBRARY_PATH__) {
         dispatch({ type: "SET_LIBRARY_PATH", payload: window.__TEST_MOCK_LIBRARY_PATH__ });
-        const store = await load(STORE_PATH);
+        const store = await safeStoreLoad(STORE_PATH);
         await store.set("library_path", window.__TEST_MOCK_LIBRARY_PATH__);
         await store.save();
         return;
       }
 
+      if (!isTauri()) {
+        dispatch({
+          type: "SET_MANUAL_ERROR",
+          payload: "Library selection is only available in the desktop app.",
+        });
+        return;
+      }
+
+      const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({
         directory: true,
         multiple: false,
@@ -298,7 +310,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (selected && typeof selected === "string") {
         dispatch({ type: "SET_LIBRARY_PATH", payload: selected });
-        const store = await load(STORE_PATH);
+        const store = await safeStoreLoad(STORE_PATH);
         await store.set("library_path", selected);
         await store.save();
         // localQuery will automatically refetch because libraryPath changed
@@ -309,7 +321,12 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const openLocalBook = async (path: string) => {
-    await openPath(path);
+    if (isTauri()) {
+      const { openPath } = await import("@tauri-apps/plugin-opener");
+      await openPath(path);
+    } else {
+      console.log("Opening book path in browser (not supported):", path);
+    }
   };
 
   const toggleReadStatus = async (book: Book) => {
