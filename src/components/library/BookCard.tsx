@@ -73,8 +73,8 @@ export const BookCard: React.FC<BookCardProps> = ({
             />
           </div>
         )}
-        <div className="flex items-start gap-4">
-          <div className="w-20 h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="w-16 h-24 sm:w-20 sm:h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm">
             {!imgError && coverUrl ? (
               <>
                 {!imgLoaded && (
@@ -117,7 +117,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             </p>
 
             {book.series && (
-              <p className="text-xs font-bold text-accent -mt-0.5">
+              <p className="text-[10px] sm:text-xs font-bold text-accent -mt-0.5">
                 {book.series} #{book.series_index}
               </p>
             )}
@@ -136,18 +136,18 @@ export const BookCard: React.FC<BookCardProps> = ({
             )}
 
             {variant === "host-view" && (
-              <p className="text-xs text-base-content/50 font-mono break-all line-clamp-2">
+              <p className="text-[10px] sm:text-xs text-base-content/50 font-mono break-all line-clamp-2">
                 {book.path}
               </p>
             )}
 
             {variant === "local" && (
               <div className="flex flex-wrap gap-1 mt-1">
-                <div className="badge badge-sm badge-ghost">Downloaded</div>
+                <div className="badge badge-xs sm:badge-sm badge-ghost">Downloaded</div>
                 {onToggleStatus && (
                   <button
                     type="button"
-                    className={`badge badge-sm cursor-pointer ${getStatusColor(book.read_status)}`}
+                    className={`badge badge-xs sm:badge-sm cursor-pointer ${getStatusColor(book.read_status)}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleStatus(book);

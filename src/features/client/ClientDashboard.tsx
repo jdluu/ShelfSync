@@ -123,23 +123,25 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         onChangeRole={onChangeRole}
         actions={
           connectedHost && (
-            <div className="flex items-center gap-2 mr-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 mr-1 sm:mr-2">
               <button
                 type="button"
                 onClick={() => {
                   setSelectionMode(!selectionMode);
                   setSelectedIds(new Set());
                 }}
-                className={`btn btn-sm ${selectionMode ? "btn-primary" : "btn-outline"}`}
+                className={`btn btn-xs sm:btn-sm ${selectionMode ? "btn-primary" : "btn-outline"}`}
               >
-                {selectionMode ? "Cancel Selection" : "Select Multiple"}
+                <span className="hidden sm:inline">{selectionMode ? "Cancel Selection" : "Select Multiple"}</span>
+                <span className="sm:hidden">{selectionMode ? "Cancel" : "Select"}</span>
               </button>
               <button
                 type="button"
                 onClick={onDisconnect}
-                className="btn btn-sm btn-ghost border border-base-300"
+                className="btn btn-xs sm:btn-sm btn-ghost border border-base-300"
               >
-                Disconnect
+                <span className="hidden sm:inline">Disconnect</span>
+                <span className="sm:hidden">Exit</span>
               </button>
             </div>
           )
@@ -149,20 +151,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
         <div className="container mx-auto max-w-7xl">
           {connectedHost && (
-            <div className="mb-6 sm:mb-8 p-4 bg-primary/5 border border-primary/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
+            <div className="mb-6 sm:mb-8 p-4 sm:p-5 bg-primary/5 border border-primary/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
                 <p className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-widest">
                   Connected To
                 </p>
-                <p className="text-lg sm:text-xl font-bold text-base-content/90 break-all leading-tight">
-                  {connectedHost.hostname}{" "}
-                  <span className="opacity-40 sm:ml-1 font-mono text-xs sm:text-sm block sm:inline">
-                    ({connectedHost.ip})
-                  </span>
+                <p className="text-base sm:text-xl font-bold text-base-content/90 break-all leading-tight">
+                  {connectedHost.hostname}
+                </p>
+                <p className="text-xs font-mono opacity-50">
+                  {connectedHost.ip}:{connectedHost.port}
                 </p>
               </div>
-              <div className="badge badge-success badge-md sm:badge-lg gap-2 font-bold px-3 sm:px-4 py-3 shrink-0">
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <div className="badge badge-success badge-sm sm:badge-lg gap-2 font-bold px-3 sm:px-4 py-3 shrink-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 Live Sync
               </div>
             </div>
@@ -205,18 +207,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
           ) : connectedHost ? (
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 items-stretch sm:items-center">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-xl sm:text-2xl font-bold">Available Books</h2>
-                  <span className="badge badge-success badge-sm sm:badge-lg text-white">
-                    Live Sync
+                  <h2 className="text-lg sm:text-2xl font-bold">Available Books</h2>
+                  <span className="badge badge-success badge-xs sm:badge-lg text-white font-medium">
+                    {books.length} Total
                   </span>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="flex-grow sm:flex-initial">
+                  <div className="flex-1 sm:w-64">
                     <SearchBar value={searchTerm} onChange={setSearchTerm} />
                   </div>
-                  <SortMenu value={sortOption} onChange={setSortOption} />
+                  <div className="shrink-0">
+                    <SortMenu value={sortOption} onChange={setSortOption} />
+                  </div>
                 </div>
               </div>
 

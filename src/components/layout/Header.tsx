@@ -41,13 +41,13 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
   return (
     <>
       <header
-        className="navbar bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center sticky top-0 z-[1000]"
-        style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 1.25rem)" }}
+        className="navbar bg-base-100 border-b border-base-300 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center sticky top-0 z-[1000]"
+        style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 0.75rem)" }}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
-            <Library className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold tracking-tight">ShelfSync</span>
+            <Library className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
+            <span className="text-xl sm:text-2xl font-bold tracking-tight hidden xs:block">ShelfSync</span>
           </div>
           <div className="h-8 w-px bg-base-300 mx-2 hidden sm:block"></div>
           <span className="text-lg font-medium text-base-content/80 hidden sm:block">{title}</span>
@@ -59,11 +59,11 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
             <button
               type="button"
               onClick={onChangeRole}
-              className="btn btn-primary btn-sm px-2 sm:px-4 font-semibold shadow-sm"
+              className="btn btn-primary btn-sm px-3 sm:px-4 font-semibold shadow-sm"
               aria-label="Change Role"
             >
-              <span className="hidden xs:inline">Change Role</span>
-              <span className="xs:hidden">Role</span>
+              <span className="hidden sm:inline">Change Role</span>
+              <span className="sm:hidden">Role</span>
             </button>
           )}
 
@@ -71,23 +71,23 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
             <button
               type="button"
               onClick={toggleTheme}
-              className="btn btn-ghost btn-sm btn-circle"
+              className="btn btn-ghost btn-xs sm:btn-sm btn-circle"
               title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
             >
               {theme === "light" ? (
-                <Moon className="w-5 h-5 text-base-content/70" />
+                <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/70" />
               ) : (
-                <Sun className="w-5 h-5 text-base-content/70" />
+                <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/70" />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => setIsHelpOpen(true)}
-              className="btn btn-ghost btn-sm gap-2 font-medium opacity-70 hover:opacity-100"
+              className="btn btn-ghost btn-xs sm:btn-sm px-1 sm:px-2 gap-1 sm:gap-2 font-medium opacity-70 hover:opacity-100"
               aria-label="Help"
             >
-              <HelpCircle className="w-5 h-5" />
+              <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden md:inline">Help</span>
             </button>
           </div>
