@@ -19,6 +19,14 @@ import { getLocalBooks, initDB } from "@/services/local-db";
 import type { Book, Host } from "@/types/core";
 import type { AppMode, LibraryContextType } from "@/types/library";
 
+declare global {
+  interface Window {
+    __TEST_RESET__?: boolean;
+    __TEST_MOCK_LIBRARY_PATH__?: string;
+    __TEST_MOCK_MANIFEST_RESULTS__?: Book[];
+  }
+}
+
 const STORE_PATH = "shelfsync_settings.json";
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -134,6 +142,12 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       try {
         const store = await load(STORE_PATH);
 
+        // TEST HOOK: If Playwright sets this flag, clear the store.
+        if (window.__TEST_RESET__) {
+          await store.clear();
+          await store.save();
+        }
+
         const [savedMode, savedPath, savedTokens] = await Promise.all([
           store.get<AppMode>("app_mode"),
           store.get<string>("library_path"),
@@ -233,6 +247,11 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const syncBooks = async (booksToSync: Book[]) => {
+    // TEST HOOK: Bypass in multi-instance E2E
+    if (window.__TEST_MOCK_MANIFEST_RESULTS__) {
+      return;
+    }
+
     if (!connectedHost) return;
     const hostKey = `${connectedHost.ip}:${connectedHost.port}`;
     const token = authTokens[hostKey];
@@ -262,6 +281,15 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const selectLibraryFolder = async () => {
     try {
+      // TEST HOOK: Bypass the native system OS dialog
+      if (window.__TEST_MOCK_LIBRARY_PATH__) {
+        dispatch({ type: "SET_LIBRARY_PATH", payload: window.__TEST_MOCK_LIBRARY_PATH__ });
+        const store = await load(STORE_PATH);
+        await store.set("library_path", window.__TEST_MOCK_LIBRARY_PATH__);
+        await store.save();
+        return;
+      }
+
       const selected = await open({
         directory: true,
         multiple: false,
