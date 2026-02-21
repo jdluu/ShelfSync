@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Library, Moon, Settings, Sun, User, Wifi, X } from "lucide-react";
+import { ArrowLeft, Monitor, FileText, Library, Moon, Settings, Sun, User, Wifi, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 
@@ -177,20 +177,42 @@ interface SettingsSidebarProps {
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClose, onChangeRole, hostIp }) => {
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark">(
-    (document.documentElement.getAttribute("data-theme") as "light" | "dark") || "dark",
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(
+    (localStorage.getItem("theme-preference") as "light" | "dark" | "system") || "system",
   );
 
-  const toggleTheme = () => {
-    const nextTheme = theme === "light" ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
+  const applyTheme = (t: "light" | "dark" | "system") => {
+    let effectiveTheme: "light" | "dark";
+    if (t === "system") {
+      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } else {
+      effectiveTheme = t;
+    }
+    document.documentElement.setAttribute("data-theme", effectiveTheme);
+    localStorage.setItem("theme-preference", t);
   };
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      if (theme === "system") {
+        applyTheme("system");
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [theme]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const currentTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark";
-      if (currentTheme && currentTheme !== theme) {
+      // Only sync back if not in system mode (to avoid infinite loops or clashing)
+      if (theme !== "system" && currentTheme && currentTheme !== theme) {
         setTheme(currentTheme);
       }
     });
@@ -270,25 +292,45 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
               {/* Appearance Section */}
               <section>
                 <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Appearance</h3>
-                <div 
-                  className="flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 cursor-pointer hover:bg-base-200 transition-colors"
-                  onClick={toggleTheme}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                      {theme === "dark" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">{theme === "dark" ? "Dark Mode" : "Light Mode"}</p>
-                      <p className="text-xs text-base-content/50">Switch display theme</p>
-                    </div>
+                <div className="flex flex-col gap-3 p-1 bg-base-200/50 rounded-xl border border-base-300">
+                  <div className="grid grid-cols-3 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setTheme("light")}
+                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
+                        theme === "light" 
+                          ? "bg-base-100 shadow-sm text-primary" 
+                          : "hover:bg-base-200 text-base-content/60"
+                      }`}
+                    >
+                      <Sun className="w-5 h-5" />
+                      <span className="text-[10px] font-bold uppercase">Light</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme("dark")}
+                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
+                        theme === "dark" 
+                          ? "bg-base-100 shadow-sm text-primary" 
+                          : "hover:bg-base-200 text-base-content/60"
+                      }`}
+                    >
+                      <Moon className="w-5 h-5" />
+                      <span className="text-[10px] font-bold uppercase">Dark</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme("system")}
+                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
+                        theme === "system" 
+                          ? "bg-base-100 shadow-sm text-primary" 
+                          : "hover:bg-base-200 text-base-content/60"
+                      }`}
+                    >
+                      <Monitor className="w-5 h-5" />
+                      <span className="text-[10px] font-bold uppercase">System</span>
+                    </button>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    className="toggle toggle-primary toggle-sm" 
-                    checked={theme === "dark"} 
-                    readOnly
-                  />
                 </div>
               </section>
 
