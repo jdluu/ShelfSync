@@ -1,4 +1,3 @@
-import { isTauri, safeInvoke, safeStoreLoad } from "@/utils/tauri";
 import React, {
   createContext,
   type ReactNode,
@@ -9,10 +8,12 @@ import React, {
 } from "react";
 import { useCheckPin, useHostManifest, useLocalLibrary } from "@/hooks/useLibraryQuery";
 import { useSyncProgress } from "@/hooks/useSyncProgress";
-import { httpClient } from "@/services/api";
-import { getLocalBooks, initDB } from "@/services/local-db";
+import { httpClient } from "@/services/apiClient";
+import { getLocalBooks, initDB } from "@/services/localDb";
+import { useAppStore } from "@/store/appStore";
 import type { Book, Host } from "@/types/core";
 import type { AppMode, LibraryContextType } from "@/types/library";
+import { isTauri, safeInvoke, safeStoreLoad } from "@/utils/tauri";
 
 declare global {
   interface Window {
@@ -150,7 +151,11 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         ]);
 
         const nextState: Partial<State> = {};
-        if (savedMode) nextState.appMode = savedMode;
+        if (savedMode) {
+          nextState.appMode = savedMode;
+          // Sync with global UI store
+          useAppStore.getState().setRole(savedMode);
+        }
         if (savedPath) nextState.libraryPath = savedPath;
         if (savedTokens) nextState.authTokens = savedTokens;
 
@@ -174,7 +179,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (appMode === "client" && connectedHost && token && remoteQuery.isSuccess) {
         try {
           const progress = await httpClient.getProgress(connectedHost, token);
-          const db = await import("@/services/local-db");
+          const db = await import("@/services/localDb");
           for (const p of progress) {
             await db.updateReadStatus(p.book_id, p.status as "unread" | "reading" | "finished");
           }
@@ -253,9 +258,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!token) return;
 
     try {
-      const destRoot = isTauri()
-        ? await (await import("@tauri-apps/api/path")).appDataDir()
-        : "";
+      const destRoot = isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "";
 
       await safeInvoke("start_bulk_sync", {
         books: booksToSync,
@@ -338,7 +341,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     try {
       // Update DB
-      await import("@/services/local-db").then((m) => m.updateReadStatus(book.id, next));
+      await import("@/services/localDb").then((m) => m.updateReadStatus(book.id, next));
 
       // Update State locally
       dispatch({
@@ -356,8 +359,8 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
             .catch((e) => console.error("Failed to push progress", e));
         }
       }
-    } catch (e) {
-      console.error("Failed to update status", e);
+    } catch (e: unknown) {
+      console.error("Failed to sync status", e);
     }
   };
 

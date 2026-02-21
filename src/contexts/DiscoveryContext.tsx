@@ -1,4 +1,3 @@
-import { isTauri, safeStoreLoad } from "@/utils/tauri";
 import React, {
   createContext,
   type ReactNode,
@@ -7,9 +6,10 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { api } from "@/services/api";
+import { api } from "@/services/apiClient";
 import type { ConnectionInfo, Host } from "@/types/core";
 import type { DiscoveryContextType } from "@/types/discovery";
+import { isTauri, safeStoreLoad } from "@/utils/tauri";
 
 const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefined);
 
