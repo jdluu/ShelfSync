@@ -57,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
               type="button"
               onClick={onChangeRole}
               className="btn btn-primary btn-sm px-2 sm:px-4 font-semibold shadow-sm"
+              aria-label="Change Role"
             >
               <span className="hidden xs:inline">Change Role</span>
               <span className="xs:hidden">Role</span>
@@ -81,6 +82,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
               type="button"
               onClick={() => setIsHelpOpen(true)}
               className="btn btn-ghost btn-sm gap-2 font-medium opacity-70 hover:opacity-100"
+              aria-label="Help"
             >
               <HelpCircle className="w-5 h-5" />
               <span className="hidden md:inline">Help</span>

@@ -164,7 +164,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                     }}
                     disabled={isDownloading}
                   >
-                    {isDownloading ? "Syncing..." : "Sync"}
+                    {isDownloading ? "Syncing..." : actionLabel || "Sync"}
                   </button>
                 )}
               </div>
