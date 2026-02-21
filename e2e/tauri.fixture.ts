@@ -8,7 +8,13 @@ export const test = base.extend<{
     const browser = await chromium.connectOverCDP("http://localhost:1422");
     const context = browser.contexts()[0];
     const page = context.pages()[0];
+    
+    // biome-ignore lint/suspicious/noExplicitAny: test backdoor
+    await page.addInitScript(() => { (window as any).__TEST_RESET__ = true; });
+    await page.reload();
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.waitForLoadState("domcontentloaded");
+    
     await use(page);
   },
   newTauriPage: async (_, use) => {
@@ -20,6 +26,7 @@ export const test = base.extend<{
       // We can trigger a new window via Tauri API or just return another page if one exists.
       // For testing multi-instance UI, we can use context.pages() or similar.
       const page = await context.newPage();
+      await page.setViewportSize({ width: 1280, height: 720 });
       await page.goto("http://localhost:1420"); // Vite dev server URL
       await page.waitForLoadState("domcontentloaded");
       return page;

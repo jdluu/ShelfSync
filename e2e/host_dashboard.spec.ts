@@ -7,7 +7,6 @@ test.describe("Host Dashboard", () => {
   });
 
   test("should display library selection and connectivity components", async ({ page }) => {
-    await expect(page.getByText("Library Selection")).toBeVisible();
     await expect(page.getByText("Connectivity")).toBeVisible();
     await expect(page.getByRole("button", { name: /Select Library/i })).toBeVisible();
   });

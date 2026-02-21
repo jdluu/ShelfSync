@@ -8,7 +8,7 @@ test.describe("Client Dashboard", () => {
 
   test("should display discovery view by default", async ({ page }) => {
     await expect(page.getByText("Connect to a Host")).toBeVisible();
-    await expect(page.getByPlaceholder(/Enter Host IP/i)).toBeVisible();
+    await expect(page.getByPlaceholder("IP Address")).toBeVisible();
   });
 
   test("should show empty state if disconnected", async ({ page }) => {
