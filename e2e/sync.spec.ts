@@ -28,16 +28,27 @@ test.describe("Multi-Instance Sync", () => {
     await clientPage.evaluate(() => {
       // biome-ignore lint/suspicious/noExplicitAny: test backdoor
       (window as any).__TEST_MOCK_MANIFEST_RESULTS__ = [
-        { id: 1, title: "The Great Gatsby", authors: "F. Scott Fitzgerald", series_index: 1, formats: ["epub"], tags: [], path: "mocked" }
+        {
+          id: 1,
+          title: "The Great Gatsby",
+          authors: "F. Scott Fitzgerald",
+          series_index: 1,
+          formats: ["epub"],
+          tags: [],
+          path: "mocked",
+        },
       ];
     });
 
     // Fill in the Manual Connection form to bypass flaky UDP mDNS locally
     await clientPage.getByPlaceholder("IP Address").fill("127.0.0.1");
     // Port defaults to 8080 in the component so we don't need to change it
-    // There are multiple Connect buttons (one per discovered host + the manual one). 
+    // There are multiple Connect buttons (one per discovered host + the manual one).
     // The manual connection area has a "btn-success" Connect button.
-    await clientPage.getByRole("button", { name: /^Connect$/i }).last().click();
+    await clientPage
+      .getByRole("button", { name: /^Connect$/i })
+      .last()
+      .click();
 
     // Verify connection banner
     await expect(clientPage.getByText("Connected To")).toBeVisible();
@@ -53,6 +64,5 @@ test.describe("Multi-Instance Sync", () => {
 
     // Verify we are still connected after interaction
     await expect(clientPage.getByText("Live Sync").first()).toBeVisible();
-
   });
 });
