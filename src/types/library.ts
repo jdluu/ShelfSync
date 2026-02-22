@@ -18,6 +18,7 @@ export interface LibraryContextType {
   loading: boolean;
   error: string | null;
   libraryPath: string;
+  replicaPath: string;
   connectedHost: Host | null;
   authRequired: boolean;
   pairingHost: Host | null;
@@ -32,6 +33,7 @@ export interface LibraryContextType {
   syncBook: (book: Book) => Promise<void>;
   syncBooks: (books: Book[]) => Promise<void>;
   selectLibraryFolder: () => Promise<void>;
+  selectReplicaFolder: () => Promise<void>;
   openLocalBook: (path: string) => Promise<void>;
   toggleReadStatus: (book: Book) => Promise<void>;
 }
