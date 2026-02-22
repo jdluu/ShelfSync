@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
-import com.j2013.shelfsync.RustWebView
+import com.jdluu.shelfsync.RustWebView
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle

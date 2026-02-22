@@ -4,25 +4,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-License-Identifier: MIT
 
--keep class com.j2013.shelfsync.* {
+-keep class com.jdluu.shelfsync.* {
   native <methods>;
 }
 
--keep class com.j2013.shelfsync.WryActivity {
+-keep class com.jdluu.shelfsync.WryActivity {
   public <init>(...);
 
-  void setWebView(com.j2013.shelfsync.RustWebView);
+  void setWebView(com.jdluu.shelfsync.RustWebView);
   java.lang.Class getAppClass(...);
   java.lang.String getVersion();
 }
 
--keep class com.j2013.shelfsync.Ipc {
+-keep class com.jdluu.shelfsync.Ipc {
   public <init>(...);
 
   @android.webkit.JavascriptInterface public <methods>;
 }
 
--keep class com.j2013.shelfsync.RustWebView {
+-keep class com.jdluu.shelfsync.RustWebView {
   public <init>(...);
 
   void loadUrlMainThread(...);
@@ -30,6 +30,6 @@
   void evalScript(...);
 }
 
--keep class com.j2013.shelfsync.RustWebChromeClient,com.j2013.shelfsync.RustWebViewClient {
+-keep class com.jdluu.shelfsync.RustWebChromeClient,com.jdluu.shelfsync.RustWebViewClient {
   public <init>(...);
 }

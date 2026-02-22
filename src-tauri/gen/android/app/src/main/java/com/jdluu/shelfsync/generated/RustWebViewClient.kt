@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
 import android.net.Uri
 import android.webkit.*

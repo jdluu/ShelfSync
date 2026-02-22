@@ -6,7 +6,7 @@
 
 @file:Suppress("ObsoleteSdkInt", "RedundantOverride", "QueryPermissionsNeeded", "SimpleDateFormat")
 
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
 // taken from https://github.com/ionic-team/capacitor/blob/6658bca41e78239347e458175b14ca8bd5c1d6e8/android/capacitor/src/main/java/com/getcapacitor/BridgeWebChromeClient.java
 

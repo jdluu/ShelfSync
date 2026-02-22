@@ -6,7 +6,7 @@
 
 @file:Suppress("unused", "SetJavaScriptEnabled")
 
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
 import android.annotation.SuppressLint
 import android.webkit.*

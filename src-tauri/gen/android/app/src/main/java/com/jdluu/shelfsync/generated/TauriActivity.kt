@@ -4,7 +4,7 @@
 
 /* THIS FILE IS AUTO-GENERATED. DO NOT MODIFY!! */
 
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
 import android.content.Intent
 import android.content.res.Configuration
