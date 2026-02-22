@@ -4,17 +4,18 @@ import java.io.File
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.kotlin.dsl.get
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 
 open class BuildTask : DefaultTask() {
     @Input
-    var rootDirRel: String? = null
+    lateinit var rootDirRel: String
     @Input
-    var target: String? = null
+    lateinit var target: String
     @Input
-    var release: Boolean? = null
+    var release: Boolean = false
 
     @TaskAction
     fun assemble() {
@@ -47,9 +48,6 @@ open class BuildTask : DefaultTask() {
     }
 
     fun runTauriCli(executable: String) {
-        val rootDirRel = rootDirRel ?: throw GradleException("rootDirRel cannot be null")
-        val target = target ?: throw GradleException("target cannot be null")
-        val release = release ?: throw GradleException("release cannot be null")
         val args = listOf("tauri", "android", "android-studio-script");
 
         project.exec {

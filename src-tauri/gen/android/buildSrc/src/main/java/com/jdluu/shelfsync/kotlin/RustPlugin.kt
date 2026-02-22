@@ -6,6 +6,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.get
+import com.jdluu.shelfsync.kotlin.BuildTask
 
 const val TASK_GROUP = "rust"
 
