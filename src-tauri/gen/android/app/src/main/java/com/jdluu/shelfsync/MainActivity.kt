@@ -1,4 +1,4 @@
-package com.j2013.shelfsync
+package com.jdluu.shelfsync
 
 import android.Manifest
 import android.content.pm.PackageManager
