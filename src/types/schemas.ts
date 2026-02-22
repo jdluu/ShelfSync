@@ -23,5 +23,5 @@ export const ConnectionInfoSchema = z.object({
   ip: z.string(),
   port: z.number(),
   hostname: z.string(),
-  pin: z.string().optional(),
+  pin: z.string().nullable().optional(),
 });

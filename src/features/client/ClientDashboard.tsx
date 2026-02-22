@@ -236,7 +236,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     selectable={selectionMode}
                     onSelect={() => toggleSelection(book.id)}
                     syncStatus={syncProgress[book.id]}
-                    actionLabel="Sync to Replica"
+                    actionLabel="Sync to Storage"
                     actionColor="blue"
                   />
                 ))}

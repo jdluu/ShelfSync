@@ -57,7 +57,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                     className="btn btn-primary btn-lg w-full shadow-lg group active:scale-95 transition-transform"
                     disabled={loading}
                   >
-                    {libraryPath ? "Select Library" : "Select Library"}
+                    {libraryPath ? "Update Library" : "Select Library"}
                   </button>
                   {error && (
                     <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
@@ -66,7 +66,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
 
                 <div className="space-y-2">
                   <p className="text-base-content/40 font-medium text-xs uppercase tracking-wider">
-                    {libraryPath ? "No library selected." : "No library selected."}
+                    {libraryPath ? "Library Active" : "No library selected."}
                   </p>
                   <p className="text-sm text-base-content/60 px-4 line-clamp-2 break-all font-mono">
                     {libraryPath || "Choose your Calibre library folder to begin."}

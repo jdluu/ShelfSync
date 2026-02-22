@@ -9,6 +9,13 @@ export const isTauri = (): boolean => {
 };
 
 /**
+ * Detects if the app is running on a mobile platform (Android or iOS).
+ */
+export const isMobile = (): boolean => {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+};
+
+/**
  * Safely calls a Tauri invoke command.
  * Returns the defaultValue if not running in Tauri.
  */

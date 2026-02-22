@@ -29,7 +29,7 @@ const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 type State = {
   appMode: AppMode;
   libraryPath: string;
-  replicaPath: string;
+  offlineStoragePath: string;
   localBooks: Book[];
   connectedHost: Host | null;
   authTokens: Record<string, string>;
@@ -40,7 +40,7 @@ type Action =
   | { type: "SET_ALL"; payload: Partial<State> }
   | { type: "SET_MODE"; payload: AppMode }
   | { type: "SET_LIBRARY_PATH"; payload: string }
-  | { type: "SET_REPLICA_PATH"; payload: string }
+  | { type: "SET_OFFLINE_STORAGE_PATH"; payload: string }
   | { type: "SET_LOCAL_BOOKS"; payload: Book[] }
   | { type: "SET_CONNECTED_HOST"; payload: Host | null }
   | { type: "SET_AUTH_TOKENS"; payload: Record<string, string> }
@@ -54,8 +54,8 @@ const reducer = (state: State, action: Action): State => {
       return { ...state, appMode: action.payload };
     case "SET_LIBRARY_PATH":
       return { ...state, libraryPath: action.payload };
-    case "SET_REPLICA_PATH":
-      return { ...state, replicaPath: action.payload };
+    case "SET_OFFLINE_STORAGE_PATH":
+      return { ...state, offlineStoragePath: action.payload };
     case "SET_LOCAL_BOOKS":
       return { ...state, localBooks: action.payload };
     case "SET_CONNECTED_HOST":
@@ -77,14 +77,14 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [state, dispatch] = useReducer(reducer, {
     appMode: "unselected",
     libraryPath: "",
-    replicaPath: "",
+    offlineStoragePath: "",
     localBooks: [],
     connectedHost: null,
     authTokens: {},
     manualError: null,
   });
 
-  const { appMode, libraryPath, replicaPath, localBooks, connectedHost, authTokens, manualError } = state;
+  const { appMode, libraryPath, offlineStoragePath, localBooks, connectedHost, authTokens, manualError } = state;
 
   // Use Ref to access latest books without re-subscribing
   const booksRef = useRef<Book[]>([]);
@@ -99,7 +99,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const checkPinMutation = useCheckPin();
 
   // --- External Hooks ---
-  const syncProgress = useSyncProgress(booksRef, replicaPath, (books) => {
+  const syncProgress = useSyncProgress(booksRef, offlineStoragePath, (books) => {
     dispatch({ type: "SET_LOCAL_BOOKS", payload: books });
   });
 
@@ -151,15 +151,15 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
           await store.save();
         }
 
-        const [savedLibraryPath, savedReplicaPath, savedTokens] = await Promise.all([
+        const [savedLibraryPath, savedOfflineStoragePath, savedTokens] = await Promise.all([
           store.get<string>("library_path"),
-          store.get<string>("replica_path"),
+          store.get<string>("offline_storage_path"),
           store.get<Record<string, string>>("auth_tokens"),
         ]);
 
         const nextState: Partial<State> = {};
         if (savedLibraryPath) nextState.libraryPath = savedLibraryPath;
-        if (savedReplicaPath) nextState.replicaPath = savedReplicaPath;
+        if (savedOfflineStoragePath) nextState.offlineStoragePath = savedOfflineStoragePath;
         if (savedTokens) nextState.authTokens = savedTokens;
 
         dispatch({ type: "SET_ALL", payload: nextState });
@@ -254,7 +254,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!token) return;
 
     try {
-      const destRoot = replicaPath || (isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "");
+      const destRoot = offlineStoragePath || (isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "");
 
       await safeInvoke("start_bulk_sync", {
         books: booksToSync,
@@ -319,7 +319,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const selectReplicaFolder = async () => {
+  const selectOfflineStorageFolder = async () => {
     try {
       if (!isTauri()) {
         dispatch({
@@ -333,13 +333,13 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "Select Sync Replica Folder",
+        title: "Select Offline Storage Folder",
       });
 
       if (selected && typeof selected === "string") {
-        dispatch({ type: "SET_REPLICA_PATH", payload: selected });
+        dispatch({ type: "SET_OFFLINE_STORAGE_PATH", payload: selected });
         const store = await safeStoreLoad(STORE_PATH);
-        await store.set("replica_path", selected);
+        await store.set("offline_storage_path", selected);
         await store.save();
       }
     } catch (e) {
@@ -397,7 +397,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         loading,
         error: error || null,
         libraryPath,
-        replicaPath,
+        offlineStoragePath,
         connectedHost,
         authRequired,
         pairingHost,
@@ -410,7 +410,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         syncBook,
         syncBooks,
         selectLibraryFolder,
-        selectReplicaFolder,
+        selectOfflineStorageFolder,
         openLocalBook,
         toggleReadStatus,
       }}

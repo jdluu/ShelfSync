@@ -2,7 +2,7 @@ import { ArrowLeft, Monitor, FileText, Library, Moon, Settings, Sun, User, Wifi,
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useLibrary } from "@/contexts/LibraryContext";
-import { isTauri } from "@/utils/tauri";
+import { isMobile, isTauri } from "@/utils/tauri";
 
 interface HelpArticle {
   id: string;
@@ -161,7 +161,7 @@ const ARTICLES: Record<string, HelpArticle> = {
         <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
           <li>
             Deleting a book from the Client Dashboard only removes the{" "}
-            <strong>offline replica</strong> from your mobile device.
+            <strong>offline copy</strong> from your mobile device.
           </li>
           <li>To permanently remove a book from the library, use Calibre on your Host computer.</li>
         </ul>
@@ -178,7 +178,7 @@ interface SettingsSidebarProps {
 }
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClose, onChangeRole, hostIp }) => {
-  const { appMode, replicaPath, selectReplicaFolder } = useLibrary();
+  const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibrary();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark" | "system">(
     (localStorage.getItem("theme-preference") as "light" | "dark" | "system") || "system",
@@ -349,23 +349,25 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
                 <section>
                   <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Session</h3>
                   
-                  {/* Replica Location Section (Client Mode + Desktop only) */}
-                  {appMode === "client" && isTauri() && (
+                  {/* Offline Storage Section (Client Mode + Desktop only) */}
+                  {appMode === "client" && (
                     <div className="flex flex-col gap-4 p-4 bg-base-200/50 rounded-xl border border-base-300 mb-3">
                       <div className="flex justify-between items-center">
                         <div className="flex-grow overflow-hidden mr-2">
-                          <p className="font-bold text-sm">Replica Location</p>
-                          <p className="text-[10px] text-base-content/50 truncate" title={replicaPath || "Default Cache"}>
-                            {replicaPath || "Default Cache"}
+                          <p className="font-bold text-sm">Offline Storage</p>
+                          <p className="text-[10px] text-base-content/50 truncate" title={offlineStoragePath || "Default Cache"}>
+                            {offlineStoragePath || "Default Cache"}
                           </p>
                         </div>
-                        <button 
-                          type="button"
-                          onClick={selectReplicaFolder}
-                          className="btn btn-xs btn-outline border-base-300"
-                        >
-                          Change
-                        </button>
+                        {isTauri() && !isMobile() && (
+                          <button 
+                            type="button"
+                            onClick={selectOfflineStorageFolder}
+                            className="btn btn-xs btn-outline border-base-300"
+                          >
+                            Change
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

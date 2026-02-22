@@ -12,7 +12,7 @@ import type { SyncProgress } from "@/types/library";
  *
  * @summary Subscribes to backend IPC events bridging Rust's synchronization progress to the React UI.
  * @param booksRef - A stable ref to the current list of available books to resolve full book objects.
- * @param replicaPath - Custom path where synced books are stored.
+ * @param offlineStoragePath - Custom path where synced books are stored.
  * @param onSyncComplete - Callback triggered when a book completes downloading.
  * @returns {Record<number, SyncProgress>} The current map of sync progress objects by book ID.
  * @throws {Error} Logs console errors if local DB indexing fails upon sync completion.
@@ -20,7 +20,7 @@ import type { SyncProgress } from "@/types/library";
  */
 export function useSyncProgress(
   booksRef: React.MutableRefObject<Book[]>,
-  replicaPath: string,
+  offlineStoragePath: string,
   onSyncComplete: (localBooks: Book[]) => void,
 ) {
   const [syncProgress, setSyncProgress] = useState<Record<number, SyncProgress>>({});
@@ -37,7 +37,7 @@ export function useSyncProgress(
           try {
             const fullBook = booksRef.current.find((b) => b.id === prog.book_id);
             if (fullBook) {
-              const root = replicaPath || (await appDataDir());
+              const root = offlineStoragePath || (await appDataDir());
               const path = await join(root, fullBook.path);
               await saveLocalBook(fullBook, path);
               const stored = await getLocalBooks();
@@ -62,7 +62,7 @@ export function useSyncProgress(
     return () => {
       if (unlisten) unlisten();
     };
-  }, [booksRef, replicaPath, onSyncComplete]);
+  }, [booksRef, offlineStoragePath, onSyncComplete]);
 
   return syncProgress;
 }

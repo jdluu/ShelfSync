@@ -21,7 +21,7 @@ export interface ConnectionInfo {
   ip: string;
   port: number;
   hostname: string;
-  pin?: string;
+  pin?: string | null;
 }
 
 export type Host = ConnectionInfo;
