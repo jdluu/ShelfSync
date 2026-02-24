@@ -15,6 +15,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     }
 
     let conn = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let _ = conn.execute("PRAGMA busy_timeout = 5000", []);
 
     // Quick check for total book count
     let total: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
@@ -24,62 +25,44 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     }
 
     let start = std::time::Instant::now();
-    eprintln!("[DB] Executing metadata query (using subqueries for safety)...");
+    eprintln!("[DB] Executing simplified metadata query...");
     
-    // Using subqueries for authors, series, tags, and publisher to avoid row explosion from joins
+    // Minimal query to avoid join/subquery issues during debugging
     let mut stmt = conn.prepare(
-        "SELECT 
-            b.id, 
-            b.title, 
-            b.path, 
-            (SELECT GROUP_CONCAT(a.name, ', ') FROM books_authors_link bal JOIN authors a ON bal.author = a.id WHERE bal.book = b.id) as authors,
-            (SELECT GROUP_CONCAT(d.format, ',') FROM data d WHERE d.book = b.id) as formats,
-            (SELECT s.name FROM series s WHERE s.id = b.series) as series,
-            b.series_index,
-            (SELECT GROUP_CONCAT(t.name, ',') FROM books_tags_link btl JOIN tags t ON btl.tag = t.id WHERE btl.book = b.id) as tags,
-            (SELECT p.name FROM books_publishers_link bpl JOIN publishers p ON bpl.publisher = p.id WHERE bpl.book = b.id LIMIT 1) as publisher
-         FROM books b"
+        "SELECT id, title, path, series, series_index FROM books"
     )?;
 
+    eprintln!("[DB] Statement prepared. Starting iteration...");
+
     let book_iter = stmt.query_map([], |row| {
-        let formats_str: Option<String> = row.get(4)?;
-        let formats = formats_str
-            .map(|s| s.split(',').map(|f| f.to_string()).collect())
-            .unwrap_or_default();
-
-        let tags_str: Option<String> = row.get(7)?;
-        let tags = tags_str
-            .map(|s| s.split(',').map(|t| t.to_string()).collect())
-            .unwrap_or_default();
-
         Ok(Book {
             id: row.get(0)?,
             title: row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "Unknown Title".to_string()),
             path: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
-            authors: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "Unknown Author".to_string()),
+            authors: "Loading...".to_string(), // Simplified for now
             cover_url: None,
-            formats,
-            series: row.get(5)?,
-            series_index: row.get::<_, Option<f64>>(6)?.unwrap_or(1.0),
-            tags,
-            publisher: row.get(8)?,
+            formats: Vec::new(),
+            series: row.get::<_, Option<String>>(3)?, // This might be an ID if not joined, but let's see if it works
+            series_index: row.get::<_, Option<f64>>(4)?.unwrap_or(1.0),
+            tags: Vec::new(),
+            publisher: None,
         })
     })?;
 
     let mut books = Vec::new();
     let mut errors = 0;
     for (i, book_res) in book_iter.enumerate() {
+        let idx = i + 1;
+        if i < 5 || idx % 50 == 0 || idx == (total as usize) {
+            eprintln!("[DB] Row {}/{} processing...", idx, total);
+        }
         match book_res {
             Ok(book) => {
-                let idx = i + 1;
-                if idx % 100 == 0 || idx == (total as usize) {
-                    eprintln!("[DB] Processed {}/{} books...", idx, total);
-                }
                 books.push(book);
             }
             Err(e) => {
                 if errors < 10 {
-                    eprintln!("[DB] ROW ERROR at index {}: {:?}", i, e);
+                    eprintln!("[DB] ROW ERROR index {}: {:?}", i, e);
                 }
                 errors += 1;
             }
@@ -89,7 +72,34 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     if errors > 0 {
         eprintln!("[DB] Finished with {} row errors.", errors);
     }
-    eprintln!("[DB] SUCCESSFULLY loaded {} books in {:?}.", books.len(), start.elapsed());
+    eprintln!("[DB] SUCCESSFULLY loaded {} basic records in {:?}.", books.len(), start.elapsed());
+    
+    // Now try to fetch formats for the books (common source of hangs)
+    eprintln!("[DB] Fetching formats for {} books...", books.len());
+    for b in &mut books {
+        if let Ok(mut fmt_stmt) = conn.prepare("SELECT format FROM data WHERE book = ?") {
+            let fmts: Vec<String> = fmt_stmt.query_map([b.id], |r| r.get(0))?
+                .filter_map(|r| r.ok())
+                .collect();
+            b.formats = fmts;
+        }
+    }
+    eprintln!("[DB] Formats loaded.");
+
+    // And authors
+    eprintln!("[DB] Fetching authors for {} books...", books.len());
+    for b in &mut books {
+        if let Ok(mut auth_stmt) = conn.prepare("SELECT a.name FROM authors a JOIN books_authors_link bal ON a.id = bal.author WHERE bal.book = ?") {
+            let authors: Vec<String> = auth_stmt.query_map([b.id], |r| r.get(0))?
+                .filter_map(|r| r.ok())
+                .collect();
+            if !authors.is_empty() {
+                b.authors = authors.join(", ");
+            }
+        }
+    }
+    eprintln!("[DB] Authors loaded.");
+
     Ok(books)
 }
 

@@ -238,7 +238,7 @@ pub fn run() {
                             .get("library_path")
                             .and_then(|v| v.as_str().map(|s| s.to_string()))
                         {
-                            eprintln!("[AUTO-LOAD] [{}] Found saved library path: {}", ptr, path);
+                            eprintln!("[AUTO-LOAD] [{}] Starting fetch for path: {}", ptr, path);
                             match db::get_calibre_metadata(&path) {
                                 Ok(books) => {
                                     let book_count = books.len();
