@@ -133,7 +133,7 @@ pub fn run() {
             let pin_path = app_data_dir.join("pin.txt");
             let pin_str = if pin_path.exists() {
                 let raw = std::fs::read_to_string(&pin_path).unwrap_or_else(|_| "0000".to_string());
-                let trimmed = raw.trim().to_string();
+                let trimmed = raw.trim().replace('"', "").to_string();
                 info!("Loaded PIN from persistence: '{}' (raw: '{:?}')", trimmed, raw);
                 trimmed
             } else {
