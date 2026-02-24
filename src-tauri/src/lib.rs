@@ -235,7 +235,7 @@ pub fn run() {
                         .get("library_path")
                         .and_then(|v| v.as_str().map(|s| s.to_string()))
                     {
-                        info!("Auto-loading library from: {}", path);
+                        eprintln!("[AUTO-LOAD] Starting load for path: {}", path);
                         match db::get_calibre_metadata(&path) {
                             Ok(books) => {
                                 let mut path_lock = server_state
@@ -247,15 +247,14 @@ pub fn run() {
                                 let mut books_lock =
                                     server_state.books.lock().expect("Poisoned lock");
                                 *books_lock = books;
-                                info!("Library auto-loaded successfully.");
+                                eprintln!("[AUTO-LOAD] Success: Cached in server state.");
                             }
                             Err(e) => {
-                                error!(
-                                    "Failed to load metadata from saved path: {} - Error: {:?}",
-                                    path, e
-                                );
+                                eprintln!("[AUTO-LOAD] ERROR: {:?}", e);
                             }
                         }
+                    } else {
+                        eprintln!("[AUTO-LOAD] No saved path found.");
                     }
                 }
             });

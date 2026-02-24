@@ -25,63 +25,75 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // books_authors_link (id, book, author, ...)
 
     let start = std::time::Instant::now();
-    log::info!("Starting metadata query at {:?}", db_path);
+    eprintln!("[DB] Starting metadata fetch at {:?}", db_path);
     
-    let mut stmt = conn.prepare(
-        "SELECT 
-            b.id, 
-            b.title, 
-            b.path, 
-            (SELECT GROUP_CONCAT(a.name, ', ') FROM books_authors_link bal JOIN authors a ON bal.author = a.id WHERE bal.book = b.id) as authors,
-            (SELECT GROUP_CONCAT(d.format, ',') FROM data d WHERE d.book = b.id) as formats,
-            s.name as series,
-            b.series_index,
-            (SELECT GROUP_CONCAT(t.name, ',') FROM books_tags_link btl JOIN tags t ON btl.tag = t.id WHERE btl.book = b.id) as tags,
-            p.name as publisher
-         FROM books b
-         LEFT JOIN series s ON b.series = s.id
-         LEFT JOIN books_publishers_link bpl ON b.id = bpl.book
-         LEFT JOIN publishers p ON bpl.publisher = p.id"
-    )?;
+    // Check tables existence
+    let tables: Vec<String> = {
+        let mut t_stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type='table'")?;
+        let rows = t_stmt.query_map([], |r| r.get(0))?;
+        rows.map(|r| r.unwrap_or_else(|_| "err".to_string())).collect()
+    };
+    eprintln!("[DB] Found tables: {:?}", tables);
 
-    // Log total count first
-    let count: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
-    log::info!("Total books in 'books' table: {}", count);
-
+    // Progressive query
+    let mut stmt = conn.prepare("SELECT id, title, path FROM books")?;
+    
     let book_iter = stmt.query_map([], |row| {
-        let formats_str: Option<String> = row.get(4)?;
-        let formats = formats_str
-            .map(|s| s.split(',').map(|f| f.to_string()).collect())
-            .unwrap_or_default();
-
-        let tags_str: Option<String> = row.get(7)?;
-        let tags = tags_str
-            .map(|s| s.split(',').map(|t| t.to_string()).collect())
-            .unwrap_or_default();
-
         Ok(Book {
             id: row.get(0)?,
             title: row.get(1)?,
             path: row.get(2)?,
-            authors: row.get(3).unwrap_or_default(),
+            authors: "".to_string(), // Step 1: Blank
             cover_url: None,
-            formats,
-            series: row.get(5)?,
-            series_index: row.get(6).unwrap_or(1.0),
-            tags,
-            publisher: row.get(8)?,
+            formats: vec![],
+            series: None,
+            series_index: 1.0,
+            tags: vec![],
+            publisher: None,
         })
     })?;
 
     let mut books = Vec::new();
     for (i, book) in book_iter.enumerate() {
-        if i % 500 == 0 && i > 0 {
-            log::info!("Processed {} books...", i);
+        if i % 100 == 0 {
+            eprintln!("[DB] Row {}...", i);
         }
         books.push(book?);
     }
 
-    log::info!("Successfully retrieved {} books in {:?}.", books.len(), start.elapsed());
+    eprintln!("[DB] Base query done: {} books in {:?}.", books.len(), start.elapsed());
+
+    // Step 2: Try to enrich with authors if table exists
+    if tables.contains(&"authors".to_string()) && tables.contains(&"books_authors_link".to_string()) {
+        eprintln!("[DB] Enriching with authors...");
+        for book in &mut books {
+            let authors: Option<String> = conn.query_row(
+                "SELECT GROUP_CONCAT(name, ', ') FROM authors WHERE id IN (SELECT author FROM books_authors_link WHERE book = ?)",
+                [book.id],
+                |r| r.get(0)
+            ).ok().flatten();
+            book.authors = authors.unwrap_or_default();
+        }
+        eprintln!("[DB] Authors enrichment done.");
+    }
+
+    // Step 3: Formats
+    if tables.contains(&"data".to_string()) {
+        eprintln!("[DB] Enriching with formats...");
+        for book in &mut books {
+            let formats: String = conn.query_row(
+                "SELECT GROUP_CONCAT(format, ',') FROM data WHERE book = ?",
+                [book.id],
+                |r| r.get(0)
+            ).unwrap_or_else(|_| "".to_string());
+            if !formats.is_empty() {
+                book.formats = formats.split(',').map(|s| s.to_string()).collect();
+            }
+        }
+        eprintln!("[DB] Formats enrichment done.");
+    }
+
+    eprintln!("[DB] Full retrieval complete: {} books in {:?}.", books.len(), start.elapsed());
     Ok(books)
 }
 
