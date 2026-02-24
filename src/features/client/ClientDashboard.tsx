@@ -62,10 +62,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       const lower = searchTerm.toLowerCase();
       result = result.filter(
         (b) =>
-          b.title.toLowerCase().includes(lower) ||
-          b.authors.toLowerCase().includes(lower) ||
-          b.series?.toLowerCase().includes(lower) ||
-          b.tags?.some((t) => t.toLowerCase().includes(lower)),
+          (b.title?.toLowerCase().includes(lower) || false) ||
+          (b.authors?.toLowerCase().includes(lower) || false) ||
+          (b.series?.toLowerCase().includes(lower) || false) ||
+          (b.tags?.some((t) => t.toLowerCase().includes(lower)) || false),
       );
     }
 
@@ -219,14 +219,14 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               aria-live="polite"
               aria-busy="true"
             >
-              {[...Array(12)].map((_, i) => (
+              {Array.from({ length: 12 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
           ) : connectedHost ? (
             <div className="flex flex-col gap-4">
               <div 
-                className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
+                className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm px-1 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
                 style={{ boxShadow: showScrollTop ? "0 4px 6px -1px rgb(0 0 0 / 0.1)" : "none" }}
               >
                 <div className="flex justify-between items-center">
