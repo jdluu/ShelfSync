@@ -13,7 +13,6 @@ use crate::{
 use log::{error, info};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rand::Rng;
-use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
