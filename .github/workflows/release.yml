@@ -150,8 +150,10 @@ jobs:
               { echo 'package com.jdluu.shelfsync.kotlin'; echo ''; cat "$KOTLIN_DIR/RustPlugin.kt"; } > "$PKG_DIR/RustPlugin.kt"
               rm "$KOTLIN_DIR/RustPlugin.kt"
             fi
-            sed -i 's|implementationClass = "RustPlugin"|implementationClass = "com.jdluu.shelfsync.kotlin.RustPlugin"|' \
-              "$BUILDSRC_SRC/../build.gradle.kts"
+            BUILDSRC_GRADLE="src-tauri/gen/android/buildSrc/build.gradle.kts"
+            if [ -f "$BUILDSRC_GRADLE" ]; then
+              sed -i 's|implementationClass = "RustPlugin"|implementationClass = "com.jdluu.shelfsync.kotlin.RustPlugin"|' "$BUILDSRC_GRADLE"
+            fi
 
             if [ -f "src-tauri/gen/android/keystore.properties" ]; then
               pnpm tauri android build --aab
