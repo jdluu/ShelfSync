@@ -225,33 +225,43 @@ pub fn run() {
                     .expect("Failed to build tray icon");
             }
 
-            // 2. Load Settings from persistent store
-            let handle_for_setup = app.handle().clone();
-            let store = handle_for_setup.store("shelfsync_settings.json");
+            // 2. Load Settings from persistent store (Async)
+            let state_for_load = app_state.clone();
+            let handle_for_load = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let store = handle_for_load.store("shelfsync_settings.json");
+                if let Ok(store_handle) = store {
+                    if let Some(path) = store_handle
+                        .get("library_path")
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                    {
+                        eprintln!("[AUTO-LOAD] Detected saved path: {}", path);
+                        match db::get_calibre_metadata(&path) {
+                            Ok(books) => {
+                                let mut path_lock = state_for_load
+                                    .server
+                                    .library_path
+                                    .lock()
+                                    .expect("Poisoned lock");
+                                *path_lock = Some(path.to_string());
 
-            if let Ok(store_handle) = store {
-                if let Some(path) = store_handle
-                    .get("library_path")
-                    .and_then(|v| v.as_str().map(|s| s.to_string()))
-                {
-                    info!("Auto-loading library from: {}", path);
-                    match db::get_calibre_metadata(&path) {
-                        Ok(books) => {
-                            let mut path_lock =
-                                app_state.server.library_path.lock().expect("Poisoned lock");
-                            *path_lock = Some(path.to_string());
-
-                            let mut books_lock =
-                                app_state.server.books.lock().expect("Poisoned lock");
-                            *books_lock = books;
-                            info!("Library auto-loaded successfully.");
+                                let mut books_lock =
+                                    state_for_load.server.books.lock().expect("Poisoned lock");
+                                *books_lock = books;
+                                eprintln!("[AUTO-LOAD] Library auto-loaded successfully.");
+                            }
+                            Err(e) => {
+                                eprintln!(
+                                    "[AUTO-LOAD] Failed to load metadata from saved path: {} - Error: {:?}",
+                                    path, e
+                                );
+                            }
                         }
-                        Err(e) => {
-                            error!("Failed to load metadata from saved path: {} - Error: {:?}", path, e);
-                        }
+                    } else {
+                        eprintln!("[AUTO-LOAD] No saved library path found.");
                     }
                 }
-            }
+            });
 
             // 3. Init progress DB
             if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {

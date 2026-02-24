@@ -26,57 +26,41 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
 
     let start = std::time::Instant::now();
     log::info!("Starting metadata query...");
+    let start = std::time::Instant::now();
+    eprintln!("[DB] Starting metadata query at {:?}", db_path);
+    
     let mut stmt = conn.prepare(
-        "SELECT 
-            b.id, 
-            b.title, 
-            b.path, 
-            (SELECT GROUP_CONCAT(a.name, ', ') FROM books_authors_link bal JOIN authors a ON bal.author = a.id WHERE bal.book = b.id) as authors,
-            (SELECT GROUP_CONCAT(d.format, ',') FROM data d WHERE d.book = b.id) as formats,
-            s.name as series,
-            b.series_index,
-            (SELECT GROUP_CONCAT(t.name, ',') FROM books_tags_link btl JOIN tags t ON btl.tag = t.id WHERE btl.book = b.id) as tags,
-            p.name as publisher
-         FROM books b
-         LEFT JOIN series s ON b.series = s.id
-         LEFT JOIN books_publishers_link bpl ON b.id = bpl.book
-         LEFT JOIN publishers p ON bpl.publisher = p.id"
+        "SELECT id, title, path FROM books"
     )?;
 
+    // Log total count first
+    let count: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
+    eprintln!("[DB] Total books in 'books' table: {}", count);
+
     let book_iter = stmt.query_map([], |row| {
-        let formats_str: Option<String> = row.get(4)?;
-        let formats = formats_str
-            .map(|s| s.split(',').map(|f| f.to_string()).collect())
-            .unwrap_or_default();
-
-        let tags_str: Option<String> = row.get(7)?;
-        let tags = tags_str
-            .map(|s| s.split(',').map(|t| t.to_string()).collect())
-            .unwrap_or_default();
-
         Ok(Book {
             id: row.get(0)?,
             title: row.get(1)?,
             path: row.get(2)?,
-            authors: row.get(3).unwrap_or_default(),
+            authors: "".to_string(),
             cover_url: None,
-            formats,
-            series: row.get(5)?,
-            series_index: row.get(6).unwrap_or(1.0),
-            tags,
-            publisher: row.get(8)?,
+            formats: vec![],
+            series: None,
+            series_index: 1.0,
+            tags: vec![],
+            publisher: None,
         })
     })?;
 
     let mut books = Vec::new();
     for (i, book) in book_iter.enumerate() {
         if i % 100 == 0 {
-            log::info!("Processed {} books...", i);
+            eprintln!("[DB] Processed {} books...", i);
         }
         books.push(book?);
     }
 
-    log::info!("Successfully retrieved {} books from Calibre DB in {:?}.", books.len(), start.elapsed());
+    eprintln!("[DB] Successfully retrieved {} books in {:?}.", books.len(), start.elapsed());
     Ok(books)
 }
 
