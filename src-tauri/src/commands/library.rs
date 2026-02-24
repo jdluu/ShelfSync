@@ -7,8 +7,6 @@ pub fn get_books(
     state: State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<Vec<Book>, AppError> {
-    let ptr = format!("{:p}", &*state.server as *const crate::http::server::ServerState);
-    eprintln!("[COMMAND] [{}] Starting fetch for path: {}...", ptr, library_path);
     // 1. Fetch from DB
     let books = db::get_calibre_metadata(&library_path)?;
 
@@ -37,7 +35,6 @@ pub fn get_books(
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books.clone();
-        eprintln!("[COMMAND] [{}] Cache updated successfully.", ptr);
     }
 
     Ok(books)
