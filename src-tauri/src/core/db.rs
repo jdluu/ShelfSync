@@ -7,25 +7,21 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     let lib_path = Path::new(library_path);
     let db_path = lib_path.join("metadata.db");
 
-    log::info!("Checking Calibre library at: {:?}", lib_path);
-    log::info!("Metadata DB path: {:?}", db_path);
-    log::info!("DB path exists: {}", db_path.exists());
+    eprintln!("[DB] Checking Calibre library at: {:?}", lib_path);
+    eprintln!("[DB] Metadata DB path exists: {}", db_path.exists());
 
     if !db_path.exists() {
         return Err(AppError::LibraryNotFound(library_path.to_string()));
     }
 
-    // Open the DB in Read-Only mode directly
     let conn = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
 
-    // Query: Books joined with Authors
-    // Calibre schema:
-    // books (id, title, path, ...)
-    // authors (id, name, ...)
-    // books_authors_link (id, book, author, ...)
+    // Quick check for total book count
+    let total: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
+    eprintln!("[DB] Raw 'books' table count: {}", total);
 
     let start = std::time::Instant::now();
-    log::info!("Fetching Calibre metadata from {:?}", db_path);
+    eprintln!("[DB] Executing main metadata query...");
     
     let mut stmt = conn.prepare(
         "SELECT 
@@ -62,22 +58,36 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
             authors: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "Unknown Author".to_string()),
             cover_url: None,
             formats,
-            series: row.get(5)?,
+            series: row.get::<_, Option<String>>(5)?,
             series_index: row.get::<_, Option<f64>>(6)?.unwrap_or(1.0),
             tags,
-            publisher: row.get(8)?,
+            publisher: row.get::<_, Option<String>>(8)?,
         })
     })?;
 
     let mut books = Vec::new();
-    for (i, book) in book_iter.enumerate() {
-        if i > 0 && i % 500 == 0 {
-            log::info!("Loaded {} books...", i);
+    let mut errors = 0;
+    for (i, book_res) in book_iter.enumerate() {
+        match book_res {
+            Ok(book) => {
+                if i > 0 && i % 100 == 0 {
+                    eprintln!("[DB] Loaded {} books...", i);
+                }
+                books.push(book);
+            }
+            Err(e) => {
+                if errors < 10 {
+                    eprintln!("[DB] ERROR on row {}: {:?}", i, e);
+                }
+                errors += 1;
+            }
         }
-        books.push(book?);
     }
 
-    log::info!("Successfully loaded {} books in {:?}.", books.len(), start.elapsed());
+    if errors > 0 {
+        eprintln!("[DB] Total errors during load: {}", errors);
+    }
+    eprintln!("[DB] Successfully loaded {} books in {:?}.", books.len(), start.elapsed());
     Ok(books)
 }
 
