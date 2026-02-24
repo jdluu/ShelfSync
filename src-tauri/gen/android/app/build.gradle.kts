@@ -24,7 +24,7 @@ android {
     compileSdk = 36
     namespace = "com.jdluu.shelfsync"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         applicationId = "com.jdluu.shelfsync"
         minSdk = 24
         targetSdk = 36
@@ -68,7 +68,7 @@ android {
             }
         }
         getByName("release") {
-            manifestPlaceholders["usesCleartextTraffic"] = "false"
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isMinifyEnabled = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
