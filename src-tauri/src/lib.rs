@@ -229,15 +229,16 @@ pub fn run() {
             let handle_for_load = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 use tauri_plugin_store::StoreExt;
-                eprintln!("[AUTO-LOAD] Task started.");
+                let ptr = format!("{:p}", &*server_state as *const crate::http::server::ServerState);
+                eprintln!("[AUTO-LOAD] [{}] Task started.", ptr);
                 match handle_for_load.store("shelfsync_settings.json") {
                     Ok(store_handle) => {
-                        eprintln!("[AUTO-LOAD] Store opened successfully.");
+                        eprintln!("[AUTO-LOAD] [{}] Store opened successfully.", ptr);
                         if let Some(path) = store_handle
                             .get("library_path")
                             .and_then(|v| v.as_str().map(|s| s.to_string()))
                         {
-                            eprintln!("[AUTO-LOAD] Found saved library path: {}", path);
+                            eprintln!("[AUTO-LOAD] [{}] Found saved library path: {}", ptr, path);
                             match db::get_calibre_metadata(&path) {
                                 Ok(books) => {
                                     let book_count = books.len();
@@ -250,18 +251,18 @@ pub fn run() {
                                     let mut books_lock =
                                         server_state.books.lock().expect("Poisoned lock");
                                     *books_lock = books;
-                                    eprintln!("[AUTO-LOAD] Successfully loaded {} books.", book_count);
+                                    eprintln!("[AUTO-LOAD] [{}] Cache updated with {} books.", ptr, book_count);
                                 }
                                 Err(e) => {
-                                    eprintln!("[AUTO-LOAD] ERROR loading metadata: {:?}", e);
+                                    eprintln!("[AUTO-LOAD] [{}] ERROR loading metadata: {:?}", ptr, e);
                                 }
                             }
                         } else {
-                            eprintln!("[AUTO-LOAD] No 'library_path' found in shelfsync_settings.json");
+                            eprintln!("[AUTO-LOAD] [{}] No 'library_path' found in shelfsync_settings.json", ptr);
                         }
                     }
                     Err(e) => {
-                        eprintln!("[AUTO-LOAD] ERROR opening settings store: {:?}", e);
+                        eprintln!("[AUTO-LOAD] [{}] ERROR opening settings store: {:?}", ptr, e);
                     }
                 }
             });

@@ -69,14 +69,20 @@ async fn get_manifest(
     header_map: header::HeaderMap,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
+    let ptr = format!("{:p}", &*state as *const ServerState);
     if !is_authorized(&header_map, &state) {
-        error!("Unauthorized manifest request");
+        eprintln!("[SERVER] [{}] Unauthorized manifest request", ptr);
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    // Return cached books directly
+    let count = {
+        let books = state.books.lock().unwrap();
+        books.len()
+    };
+    
+    eprintln!("[SERVER] [{}] Serving manifest with {} books", ptr, count);
+    
     let books = state.books.lock().unwrap();
-    info!("Serving manifest with {} books", books.len());
     Json(books.clone()).into_response()
 }
 

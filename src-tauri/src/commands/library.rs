@@ -18,6 +18,9 @@ pub fn get_books(
     }
 
     // 3. Update Server State Cache
+    let ptr = format!("{:p}", &*state.server as *const crate::http::server::ServerState);
+    eprintln!("[COMMAND] [{}] Updating cache with {} books...", ptr, books.len());
+
     {
         let mut path_lock = state
             .server
@@ -32,6 +35,7 @@ pub fn get_books(
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books.clone();
+        eprintln!("[COMMAND] [{}] Cache updated successfully.", ptr);
     }
 
     Ok(books)

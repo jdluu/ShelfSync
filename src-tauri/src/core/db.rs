@@ -19,10 +19,14 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // Quick check for total book count
     let total: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
     eprintln!("[DB] Raw 'books' table count: {}", total);
+    if total == 0 {
+        return Ok(Vec::new());
+    }
 
     let start = std::time::Instant::now();
-    eprintln!("[DB] Executing main metadata query...");
+    eprintln!("[DB] Executing metadata query (using subqueries for safety)...");
     
+    // Using subqueries for authors, series, tags, and publisher to avoid row explosion from joins
     let mut stmt = conn.prepare(
         "SELECT 
             b.id, 
@@ -30,14 +34,11 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
             b.path, 
             (SELECT GROUP_CONCAT(a.name, ', ') FROM books_authors_link bal JOIN authors a ON bal.author = a.id WHERE bal.book = b.id) as authors,
             (SELECT GROUP_CONCAT(d.format, ',') FROM data d WHERE d.book = b.id) as formats,
-            s.name as series,
+            (SELECT s.name FROM series s WHERE s.id = b.series) as series,
             b.series_index,
             (SELECT GROUP_CONCAT(t.name, ',') FROM books_tags_link btl JOIN tags t ON btl.tag = t.id WHERE btl.book = b.id) as tags,
-            p.name as publisher
-         FROM books b
-         LEFT JOIN series s ON b.series = s.id
-         LEFT JOIN books_publishers_link bpl ON b.id = bpl.book
-         LEFT JOIN publishers p ON bpl.publisher = p.id"
+            (SELECT p.name FROM books_publishers_link bpl JOIN publishers p ON bpl.publisher = p.id WHERE bpl.book = b.id LIMIT 1) as publisher
+         FROM books b"
     )?;
 
     let book_iter = stmt.query_map([], |row| {
@@ -58,10 +59,10 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
             authors: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "Unknown Author".to_string()),
             cover_url: None,
             formats,
-            series: row.get::<_, Option<String>>(5)?,
+            series: row.get(5)?,
             series_index: row.get::<_, Option<f64>>(6)?.unwrap_or(1.0),
             tags,
-            publisher: row.get::<_, Option<String>>(8)?,
+            publisher: row.get(8)?,
         })
     })?;
 
@@ -70,14 +71,15 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     for (i, book_res) in book_iter.enumerate() {
         match book_res {
             Ok(book) => {
-                if i > 0 && i % 100 == 0 {
-                    eprintln!("[DB] Loaded {} books...", i);
+                let idx = i + 1;
+                if idx % 100 == 0 || idx == (total as usize) {
+                    eprintln!("[DB] Processed {}/{} books...", idx, total);
                 }
                 books.push(book);
             }
             Err(e) => {
                 if errors < 10 {
-                    eprintln!("[DB] ERROR on row {}: {:?}", i, e);
+                    eprintln!("[DB] ROW ERROR at index {}: {:?}", i, e);
                 }
                 errors += 1;
             }
@@ -85,9 +87,9 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     }
 
     if errors > 0 {
-        eprintln!("[DB] Total errors during load: {}", errors);
+        eprintln!("[DB] Finished with {} row errors.", errors);
     }
-    eprintln!("[DB] Successfully loaded {} books in {:?}.", books.len(), start.elapsed());
+    eprintln!("[DB] SUCCESSFULLY loaded {} books in {:?}.", books.len(), start.elapsed());
     Ok(books)
 }
 
