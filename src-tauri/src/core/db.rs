@@ -14,25 +14,57 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
         return Err(AppError::LibraryNotFound(library_path.to_string()));
     }
 
-    let conn = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let conn = match Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[DB] FATAL: Failed to open connection: {:?}", e);
+            return Err(e.into());
+        }
+    };
     let _ = conn.execute("PRAGMA busy_timeout = 5000", []);
 
     // Quick check for total book count
-    let total: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
+    let total: i64 = match conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0)) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("[DB] FATAL: Failed to count books: {:?}", e);
+            return Err(e.into());
+        }
+    };
     eprintln!("[DB] Raw 'books' table count: {}", total);
     if total == 0 {
         return Ok(Vec::new());
     }
 
     let start = std::time::Instant::now();
-    eprintln!("[DB] Executing simplified metadata query...");
+    eprintln!("[DB] Preparing metadata query...");
     
-    // Minimal query to avoid join/subquery issues during debugging
-    let mut stmt = conn.prepare(
-        "SELECT id, title, path, series, series_index FROM books"
-    )?;
+    // Attempt the simplified query
+    let mut stmt = match conn.prepare("SELECT id, title, path, series, series_index FROM books") {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("[DB] PREPARE ERROR: {:?}. Attempting schema discovery...", e);
+            // Discovery: What columns DO exist?
+            if let Ok(mut info_stmt) = conn.prepare("PRAGMA table_info(books)") {
+                let cols: Vec<String> = info_stmt.query_map([], |r| r.get::<_, String>(1))
+                    .unwrap()
+                    .filter_map(|r| r.ok())
+                    .collect();
+                eprintln!("[DB] Found columns in 'books' table: {:?}", cols);
+            }
+            // Fallback to absolute minimum
+            eprintln!("[DB] Falling back to minimal query (id, title, path)...");
+            match conn.prepare("SELECT id, title, path FROM books") {
+                Ok(s) => s,
+                Err(e2) => {
+                    eprintln!("[DB] FATAL: Even minimal query failed: {:?}", e2);
+                    return Err(e2.into());
+                }
+            }
+        }
+    };
 
-    eprintln!("[DB] Statement prepared. Starting iteration...");
+    eprintln!("[DB] Statement ready. Starting fetch...");
 
     let book_iter = stmt.query_map([], |row| {
         Ok(Book {
@@ -42,8 +74,8 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
             authors: "Loading...".to_string(),
             cover_url: None,
             formats: Vec::new(),
-            series: row.get::<_, Option<String>>(3)?,
-            series_index: row.get::<_, Option<f64>>(4)?.unwrap_or(1.0),
+            series: None, // Simplified
+            series_index: 0.0,
             tags: Vec::new(),
             publisher: None,
         })
@@ -53,8 +85,8 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     let mut errors = 0;
     for (i, book_res) in book_iter.enumerate() {
         let idx = i + 1;
-        if i < 5 || idx % 50 == 0 || idx == (total as usize) {
-            eprintln!("[DB] Row {}/{} processing...", idx, total);
+        if i < 5 || idx % 100 == 0 || idx == (total as usize) {
+            eprintln!("[DB] Row {}/{} loaded...", idx, total);
         }
         match book_res {
             Ok(book) => {
@@ -70,35 +102,39 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     }
 
     if errors > 0 {
-        eprintln!("[DB] Finished with {} row errors.", errors);
+        eprintln!("[DB] Finished processing with {} row errors.", errors);
     }
     eprintln!("[DB] SUCCESSFULLY loaded {} basic records in {:?}.", books.len(), start.elapsed());
     
     // Now try to fetch formats for the books
-    eprintln!("[DB] Fetching formats for {} books...", books.len());
+    eprintln!("[DB] Gracefully fetching supplemental metadata...");
     for b in &mut books {
+        // Formats
         if let Ok(mut fmt_stmt) = conn.prepare("SELECT format FROM data WHERE book = ?") {
-            let fmts: Vec<String> = fmt_stmt.query_map([b.id], |r| r.get(0))?
-                .filter_map(|r| r.ok())
-                .collect();
-            b.formats = fmts;
+            if let Ok(mut rows) = fmt_stmt.query([b.id]) {
+                while let Ok(Some(row)) = rows.next() {
+                    if let Ok(f) = row.get::<_, String>(0) {
+                        b.formats.push(f);
+                    }
+                }
+            }
         }
-    }
-    eprintln!("[DB] Formats loaded.");
-
-    // And authors
-    eprintln!("[DB] Fetching authors for {} books...", books.len());
-    for b in &mut books {
+        // Authors
         if let Ok(mut auth_stmt) = conn.prepare("SELECT a.name FROM authors a JOIN books_authors_link bal ON a.id = bal.author WHERE bal.book = ?") {
-            let authors: Vec<String> = auth_stmt.query_map([b.id], |r| r.get(0))?
-                .filter_map(|r| r.ok())
-                .collect();
-            if !authors.is_empty() {
-                b.authors = authors.join(", ");
+             if let Ok(mut rows) = auth_stmt.query([b.id]) {
+                let mut names = Vec::new();
+                while let Ok(Some(row)) = rows.next() {
+                    if let Ok(n) = row.get::<_, String>(0) {
+                        names.push(n);
+                    }
+                }
+                if !names.is_empty() {
+                    b.authors = names.join(", ");
+                }
             }
         }
     }
-    eprintln!("[DB] Authors loaded.");
+    eprintln!("[DB] Supplemental metadata loaded.");
 
     Ok(books)
 }
