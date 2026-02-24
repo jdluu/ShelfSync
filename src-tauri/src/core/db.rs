@@ -24,6 +24,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // authors (id, name, ...)
     // books_authors_link (id, book, author, ...)
 
+    let start = std::time::Instant::now();
     log::info!("Starting metadata query...");
     let mut stmt = conn.prepare(
         "SELECT 
@@ -68,11 +69,14 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     })?;
 
     let mut books = Vec::new();
-    for book in book_iter {
+    for (i, book) in book_iter.enumerate() {
+        if i % 100 == 0 {
+            log::info!("Processed {} books...", i);
+        }
         books.push(book?);
     }
 
-    log::info!("Successfully retrieved {} books from Calibre DB.", books.len());
+    log::info!("Successfully retrieved {} books from Calibre DB in {:?}.", books.len(), start.elapsed());
     Ok(books)
 }
 
