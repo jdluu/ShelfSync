@@ -1,4 +1,4 @@
-import { Share2, Search } from "lucide-react";
+import { Search, Share2 } from "lucide-react";
 import type React from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";

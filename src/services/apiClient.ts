@@ -17,15 +17,14 @@ export const api = {
       const trimmedPath = libraryPath.trim();
       if (!trimmedPath) return Promise.resolve([]);
 
-      return safeInvoke<Book[]>("get_books", { libraryPath: trimmedPath }, [])
-        .then((res) => {
-          const result = BookSchema.array().safeParse(res);
-          if (!result.success) {
-            console.error("Zod Validation Failed for getBooks:", result.error);
-            throw new Error(`Data Validation Error: ${result.error.message}`);
-          }
-          return result.data;
-        });
+      return safeInvoke<Book[]>("get_books", { libraryPath: trimmedPath }, []).then((res) => {
+        const result = BookSchema.array().safeParse(res);
+        if (!result.success) {
+          console.error("Zod Validation Failed for getBooks:", result.error);
+          throw new Error(`Data Validation Error: ${result.error.message}`);
+        }
+        return result.data;
+      });
     },
 
     /**

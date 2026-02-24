@@ -8,7 +8,8 @@ import type { Host } from "@/types/core";
  */
 export const libraryKeys = {
   all: ["library"] as const,
-  manifest: (host: string, token?: string) => [...libraryKeys.all, "manifest", host, token || "no-token"] as const,
+  manifest: (host: string, token?: string) =>
+    [...libraryKeys.all, "manifest", host, token || "no-token"] as const,
   local: (path: string) => [...libraryKeys.all, "local", path] as const,
 };
 

@@ -84,7 +84,15 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     manualError: null,
   });
 
-  const { appMode, libraryPath, offlineStoragePath, localBooks, connectedHost, authTokens, manualError } = state;
+  const {
+    appMode,
+    libraryPath,
+    offlineStoragePath,
+    localBooks,
+    connectedHost,
+    authTokens,
+    manualError,
+  } = state;
 
   // Use Ref to access latest books without re-subscribing
   const booksRef = useRef<Book[]>([]);
@@ -194,7 +202,6 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const setAppMode = async (mode: AppMode) => {
     dispatch({ type: "SET_MODE", payload: mode });
 
-
     if (mode === "client") {
       dispatch({ type: "SET_CONNECTED_HOST", payload: null });
       // books is derived, no need to set
@@ -230,7 +237,10 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Auth required will clear on next render because query will retry with new token
     } catch (e: any) {
       console.error("Pairing failed", e);
-      dispatch({ type: "SET_MANUAL_ERROR", payload: e.message || "Pairing failed. Please check the PIN and try again." });
+      dispatch({
+        type: "SET_MANUAL_ERROR",
+        payload: e.message || "Pairing failed. Please check the PIN and try again.",
+      });
     }
   };
 
@@ -254,7 +264,9 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!token) return;
 
     try {
-      const destRoot = offlineStoragePath || (isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "");
+      const destRoot =
+        offlineStoragePath ||
+        (isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "");
 
       await safeInvoke("start_bulk_sync", {
         books: booksToSync,

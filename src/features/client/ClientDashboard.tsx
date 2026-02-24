@@ -132,7 +132,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 }}
                 className={`btn btn-xs sm:btn-sm ${selectionMode ? "btn-primary" : "btn-outline"}`}
               >
-                <span className="hidden sm:inline">{selectionMode ? "Cancel Selection" : "Select Multiple"}</span>
+                <span className="hidden sm:inline">
+                  {selectionMode ? "Cancel Selection" : "Select Multiple"}
+                </span>
                 <span className="sm:hidden">{selectionMode ? "Cancel" : "Select"}</span>
               </button>
               <button

@@ -21,7 +21,9 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
             <Library className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
-            <span className="text-xl sm:text-2xl font-bold tracking-tight hidden xs:block">ShelfSync</span>
+            <span className="text-xl sm:text-2xl font-bold tracking-tight hidden xs:block">
+              ShelfSync
+            </span>
           </div>
           <div className="h-8 w-px bg-base-300 mx-2 hidden sm:block"></div>
           <span className="text-lg font-medium text-base-content/80 hidden sm:block">{title}</span>
@@ -29,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
 
         <div className="flex items-center gap-1 sm:gap-3">
           {actions}
-          
+
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
@@ -41,9 +43,9 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
         </div>
       </header>
 
-      <SettingsSidebar 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <SettingsSidebar
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
         onChangeRole={onChangeRole}
       />
     </>

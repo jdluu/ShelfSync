@@ -1,4 +1,15 @@
-import { ArrowLeft, Monitor, FileText, Library, Moon, Settings, Sun, User, Wifi, X } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Library,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  User,
+  Wifi,
+  X,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useLibrary } from "@/contexts/LibraryContext";
@@ -160,8 +171,8 @@ const ARTICLES: Record<string, HelpArticle> = {
         <p>Management must be done on the Host computer.</p>
         <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
           <li>
-            Deleting a book from the Client Dashboard only removes the{" "}
-            <strong>offline copy</strong> from your mobile device.
+            Deleting a book from the Client Dashboard only removes the <strong>offline copy</strong>{" "}
+            from your mobile device.
           </li>
           <li>To permanently remove a book from the library, use Calibre on your Host computer.</li>
         </ul>
@@ -177,7 +188,12 @@ interface SettingsSidebarProps {
   hostIp?: string;
 }
 
-export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClose, onChangeRole, hostIp }) => {
+export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
+  isOpen,
+  onClose,
+  onChangeRole,
+  hostIp,
+}) => {
   const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibrary();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark" | "system">(
@@ -227,7 +243,10 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
       }
     });
 
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     return () => observer.disconnect();
   }, [theme]);
 
@@ -273,11 +292,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
               {activeArticleId ? "Help Article" : "Settings"}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="btn btn-ghost btn-sm btn-circle"
-          >
+          <button type="button" onClick={handleClose} className="btn btn-ghost btn-sm btn-circle">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -287,7 +302,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
           {activeArticle ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-lg font-bold text-primary">{activeArticle.title}</h3>
-              <div className="text-sm text-base-content/90 leading-relaxed">{activeArticle.content}</div>
+              <div className="text-sm text-base-content/90 leading-relaxed">
+                {activeArticle.content}
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveArticleId(null)}
@@ -301,15 +318,17 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
               {/* Appearance Section */}
               <section>
-                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Appearance</h3>
+                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                  Appearance
+                </h3>
                 <div className="flex flex-col gap-3 p-1 bg-base-200/50 rounded-xl border border-base-300">
                   <div className="grid grid-cols-3 gap-1">
                     <button
                       type="button"
                       onClick={() => setTheme("light")}
                       className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "light" 
-                          ? "bg-base-100 shadow-sm text-primary" 
+                        theme === "light"
+                          ? "bg-base-100 shadow-sm text-primary"
                           : "hover:bg-base-200 text-base-content/60"
                       }`}
                     >
@@ -320,8 +339,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
                       type="button"
                       onClick={() => setTheme("dark")}
                       className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "dark" 
-                          ? "bg-base-100 shadow-sm text-primary" 
+                        theme === "dark"
+                          ? "bg-base-100 shadow-sm text-primary"
                           : "hover:bg-base-200 text-base-content/60"
                       }`}
                     >
@@ -332,8 +351,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
                       type="button"
                       onClick={() => setTheme("system")}
                       className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "system" 
-                          ? "bg-base-100 shadow-sm text-primary" 
+                        theme === "system"
+                          ? "bg-base-100 shadow-sm text-primary"
                           : "hover:bg-base-200 text-base-content/60"
                       }`}
                     >
@@ -347,20 +366,25 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
               {/* Roles Section */}
               {onChangeRole && (
                 <section>
-                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Session</h3>
-                  
+                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                    Session
+                  </h3>
+
                   {/* Offline Storage Section (Client Mode + Desktop only) */}
                   {appMode === "client" && (
                     <div className="flex flex-col gap-4 p-4 bg-base-200/50 rounded-xl border border-base-300 mb-3">
                       <div className="flex justify-between items-center">
                         <div className="flex-grow overflow-hidden mr-2">
                           <p className="font-bold text-sm">Offline Storage</p>
-                          <p className="text-[10px] text-base-content/50 truncate" title={offlineStoragePath || "Default Cache"}>
+                          <p
+                            className="text-[10px] text-base-content/50 truncate"
+                            title={offlineStoragePath || "Default Cache"}
+                          >
                             {offlineStoragePath || "Default Cache"}
                           </p>
                         </div>
                         {isTauri() && !isMobile() && (
-                          <button 
+                          <button
                             type="button"
                             onClick={selectOfflineStorageFolder}
                             className="btn btn-xs btn-outline border-base-300"
@@ -372,7 +396,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
                     </div>
                   )}
 
-                  <button 
+                  <button
                     className="w-full flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 hover:bg-base-200 transition-colors"
                     onClick={() => {
                       handleClose();
@@ -395,23 +419,25 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
 
               {/* Help Section */}
               <section>
-                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">Support & Help</h3>
+                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                  Support & Help
+                </h3>
                 <div className="grid grid-cols-1 gap-2">
-                  <button 
+                  <button
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("setup_host")}
                   >
                     <Wifi className="w-4 h-4 text-success" />
                     <span className="text-sm font-medium">Setting up Host</span>
                   </button>
-                  <button 
+                  <button
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("select_library")}
                   >
                     <Library className="w-4 h-4 text-info" />
                     <span className="text-sm font-medium">Selecting Library</span>
                   </button>
-                  <button 
+                  <button
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("not_found")}
                   >
@@ -424,17 +450,23 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ isOpen, onClos
               {/* About Section */}
               <section className="pt-4 border-t border-base-300">
                 <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
-                  <h4 className="text-[10px] font-bold text-base-content/40 uppercase tracking-widest">System Information</h4>
+                  <h4 className="text-[10px] font-bold text-base-content/40 uppercase tracking-widest">
+                    System Information
+                  </h4>
                   <div className="space-y-1">
                     {hostIp && (
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] text-base-content/50 uppercase">Host IP</span>
-                        <span className="text-[10px] font-mono font-bold text-base-content/70">{hostIp}</span>
+                        <span className="text-[10px] font-mono font-bold text-base-content/70">
+                          {hostIp}
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] text-base-content/50 uppercase">Version</span>
-                      <span className="text-[10px] font-mono font-bold text-base-content/70">1.0.0 (Stable)</span>
+                      <span className="text-[10px] font-mono font-bold text-base-content/70">
+                        1.0.0 (Stable)
+                      </span>
                     </div>
                   </div>
                 </div>
