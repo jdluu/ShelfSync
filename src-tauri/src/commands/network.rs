@@ -4,9 +4,7 @@ use tauri::State;
 #[tauri::command]
 pub fn get_connection_info(state: State<'_, AppState>) -> ConnectionInfo {
     ConnectionInfo {
-        ip: local_ip_address::local_ip()
-            .unwrap_or("127.0.0.1".parse().unwrap())
-            .to_string(),
+        ip: crate::get_lan_ip().to_string(),
         port: 8080,
         hostname: hostname::get()
             .map(|h| h.to_string_lossy().to_string())

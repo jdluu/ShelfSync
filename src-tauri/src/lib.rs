@@ -11,10 +11,69 @@ use crate::{
     models::ConnectionInfo,
 };
 use log::{error, info};
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rand::Rng;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 use tauri_plugin_store::StoreExt;
+
+fn get_lan_ip() -> std::net::IpAddr {
+    // Try to find a non-loopback, non-virtual IP.
+    if let Ok(interfaces) = NetworkInterface::show() {
+        info!("Detected network interfaces:");
+        for iface in &interfaces {
+            for addr in &iface.addr {
+                info!("  - Interface {}: {:?}", iface.name, addr.ip());
+            }
+        }
+
+        // Preferred order: Ethernet/Wi-Fi (usually start with 192.168, 10, or 172.16-31)
+        for iface in &interfaces {
+            for addr in &iface.addr {
+                let ip = addr.ip();
+                if let IpAddr::V4(ipv4) = ip {
+                    if ipv4.is_loopback() {
+                        continue;
+                    }
+
+                    let octets = ipv4.octets();
+                    // 192.168.x.x
+                    if octets[0] == 192 && octets[1] == 168 {
+                        info!("Selected best LAN IP: {}", ip);
+                        return ip;
+                    }
+                    // 10.x.x.x
+                    if octets[0] == 10 {
+                        info!("Selected best LAN IP: {}", ip);
+                        return ip;
+                    }
+                    // 172.16.x.x - 172.31.x.x
+                    if octets[0] == 172 && (16..=31).contains(&octets[1]) {
+                        info!("Selected best LAN IP: {}", ip);
+                        return ip;
+                    }
+                }
+            }
+        }
+
+        // Fallback to any non-loopback V4
+        for iface in &interfaces {
+            for addr in &iface.addr {
+                let ip = addr.ip();
+                if let IpAddr::V4(ipv4) = ip {
+                    if !ipv4.is_loopback() {
+                        info!("Falling back to non-loopback IP: {}", ip);
+                        return ip;
+                    }
+                }
+            }
+        }
+    }
+
+    let fallback = local_ip_address::local_ip().unwrap_or_else(|_| "127.0.0.1".parse().unwrap());
+    info!("Ultimate IP fallback: {}", fallback);
+    fallback
+}
 
 pub struct DiscoveryState {
     hosts: Mutex<Vec<ConnectionInfo>>,
@@ -29,14 +88,13 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     // Initialize rustls crypto provider
     #[cfg(any(target_os = "android", target_os = "ios"))]
     rustls::crypto::ring::default_provider()
         .install_default()
         .expect("Failed to install default crypto provider");
-
-    // Initialize logging
-    env_logger::init();
 
     let discovery_state = Arc::new(DiscoveryState {
         hosts: Mutex::new(Vec::new()),
@@ -209,7 +267,7 @@ pub fn run() {
 
                 let service_type = "_shelfsync._tcp.local.";
                 let instance_name = format!("ShelfSync on {}", machine_name);
-                let my_ip = local_ip_address::local_ip().unwrap_or("127.0.0.1".parse().unwrap());
+                let my_ip = get_lan_ip();
                 let properties = [("version", "0.1.0")];
                 let host_name = format!("{}.local.", machine_name);
 

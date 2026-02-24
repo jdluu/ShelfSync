@@ -42,10 +42,6 @@ pub async fn run(state: SharedState, port: u16) {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let local_ip = local_ip_address::local_ip()
-        .map(|ip| ip.to_string())
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-
     let val = format!("0.0.0.0:{}", port);
     let listener = match tokio::net::TcpListener::bind(&val).await {
         Ok(l) => l,
