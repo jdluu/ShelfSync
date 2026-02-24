@@ -113,27 +113,32 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
           <Plus className="w-4 h-4" />
           Manual Connection
         </h3>
-        <div className="flex gap-2">
-          <input
-            placeholder="IP Address"
-            value={manualIp}
-            onChange={(e) => setManualIp(e.target.value)}
-            className="input input-bordered flex-1 bg-base-200"
-          />
-          <input
-            placeholder="Port"
-            value={manualPort}
-            onChange={(e) => setManualPort(e.target.value)}
-            className="input input-bordered w-24 bg-base-200"
-          />
-          <button
-            type="button"
-            onClick={handleManualConnect}
-            disabled={!manualIp}
-            className="btn btn-success text-white"
-          >
-            Connect
-          </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <input
+              placeholder="IP Address"
+              value={manualIp}
+              onChange={(e) => setManualIp(e.target.value)}
+              className="input input-bordered flex-1 bg-base-200"
+            />
+            <input
+              placeholder="Port"
+              value={manualPort}
+              onChange={(e) => setManualPort(e.target.value)}
+              className="input input-bordered w-24 bg-base-200"
+            />
+            <button
+              type="button"
+              onClick={handleManualConnect}
+              disabled={!manualIp}
+              className="btn btn-success text-white"
+            >
+              Connect
+            </button>
+          </div>
+          <p className="text-[10px] text-base-content/50 italic px-1">
+            Tip: If you're using an Android Emulator on this PC, try connecting to <code className="text-success font-bold">10.0.2.2</code>.
+          </p>
         </div>
       </div>
     </div>

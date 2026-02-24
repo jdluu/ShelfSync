@@ -54,7 +54,11 @@ export const DiscoveryProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const scan = useCallback(async () => {
     setScanning(true);
+    setActiveHosts([]); // Clear current hosts for visual feedback
     try {
+      await api.network.refreshDiscovery();
+      // Wait a moment for mDNS to re-resolve
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       const results = await api.network.discoverHosts();
       setActiveHosts(results);
       updateKnownHosts(results);

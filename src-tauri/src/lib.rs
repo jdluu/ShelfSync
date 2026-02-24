@@ -129,11 +129,21 @@ pub fn run() {
                 .expect("Failed to get app_data_dir");
             std::fs::create_dir_all(&app_data_dir).ok();
 
-            // 1. Generate PIN and update Server State with real data
-            let mut rng = rand::rng();
-            let pin: u32 = rng.random_range(1000..10000);
-            let pin_str = pin.to_string();
-            info!("Starting server with PIN: {}", pin_str);
+            // 1. PIN Management (Persistence)
+            let pin_path = app_data_dir.join("pin.txt");
+            let pin_str = if pin_path.exists() {
+                std::fs::read_to_string(&pin_path)
+                    .unwrap_or_else(|_| "0000".to_string())
+                    .trim()
+                    .to_string()
+            } else {
+                let mut rng = rand::rng();
+                let pin: u32 = rng.random_range(1000..10000);
+                let p = pin.to_string();
+                std::fs::write(&pin_path, &p).ok();
+                p
+            };
+            info!("Server PIN: {}", pin_str);
 
             let app_state = app.state::<AppState>();
             {
@@ -266,10 +276,10 @@ pub fn run() {
                     .unwrap_or_else(|_| "ShelfSync-Host".to_string());
 
                 let service_type = "_shelfsync._tcp.local.";
-                let instance_name = format!("ShelfSync on {}", machine_name);
+                let instance_name = format!("{}'s Library", machine_name);
                 let my_ip = get_lan_ip();
                 let properties = [("version", "0.1.0")];
-                let host_name = format!("{}.local.", machine_name);
+                let host_name = format!("{}.local.", machine_name.replace(" ", "-"));
 
                 let service_info = mdns_sd::ServiceInfo::new(
                     service_type,
@@ -336,10 +346,11 @@ pub fn run() {
             library::start_bulk_sync,
             network::get_connection_info,
             network::discover_hosts,
-            commands::local_db::init_local_db,
-            commands::local_db::save_local_book,
-            commands::local_db::update_local_read_status,
-            commands::local_db::get_local_books
+            network::refresh_discovery,
+            crate::commands::local_db::init_local_db,
+            crate::commands::local_db::save_local_book,
+            crate::commands::local_db::update_local_read_status,
+            crate::commands::local_db::get_local_books
         ]);
 
     builder

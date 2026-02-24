@@ -59,6 +59,11 @@ export const api = {
       safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []).then((res) =>
         ConnectionInfoSchema.array().parse(res),
       ),
+
+    /**
+     * Clears the discovered hosts cache and triggers a fresh mDNS scan.
+     */
+    refreshDiscovery: () => safeInvoke<void>("refresh_discovery"),
   },
 };
 

@@ -17,3 +17,13 @@ pub fn get_connection_info(state: State<'_, AppState>) -> ConnectionInfo {
 pub fn discover_hosts(state: State<'_, AppState>) -> Vec<ConnectionInfo> {
     state.discovery.hosts.lock().expect("Poisoned lock").clone()
 }
+
+#[tauri::command]
+pub fn refresh_discovery(state: State<'_, AppState>) {
+    state
+        .discovery
+        .hosts
+        .lock()
+        .expect("Poisoned lock")
+        .clear();
+}
