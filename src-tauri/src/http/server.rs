@@ -352,6 +352,7 @@ async fn check_pin(
     Json(payload): Json<PinRequest>,
 ) -> impl IntoResponse {
     let pin = state.pin.lock().expect("Poisoned lock");
+    info!("PIN check: received='{}', expected='{}'", payload.pin, *pin);
     if payload.pin == *pin {
         let token = uuid::Uuid::new_v4().to_string();
         state
@@ -359,8 +360,10 @@ async fn check_pin(
             .lock()
             .unwrap()
             .insert(token.clone());
+        info!("PIN correct. Issued token: {}", token);
         (StatusCode::OK, Json(AuthResponse { token })).into_response()
     } else {
+        error!("PIN mismatch! received='{}', expected='{}'", payload.pin, *pin);
         (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
     }
 }

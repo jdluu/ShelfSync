@@ -132,18 +132,19 @@ pub fn run() {
             // 1. PIN Management (Persistence)
             let pin_path = app_data_dir.join("pin.txt");
             let pin_str = if pin_path.exists() {
-                std::fs::read_to_string(&pin_path)
-                    .unwrap_or_else(|_| "0000".to_string())
-                    .trim()
-                    .to_string()
+                let raw = std::fs::read_to_string(&pin_path).unwrap_or_else(|_| "0000".to_string());
+                let trimmed = raw.trim().to_string();
+                info!("Loaded PIN from persistence: '{}' (raw: '{:?}')", trimmed, raw);
+                trimmed
             } else {
                 let mut rng = rand::rng();
                 let pin: u32 = rng.random_range(1000..10000);
                 let p = pin.to_string();
+                info!("Generated new PIN: '{}'", p);
                 std::fs::write(&pin_path, &p).ok();
                 p
             };
-            info!("Server PIN: {}", pin_str);
+            info!("Server state initialized with PIN: '{}'", pin_str);
 
             let app_state = app.state::<AppState>();
             {
