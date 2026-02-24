@@ -70,11 +70,13 @@ async fn get_manifest(
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
     if !is_authorized(&header_map, &state) {
+        error!("Unauthorized manifest request");
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
     // Return cached books directly
     let books = state.books.lock().unwrap();
+    info!("Serving manifest with {} books", books.len());
     Json(books.clone()).into_response()
 }
 

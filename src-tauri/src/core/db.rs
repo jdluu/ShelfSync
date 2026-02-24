@@ -24,6 +24,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // authors (id, name, ...)
     // books_authors_link (id, book, author, ...)
 
+    log::info!("Starting metadata query...");
     let mut stmt = conn.prepare(
         "SELECT 
             b.id, 
@@ -71,6 +72,7 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
         books.push(book?);
     }
 
+    log::info!("Successfully retrieved {} books from Calibre DB.", books.len());
     Ok(books)
 }
 
