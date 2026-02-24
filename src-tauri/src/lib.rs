@@ -229,32 +229,37 @@ pub fn run() {
             let server_state = app.state::<AppState>().server.clone();
             let handle_for_load = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let store = handle_for_load.store("shelfsync_settings.json");
-                if let Ok(store_handle) = store {
-                    if let Some(path) = store_handle
-                        .get("library_path")
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                    {
-                        eprintln!("[AUTO-LOAD] Starting load for path: {}", path);
-                        match db::get_calibre_metadata(&path) {
-                            Ok(books) => {
-                                let mut path_lock = server_state
-                                    .library_path
-                                    .lock()
-                                    .expect("Poisoned lock");
-                                *path_lock = Some(path.to_string());
+                use tauri_plugin_store::StoreExt;
+                match handle_for_load.store("shelfsync_settings.json") {
+                    Ok(store_handle) => {
+                        if let Some(path) = store_handle
+                            .get("library_path")
+                            .and_then(|v| v.as_str().map(|s| s.to_string()))
+                        {
+                            info!("[AUTO-LOAD] Found saved library path: {}", path);
+                            match db::get_calibre_metadata(&path) {
+                                Ok(books) => {
+                                    let mut path_lock = server_state
+                                        .library_path
+                                        .lock()
+                                        .expect("Poisoned lock");
+                                    *path_lock = Some(path.to_string());
 
-                                let mut books_lock =
-                                    server_state.books.lock().expect("Poisoned lock");
-                                *books_lock = books;
-                                eprintln!("[AUTO-LOAD] Success: Cached in server state.");
+                                    let mut books_lock =
+                                        server_state.books.lock().expect("Poisoned lock");
+                                    *books_lock = books;
+                                    info!("[AUTO-LOAD] Successfully loaded {} books.", server_state.books.lock().unwrap().len());
+                                }
+                                Err(e) => {
+                                    error!("[AUTO-LOAD] Failed to load metadata: {:?}", e);
+                                }
                             }
-                            Err(e) => {
-                                eprintln!("[AUTO-LOAD] ERROR: {:?}", e);
-                            }
+                        } else {
+                            info!("[AUTO-LOAD] No library_path found in settings store.");
                         }
-                    } else {
-                        eprintln!("[AUTO-LOAD] No saved path found.");
+                    }
+                    Err(e) => {
+                        error!("[AUTO-LOAD] Failed to open settings store: {:?}", e);
                     }
                 }
             });

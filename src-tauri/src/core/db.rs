@@ -57,13 +57,13 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
 
         Ok(Book {
             id: row.get(0)?,
-            title: row.get(1)?,
-            path: row.get(2)?,
-            authors: row.get(3).unwrap_or_default(),
+            title: row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "Unknown Title".to_string()),
+            path: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            authors: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "Unknown Author".to_string()),
             cover_url: None,
             formats,
             series: row.get(5)?,
-            series_index: row.get(6).unwrap_or(1.0),
+            series_index: row.get::<_, Option<f64>>(6)?.unwrap_or(1.0),
             tags,
             publisher: row.get(8)?,
         })

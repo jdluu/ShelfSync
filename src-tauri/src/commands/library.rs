@@ -2,11 +2,22 @@ use crate::{core::db, error::AppError, models::Book, AppState};
 use tauri::State;
 
 #[tauri::command]
-pub fn get_books(library_path: String, state: State<'_, AppState>) -> Result<Vec<Book>, AppError> {
+pub fn get_books(
+    library_path: String,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<Book>, AppError> {
     // 1. Fetch from DB
     let books = db::get_calibre_metadata(&library_path)?;
 
-    // 2. Update Server State Cache
+    // 2. Persist path
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app.store("shelfsync_settings.json") {
+        store.set("library_path", serde_json::json!(library_path));
+        let _ = store.save();
+    }
+
+    // 3. Update Server State Cache
     {
         let mut path_lock = state
             .server
@@ -27,10 +38,22 @@ pub fn get_books(library_path: String, state: State<'_, AppState>) -> Result<Vec
 }
 
 #[tauri::command]
-pub fn set_library_path(path: String, state: State<'_, AppState>) -> Result<(), AppError> {
-    // Also fetch and cache books when explicitly setting path
+pub fn set_library_path(
+    path: String,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), AppError> {
+    // 1. Fetch and cache books
     let books = db::get_calibre_metadata(&path)?;
 
+    // 2. Persist path
+    use tauri_plugin_store::StoreExt;
+    if let Ok(store) = app.store("shelfsync_settings.json") {
+        store.set("library_path", serde_json::json!(path));
+        let _ = store.save();
+    }
+
+    // 3. Update State
     let mut lib_path = state
         .server
         .library_path
