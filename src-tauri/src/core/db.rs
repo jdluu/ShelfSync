@@ -25,8 +25,6 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     // books_authors_link (id, book, author, ...)
 
     let start = std::time::Instant::now();
-    log::info!("Starting metadata query...");
-    let start = std::time::Instant::now();
     eprintln!("[DB] Starting metadata query at {:?}", db_path);
     
     let mut stmt = conn.prepare(

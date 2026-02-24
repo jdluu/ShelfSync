@@ -226,7 +226,7 @@ pub fn run() {
             }
 
             // 2. Load Settings from persistent store (Async)
-            let state_for_load = app_state.clone();
+            let server_state = app.state::<AppState>().server.clone();
             let handle_for_load = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let store = handle_for_load.store("shelfsync_settings.json");
@@ -235,18 +235,17 @@ pub fn run() {
                         .get("library_path")
                         .and_then(|v| v.as_str().map(|s| s.to_string()))
                     {
-                        eprintln!("[AUTO-LOAD] Detected saved path: {}", path);
+                        eprintln!("[DB] Starting metadata query at {:?}", path);
                         match db::get_calibre_metadata(&path) {
                             Ok(books) => {
-                                let mut path_lock = state_for_load
-                                    .server
+                                let mut path_lock = server_state
                                     .library_path
                                     .lock()
                                     .expect("Poisoned lock");
                                 *path_lock = Some(path.to_string());
 
                                 let mut books_lock =
-                                    state_for_load.server.books.lock().expect("Poisoned lock");
+                                    server_state.books.lock().expect("Poisoned lock");
                                 *books_lock = books;
                                 eprintln!("[AUTO-LOAD] Library auto-loaded successfully.");
                             }
