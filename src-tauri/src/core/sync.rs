@@ -45,11 +45,11 @@ impl SyncManager {
             while let Some(task) = rx.recv().await {
                 // Process one task at a time
                 if let Err(e) = process_task::<R>(&app, &client, &task, &active_queue_clone).await {
-                    eprintln!("Sync error: {}", e);
+                    log::error!("Sync error: {}", e);
                 }
 
                 // Remove from active queue
-                let mut queue = active_queue_clone.lock().unwrap();
+                let mut queue = active_queue_clone.lock().expect("Poisoned lock");
                 if !queue.is_empty() {
                     queue.remove(0);
                 }
@@ -65,7 +65,7 @@ impl SyncManager {
     pub async fn add_tasks(&self, tasks: Vec<SyncTask>) -> Result<(), String> {
         // Add books to queue and collect tasks, then drop lock before sending
         let tasks_to_send: Vec<_> = {
-            let mut queue = self.active_queue.lock().unwrap();
+            let mut queue = self.active_queue.lock().expect("Poisoned lock");
             tasks
                 .into_iter()
                 .inspect(|task| {
@@ -148,7 +148,7 @@ fn emit_progress<R: Runtime>(
     queue: &Arc<Mutex<Vec<Book>>>,
 ) {
     let (pos, total) = {
-        let q = queue.lock().unwrap();
+        let q = queue.lock().expect("Poisoned lock");
         (0, q.len()) // Simplified: active task is always at 0
     };
 

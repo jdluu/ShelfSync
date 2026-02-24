@@ -13,9 +13,6 @@ pub enum AppError {
 
     #[error("Unknown error: {0}")]
     Unknown(String),
-
-    #[error("Other error: {0}")]
-    Other(String),
 }
 
 // Implement Serialize manually or via `serde_repr` if needed,

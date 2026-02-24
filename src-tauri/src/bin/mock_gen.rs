@@ -4,12 +4,12 @@ use std::path::Path;
 fn main() {
     let path = Path::new("../mock_library");
     std::fs::create_dir_all(path).unwrap();
-    
+
     let db_path = path.join("metadata.db");
     if db_path.exists() {
         std::fs::remove_file(&db_path).unwrap();
     }
-    
+
     let conn = Connection::open(&db_path).unwrap();
 
     conn.execute(
@@ -50,10 +50,15 @@ fn main() {
     conn.execute(
         "CREATE TABLE books_authors_link (id INTEGER PRIMARY KEY, book INTEGER, author INTEGER)",
         [],
-    ).unwrap();
+    )
+    .unwrap();
 
     // Insert mock data
-    conn.execute("INSERT INTO books (id, title, path) VALUES (1, 'The Great Gatsby', 'fitzgerald/gatsby')", []).unwrap();
+    conn.execute(
+        "INSERT INTO books (id, title, path) VALUES (1, 'The Great Gatsby', 'fitzgerald/gatsby')",
+        [],
+    )
+    .unwrap();
     conn.execute(
         "INSERT INTO authors (id, name) VALUES (1, 'F. Scott Fitzgerald')",
         [],

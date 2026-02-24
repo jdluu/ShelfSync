@@ -283,8 +283,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         );
         const permission = await isPermissionGranted();
         if (!permission) {
-          const permission = await requestPermission();
-          console.log("Notification permission:", permission);
+          await requestPermission();
         }
       }
     } catch (e) {
@@ -364,7 +363,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
       const { openPath } = await import("@tauri-apps/plugin-opener");
       await openPath(path);
     } else {
-      console.log("Opening book path in browser (not supported):", path);
+      console.warn("Opening book path in browser (not supported):", path);
     }
   };
 

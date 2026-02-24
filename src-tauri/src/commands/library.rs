@@ -59,10 +59,10 @@ pub async fn start_bulk_sync(
 ) -> Result<(), AppError> {
     // Clone the sync manager reference before locking
     let sync_manager = {
-        let sync_manager_lock = state.sync_manager.lock().unwrap();
+        let sync_manager_lock = state.sync_manager.lock().expect("Poisoned lock");
         sync_manager_lock
             .as_ref()
-            .ok_or_else(|| AppError::Other("Sync manager not initialized".to_string()))?
+            .ok_or_else(|| AppError::Unknown("Sync manager not initialized".to_string()))?
             .clone()
     }; // Lock is dropped here
 
@@ -80,6 +80,6 @@ pub async fn start_bulk_sync(
     sync_manager
         .add_tasks(tasks)
         .await
-        .map_err(AppError::Other)?;
+        .map_err(AppError::Unknown)?;
     Ok(())
 }

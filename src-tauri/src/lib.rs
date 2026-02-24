@@ -14,6 +14,7 @@ use log::{error, info};
 use rand::Rng;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
+use tauri_plugin_store::StoreExt;
 
 pub struct DiscoveryState {
     hosts: Mutex<Vec<ConnectionInfo>>,
@@ -37,35 +38,10 @@ pub fn run() {
     // Initialize logging
     env_logger::init();
 
-    // Generate random 4-digit PIN
-    let mut rng = rand::rng();
-    let pin: u32 = rng.random_range(1000..10000);
-    let pin_str = pin.to_string();
-    info!("Starting server with PIN: {}", pin_str);
-
-    // Will get app_data_dir from within setup where we have app handle
-    // For now, use a temporary dir or create app_data_dir in setup
-    let temp_app_data_dir = std::env::temp_dir().join("shelfsync_temp");
-
-    let server_state = Arc::new(server::ServerState {
-        library_path: Mutex::new(None),
-        books: Mutex::new(Vec::new()),
-        pin: pin_str,
-        authorized_tokens: Mutex::new(std::collections::HashSet::new()),
-        app_data_dir: temp_app_data_dir.clone(), // Will be updated in setup
-    });
-
     let discovery_state = Arc::new(DiscoveryState {
         hosts: Mutex::new(Vec::new()),
     });
 
-    // Spawn server task
-    let state_clone = server_state.clone();
-    tauri::async_runtime::spawn(async move {
-        server::run(state_clone, 8080).await;
-    });
-
-    // Capture discovery state for the setup hook
     let discovery_clone = discovery_state.clone();
 
     let builder = tauri::Builder::default()
@@ -74,9 +50,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState {
-            server: server_state,
+            server: Arc::new(server::ServerState {
+                library_path: Mutex::new(None),
+                books: Mutex::new(Vec::new()),
+                pin: Mutex::new("0000".to_string()), // Temporary, updated in setup
+                authorized_tokens: Mutex::new(std::collections::HashSet::new()),
+                app_data_dir: Mutex::new(None),
+            }),
             discovery: discovery_state,
             sync_manager: Mutex::new(None),
         })
@@ -84,26 +65,55 @@ pub fn run() {
             let handle = app.handle().clone();
             let discovery = discovery_clone;
 
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .expect("Failed to get app_data_dir");
+            std::fs::create_dir_all(&app_data_dir).ok();
+
+            // 1. Generate PIN and update Server State with real data
+            let mut rng = rand::rng();
+            let pin: u32 = rng.random_range(1000..10000);
+            let pin_str = pin.to_string();
+            info!("Starting server with PIN: {}", pin_str);
+
+            let app_state = app.state::<AppState>();
+            {
+                let mut pin = app_state.server.pin.lock().expect("Poisoned lock");
+                *pin = pin_str;
+
+                let mut data_dir = app_state.server.app_data_dir.lock().expect("Poisoned lock");
+                *data_dir = Some(app_data_dir.clone());
+            }
+
             #[cfg(desktop)]
             {
                 // System Tray Setup
                 let quit_i =
-                    tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
-                let show_i =
-                    tauri::menu::MenuItem::with_id(app, "show", "Show ShelfSync", true, None::<&str>)
-                        .unwrap();
+                    tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
+                        .expect("Failed to create menu item");
+                let show_i = tauri::menu::MenuItem::with_id(
+                    app,
+                    "show",
+                    "Show ShelfSync",
+                    true,
+                    None::<&str>,
+                )
+                .expect("Failed to create menu item");
                 let hide_i =
-                    tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>).unwrap();
+                    tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>)
+                        .expect("Failed to create menu item");
                 let menu = tauri::menu::Menu::with_items(
                     app,
                     &[
                         &show_i,
                         &hide_i,
-                        &tauri::menu::PredefinedMenuItem::separator(app).unwrap(),
+                        &tauri::menu::PredefinedMenuItem::separator(app)
+                            .expect("Failed to create separator"),
                         &quit_i,
                     ],
                 )
-                .unwrap();
+                .expect("Failed to create menu");
 
                 let _tray = tauri::tray::TrayIconBuilder::new()
                     .menu(&menu)
@@ -114,13 +124,13 @@ pub fn run() {
                         }
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {
-                                window.show().unwrap();
-                                window.set_focus().unwrap();
+                                let _ = window.show();
+                                let _ = window.set_focus();
                             }
                         }
                         "hide" => {
                             if let Some(window) = app.get_webview_window("main") {
-                                window.hide().unwrap();
+                                let _ = window.hide();
                             }
                         }
                         _ => {}
@@ -133,64 +143,66 @@ pub fn run() {
                             let app = tray.app_handle();
                             if let Some(window) = app.get_webview_window("main") {
                                 if window.is_visible().unwrap_or(false) {
-                                    window.hide().unwrap();
+                                    let _ = window.hide();
                                 } else {
-                                    window.show().unwrap();
-                                    window.set_focus().unwrap();
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
                                 }
                             }
                         }
                         _ => {}
                     })
-                    .build(app)?;
+                    .build(app)
+                    .expect("Failed to build tray icon");
             }
 
-            // Initialize Server State from persistent store
-            let app_state = app.state::<AppState>();
-            if let Ok(app_data_dir) = app.path().app_data_dir() {
-                // Create dir if doesn't exist
-                std::fs::create_dir_all(&app_data_dir).ok();
+            // 2. Load Settings from persistent store
+            let handle_for_setup = app.handle().clone();
+            let store = handle_for_setup.store("shelfsync_settings.json");
 
-                // Init progress DB
-                if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
-                    error!("Failed to init progress DB: {}", e);
-                }
+            if let Ok(store_handle) = store {
+                if let Some(path) = store_handle
+                    .get("library_path")
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+                {
+                    info!("Auto-loading library from: {}", path);
+                    if let Ok(books) = db::get_calibre_metadata(&path) {
+                        let mut path_lock =
+                            app_state.server.library_path.lock().expect("Poisoned lock");
+                        *path_lock = Some(path.to_string());
 
-                let settings_path = app_data_dir.join("shelfsync_settings.json");
-                if settings_path.exists() {
-                    if let Ok(content) = std::fs::read_to_string(settings_path) {
-                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                            if let Some(path) = json.get("library_path").and_then(|v| v.as_str()) {
-                                info!("Auto-loading library from: {}", path);
-                                if let Ok(books) = db::get_calibre_metadata(path) {
-                                    let mut path_lock =
-                                        app_state.server.library_path.lock().unwrap();
-                                    *path_lock = Some(path.to_string());
-
-                                    let mut books_lock = app_state.server.books.lock().unwrap();
-                                    *books_lock = books;
-                                    info!("Library auto-loaded successfully.");
-                                } else {
-                                    error!("Failed to load metadata from saved path");
-                                }
-                            }
-                        }
+                        let mut books_lock = app_state.server.books.lock().expect("Poisoned lock");
+                        *books_lock = books;
+                        info!("Library auto-loaded successfully.");
+                    } else {
+                        error!("Failed to load metadata from saved path: {}", path);
                     }
                 }
             }
 
-            // Init Sync Manager
+            // 3. Init progress DB
+            if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
+                error!("Failed to init progress DB: {}", e);
+            }
+
+            // 4. Init Sync Manager
             let sync_mgr = crate::core::sync::SyncManager::new(app.handle().clone());
             {
-                let state = app.state::<AppState>();
-                let mut sm_lock = state.sync_manager.lock().unwrap();
+                let mut sm_lock = app_state.sync_manager.lock().expect("Poisoned lock");
                 *sm_lock = Some(sync_mgr);
             }
 
+            // 5. Spawn server task
+            let state_clone = app_state.server.clone();
+            tauri::async_runtime::spawn(async move {
+                server::run(state_clone, 8080).await;
+            });
+
+            // 6. Spawn mDNS task
             tauri::async_runtime::spawn(async move {
                 let mdns = mdns_sd::ServiceDaemon::new().expect("Failed to create mDNS daemon");
 
-                // 1. Broadcast
+                // Broadcast
                 let machine_name = hostname::get()
                     .map(|h| h.to_string_lossy().to_string())
                     .unwrap_or_else(|_| "ShelfSync-Host".to_string());
@@ -214,13 +226,13 @@ pub fn run() {
                 mdns.register(service_info)
                     .expect("Failed to register mDNS service");
 
-                // 2. Browse
+                // Browse
                 let receiver = mdns.browse(service_type).expect("Failed to browse");
                 while let Ok(event) = receiver.recv_async().await {
                     let mut updated = false;
                     match event {
                         mdns_sd::ServiceEvent::ServiceResolved(info) => {
-                            let mut hosts = discovery.hosts.lock().unwrap();
+                            let mut hosts = discovery.hosts.lock().expect("Poisoned lock");
                             let ip = info
                                 .get_addresses()
                                 .iter()
@@ -240,7 +252,7 @@ pub fn run() {
                             }
                         }
                         mdns_sd::ServiceEvent::ServiceRemoved(_type, name) => {
-                            let mut hosts = discovery.hosts.lock().unwrap();
+                            let mut hosts = discovery.hosts.lock().expect("Poisoned lock");
                             let len_before = hosts.len();
                             hosts.retain(|h| h.hostname != name);
                             if hosts.len() != len_before {
@@ -251,7 +263,7 @@ pub fn run() {
                     }
 
                     if updated {
-                        let hosts = discovery.hosts.lock().unwrap().clone();
+                        let hosts = discovery.hosts.lock().expect("Poisoned lock").clone();
                         if let Err(e) = handle.emit("discovery-update", hosts) {
                             error!("Failed to emit discovery update: {}", e);
                         }
@@ -265,7 +277,11 @@ pub fn run() {
             library::set_library_path,
             library::start_bulk_sync,
             network::get_connection_info,
-            network::discover_hosts
+            network::discover_hosts,
+            commands::local_db::init_local_db,
+            commands::local_db::save_local_book,
+            commands::local_db::update_local_read_status,
+            commands::local_db::get_local_books
         ]);
 
     builder

@@ -11,9 +11,7 @@
     "dialog:default",
     "notification:default",
     "http:default",
-    "sql:allow-execute",
-    "sql:allow-select",
-    "sql:allow-load",
+    "updater:default",
     "core:tray:default"
   ]
 }

@@ -45,7 +45,6 @@ rustls = { version = "0.23", features = ["ring"] }
 tauri-plugin-notification = "2"
 tauri-plugin-http = "2"
 futures-util = "0.3"
-tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 rusqlite = "0.31.0"
 tauri-plugin-updater = "2.10.0"
 

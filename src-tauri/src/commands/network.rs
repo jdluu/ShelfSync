@@ -11,11 +11,11 @@ pub fn get_connection_info(state: State<'_, AppState>) -> ConnectionInfo {
         hostname: hostname::get()
             .map(|h| h.to_string_lossy().to_string())
             .unwrap_or("Unknown".to_string()),
-        pin: Some(state.server.pin.clone()),
+        pin: Some(state.server.pin.lock().expect("Poisoned lock").clone()),
     }
 }
 
 #[tauri::command]
 pub fn discover_hosts(state: State<'_, AppState>) -> Vec<ConnectionInfo> {
-    state.discovery.hosts.lock().unwrap().clone()
+    state.discovery.hosts.lock().expect("Poisoned lock").clone()
 }

@@ -23,28 +23,16 @@ pub struct ServerState {
     /// In-memory cache of book metadata.
     pub books: Mutex<Vec<Book>>,
     /// 4-digit PIN for initial device pairing.
-    pub pin: String,
+    pub pin: Mutex<String>,
     /// Set of authorized bearer tokens.
     pub authorized_tokens: Mutex<std::collections::HashSet<String>>,
     /// Directory for storing application data (cache, settings, etc.).
-    pub app_data_dir: std::path::PathBuf,
+    pub app_data_dir: Mutex<Option<std::path::PathBuf>>,
 }
 
 pub type SharedState = Arc<ServerState>;
 
-/// Starts the HTTP server on the specified port.
-///
-/// # Arguments
-///
-/// * `state` - The shared application state.
-/// * `port` - The port to listen on (typically 8080).
 pub async fn run(state: SharedState, port: u16) {
-    // Generate PIN if not already provided in state (though state is created here usually?)
-    // Actually state is passed IN. We should modify how state is created in lib.rs or just read it here.
-    // Wait, state is created in lib.rs. I should check lib.rs.
-    // I cannot change ServerState struct easily without updating initialization in lib.rs.
-    // I will go to lib.rs to initialize the PIN.
-
     let app = Router::new()
         .route("/api/manifest", get(get_manifest))
         .route("/api/cover/{book_id}", get(get_cover))
@@ -134,7 +122,17 @@ async fn get_cover(
         return (StatusCode::NOT_FOUND, "Cover not found").into_response();
     }
 
-    match get_cached_or_resized_cover(&state.app_data_dir, &cover_path, book_id).await {
+    let app_data_dir = {
+        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        match &*guard {
+            Some(p) => p.clone(),
+            None => {
+                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
+            }
+        }
+    };
+
+    match get_cached_or_resized_cover(&app_data_dir, &cover_path, book_id).await {
         Ok(bytes) => Response::builder()
             .header(header::CONTENT_TYPE, "image/jpeg")
             .body(Body::from(bytes))
@@ -357,7 +355,8 @@ async fn check_pin(
     State(state): State<SharedState>,
     Json(payload): Json<PinRequest>,
 ) -> impl IntoResponse {
-    if payload.pin == state.pin {
+    let pin = state.pin.lock().expect("Poisoned lock");
+    if payload.pin == *pin {
         let token = uuid::Uuid::new_v4().to_string();
         state
             .authorized_tokens
@@ -382,7 +381,17 @@ async fn get_progress(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    match crate::core::progress::get_all_progress(&state.app_data_dir) {
+    let app_data_dir = {
+        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        match &*guard {
+            Some(p) => p.clone(),
+            None => {
+                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
+            }
+        }
+    };
+
+    match crate::core::progress::get_all_progress(&app_data_dir) {
         Ok(records) => Json(records).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -411,11 +420,17 @@ async fn update_progress(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    match crate::core::progress::update_progress(
-        &state.app_data_dir,
-        payload.book_id,
-        &payload.status,
-    ) {
+    let app_data_dir = {
+        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        match &*guard {
+            Some(p) => p.clone(),
+            None => {
+                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
+            }
+        }
+    };
+
+    match crate::core::progress::update_progress(&app_data_dir, payload.book_id, &payload.status) {
         Ok(_) => StatusCode::OK.into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -511,13 +526,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
-            pin: "1234".to_string(),
+            pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
                 let mut set = std::collections::HashSet::new();
                 set.insert("test-token".to_string());
                 set
             }),
-            app_data_dir: dir.path().to_path_buf(),
+            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
         });
 
         // Pre-populate cache because get_manifest now reads from cache!
@@ -550,13 +565,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
-            pin: "1234".to_string(),
+            pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
                 let mut set = std::collections::HashSet::new();
                 set.insert("test-token".to_string());
                 set
             }),
-            app_data_dir: dir.path().to_path_buf(),
+            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
         });
 
         // Pre-populate cache
@@ -593,13 +608,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
-            pin: "1234".to_string(),
+            pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
                 let mut set = std::collections::HashSet::new();
                 set.insert("test-token".to_string());
                 set
             }),
-            app_data_dir: dir.path().to_path_buf(),
+            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
         });
 
         // Pre-populate cache
@@ -634,9 +649,9 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
-            pin: "1234".to_string(),
+            pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new(std::collections::HashSet::new()),
-            app_data_dir: dir.path().to_path_buf(),
+            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
         });
 
         let app = Router::new()
@@ -687,13 +702,13 @@ mod tests {
         let state = Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
-            pin: "1234".to_string(),
+            pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
                 let mut set = std::collections::HashSet::new();
                 set.insert("test-token".to_string());
                 set
             }),
-            app_data_dir: dir.path().to_path_buf(),
+            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
         });
 
         let app = Router::new()
