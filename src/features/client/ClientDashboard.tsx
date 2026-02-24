@@ -1,5 +1,5 @@
-import { Search, WifiOff } from "lucide-react";
-import React, { useEffect } from "react";
+import { ArrowUp, LayoutGrid, List, Search, WifiOff } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
@@ -45,6 +45,14 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const [sortOption, setSortOption] = React.useState<SortOption>("title");
   const [selectionMode, setSelectionMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const filterAndSort = (list: Book[]) => {
     let result = [...list];
@@ -153,21 +161,23 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
         <div className="container mx-auto max-w-7xl">
           {connectedHost && (
-            <div className="mb-6 sm:mb-8 p-4 sm:p-5 bg-primary/5 border border-primary/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex flex-col gap-1">
-                <p className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-widest">
-                  Connected To
-                </p>
-                <p className="text-base sm:text-xl font-bold text-base-content/90 break-all leading-tight">
-                  {connectedHost.hostname}
-                </p>
-                <p className="text-xs font-mono opacity-50">
-                  {connectedHost.ip}:{connectedHost.port}
-                </p>
+            <div className="mb-4 p-3 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="badge badge-success badge-xs gap-1 py-2 font-bold px-2">
+                  <div className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                  Live Sync
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-xs font-bold text-base-content/90 leading-none">
+                    {connectedHost.hostname}
+                  </p>
+                  <p className="text-[10px] font-mono opacity-40">
+                    {connectedHost.ip}:{connectedHost.port}
+                  </p>
+                </div>
               </div>
-              <div className="badge badge-success badge-sm sm:badge-lg gap-2 font-bold px-3 sm:px-4 py-3 shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                Live Sync
+              <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-60">
+                Connected
               </div>
             </div>
           )}
@@ -205,28 +215,50 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
           {loading ? (
             <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
               aria-live="polite"
               aria-busy="true"
             >
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
+              {[...Array(12)].map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
           ) : connectedHost ? (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col sm:flex-row justify-between gap-4 items-stretch sm:items-center">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg sm:text-2xl font-bold">Available Books</h2>
-                  <span className="badge badge-success badge-xs sm:badge-lg text-white font-medium">
-                    {books.length} Total
-                  </span>
+            <div className="flex flex-col gap-4">
+              <div 
+                className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm -mx-4 px-4 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
+                style={{ boxShadow: showScrollTop ? "0 4px 6px -1px rgb(0 0 0 / 0.1)" : "none" }}
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm sm:text-lg font-bold">Available Books</h2>
+                    <span className="badge badge-primary badge-xs py-1.5 font-medium">
+                      {books.length}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1 bg-base-200 p-0.5 rounded-lg border border-base-300">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("grid")}
+                      className={`btn btn-xs btn-square ${viewMode === "grid" ? "btn-primary" : "btn-ghost"}`}
+                      title="Grid View"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("list")}
+                      className={`btn btn-xs btn-square ${viewMode === "list" ? "btn-primary" : "btn-ghost"}`}
+                      title="List View"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="flex-1 sm:w-64">
+
+                <div className="flex items-center gap-2 w-full">
+                  <div className="flex-1">
                     <SearchBar value={searchTerm} onChange={setSearchTerm} />
                   </div>
                   <div className="shrink-0">
@@ -235,19 +267,24 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid gap-3 sm:gap-4 ${
+                viewMode === "grid" 
+                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8" 
+                  : "grid-cols-1 md:grid-cols-2"
+              }`}>
                 {filteredRemoteBooks.map((book) => (
                   <BookCard
                     key={book.id}
                     book={book}
                     host={connectedHost}
                     variant="remote"
+                    compact={viewMode === "grid"}
                     onAction={handleSync}
                     selected={selectedIds.has(book.id)}
                     selectable={selectionMode}
                     onSelect={() => toggleSelection(book.id)}
                     syncStatus={syncProgress[book.id]}
-                    actionLabel="Sync to Storage"
+                    actionLabel="Sync"
                     actionColor="blue"
                   />
                 ))}
@@ -260,8 +297,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     title="No Books Found"
                     description={
                       searchTerm
-                        ? `No results for "${searchTerm}" in this library.`
-                        : "This library appears to be empty."
+                        ? `No results for "${searchTerm}"`
+                        : "Library is empty."
                     }
                     actionLabel={searchTerm ? "Clear Search" : undefined}
                     onAction={() => setSearchTerm("")}
@@ -275,13 +312,18 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
               {localBooks.length > 0 && (
                 <div className="pt-8 border-t border-base-300">
-                  <h2 className="text-2xl font-bold mb-6">Local Library (Offline)</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <h2 className="text-xl font-bold mb-4">On My Device</h2>
+                  <div className={`grid gap-3 sm:gap-4 ${
+                    viewMode === "grid" 
+                      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6" 
+                      : "grid-cols-1 md:grid-cols-2"
+                  }`}>
                     {filteredLocalBooks.map((book) => (
                       <BookCard
                         key={book.id}
                         book={book}
                         variant="local"
+                        compact={viewMode === "grid"}
                         onAction={() => onOpenBook(book.local_path || "")}
                         onToggleStatus={onToggleStatus}
                         actionLabel="Read"
@@ -296,13 +338,25 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 <EmptyState
                   icon={WifiOff}
                   title="Not Connected"
-                  description="Connect to a host to browse and sync books."
+                  description="Connect to a host to browse books."
                 />
               </div>
             </div>
           )}
         </div>
       </main>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-[2000] btn btn-circle btn-primary shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
+
       {selectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[2500] bg-base-100 p-4 rounded-xl shadow-2xl border border-primary w-[calc(100%-2rem)] max-w-md">
           <div className="flex flex-col gap-4">
