@@ -15,7 +15,6 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rand::Rng;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
-use tauri_plugin_store::StoreExt;
 
 fn get_lan_ip() -> std::net::IpAddr {
     // Try to find a non-loopback, non-virtual IP.
