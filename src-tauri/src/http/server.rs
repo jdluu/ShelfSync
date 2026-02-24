@@ -46,7 +46,7 @@ pub async fn run(state: SharedState, port: u16) {
         .map(|ip| ip.to_string())
         .unwrap_or_else(|_| "127.0.0.1".to_string());
 
-    let val = format!("{}:{}", local_ip, port);
+    let val = format!("0.0.0.0:{}", port);
     let listener = match tokio::net::TcpListener::bind(&val).await {
         Ok(l) => l,
         Err(e) => {
