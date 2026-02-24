@@ -1,34 +1,21 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
 
-## 1.0.1 (2026-02-23)
-
-### Features
-
-* **security:** harden Android release builds by disabling cleartext traffic and adding missing updater permissions
-* **architecture:** refactor state initialization to correctly use application data directories and consolidate settings persistence via `tauri-plugin-store`
-* **database:** migrate local book storage to a native Rust `rusqlite` implementation for improved performance and reliability
-* **robustness:** eliminate widespread `.unwrap()` calls in favor of proper error propagation and structured logging
-* **config:** stabilize command stripping settings and update capability permissions
-
-## 1.0.0 (2026-02-11)
+## [Unreleased]
 
 ### Features
 
-* **core:** implement dual-role architecture (Host/Client) with Rust/Tauri backend
-* **host:** integrate Calibre library metadata extraction and library indexing
-* **client:** implement automated mDNS service discovery for local network hosts
-* **sync:** develop background synchronization engine for EPUB files with progress tracking
-* **security:** implement 4-digit PIN device pairing and secure pairing mechanism
-* **ui:** design responsive frontend using Tailwind CSS, DaisyUI, and Nord theme
-* **a11y:** implement skip links, semantic roles, and focus management improvements
-* **help:** implement interactive help sidebar with searchable documentation
-* **testing:** implement comprehensive Playwright E2E testing suite with dual-window simulation
-* **ci/CD:** enable automated GitHub Actions for cross-platform builds and releases
+* **core:** implement dual-role architecture (Host/Client) for seamless local book synchronization
+* **sync:** develop background engine for EPUB files with real-time progress tracking
+* **discovery:** automated mDNS service discovery for easy host connection without manual IP entry
+* **security:** implement secure 4-digit PIN device pairing and bearer token authorization
+* **architecture:** consolidated state management using native Rust `rusqlite` database and `tauri-plugin-store`
+* **ui:** responsive, accessible design using Tailwind CSS, DaisyUI, and Nord theme
 
 ### Bug Fixes
 
-* **ui:** resolve various responsiveness and theme application inconsistencies
-* **sync:** fix concurrency issues and panic during high-throughput file transfers
-* **discovery:** stabilize mDNS broadcasting on various network configurations
+* **sync:** resolve "failed to fetch" issues by enabling Android cleartext traffic and binding host to `0.0.0.0`
+* **security:** relax Content Security Policy to support various local network addressing schemes
+* **robustness:** eliminated widespread `.unwrap()` calls in favor of structured error handling and logging
+* **ui:** fixed various layout and theme application inconsistencies across desktop and mobile
