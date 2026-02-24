@@ -32,7 +32,7 @@ fn get_lan_ip() -> std::net::IpAddr {
         for iface in &interfaces {
             for addr in &iface.addr {
                 let ip = addr.ip();
-                if let IpAddr::V4(ipv4) = ip {
+                if let std::net::IpAddr::V4(ipv4) = ip {
                     if ipv4.is_loopback() {
                         continue;
                     }
@@ -61,7 +61,7 @@ fn get_lan_ip() -> std::net::IpAddr {
         for iface in &interfaces {
             for addr in &iface.addr {
                 let ip = addr.ip();
-                if let IpAddr::V4(ipv4) = ip {
+                if let std::net::IpAddr::V4(ipv4) = ip {
                     if !ipv4.is_loopback() {
                         info!("Falling back to non-loopback IP: {}", ip);
                         return ip;
