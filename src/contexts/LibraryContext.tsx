@@ -222,6 +222,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const pair = async (pin: string) => {
     if (!pairingHost) return;
+    dispatch({ type: "SET_MANUAL_ERROR", payload: null });
 
     try {
       const newToken = await checkPinMutation.mutateAsync({ host: pairingHost, pin });
@@ -242,6 +243,10 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         payload: e.message || "Pairing failed. Please check the PIN and try again.",
       });
     }
+  };
+
+  const clearError = () => {
+    dispatch({ type: "SET_MANUAL_ERROR", payload: null });
   };
 
   const disconnect = () => {
@@ -424,6 +429,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         selectOfflineStorageFolder,
         openLocalBook,
         toggleReadStatus,
+        clearError,
       }}
     >
       {children}

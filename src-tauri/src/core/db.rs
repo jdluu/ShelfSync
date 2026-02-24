@@ -7,6 +7,10 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     let lib_path = Path::new(library_path);
     let db_path = lib_path.join("metadata.db");
 
+    log::info!("Checking Calibre library at: {:?}", lib_path);
+    log::info!("Metadata DB path: {:?}", db_path);
+    log::info!("DB path exists: {}", db_path.exists());
+
     if !db_path.exists() {
         return Err(AppError::LibraryNotFound(library_path.to_string()));
     }

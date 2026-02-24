@@ -235,16 +235,20 @@ pub fn run() {
                     .and_then(|v| v.as_str().map(|s| s.to_string()))
                 {
                     info!("Auto-loading library from: {}", path);
-                    if let Ok(books) = db::get_calibre_metadata(&path) {
-                        let mut path_lock =
-                            app_state.server.library_path.lock().expect("Poisoned lock");
-                        *path_lock = Some(path.to_string());
+                    match db::get_calibre_metadata(&path) {
+                        Ok(books) => {
+                            let mut path_lock =
+                                app_state.server.library_path.lock().expect("Poisoned lock");
+                            *path_lock = Some(path.to_string());
 
-                        let mut books_lock = app_state.server.books.lock().expect("Poisoned lock");
-                        *books_lock = books;
-                        info!("Library auto-loaded successfully.");
-                    } else {
-                        error!("Failed to load metadata from saved path: {}", path);
+                            let mut books_lock =
+                                app_state.server.books.lock().expect("Poisoned lock");
+                            *books_lock = books;
+                            info!("Library auto-loaded successfully.");
+                        }
+                        Err(e) => {
+                            error!("Failed to load metadata from saved path: {} - Error: {:?}", path, e);
+                        }
                     }
                 }
             }

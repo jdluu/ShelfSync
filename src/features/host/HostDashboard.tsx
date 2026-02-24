@@ -1,9 +1,10 @@
-import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
+import { ChevronsUpDown, Folder, Monitor, Network, X } from "lucide-react";
 import type React from "react";
 import QRCode from "react-qr-code";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
+import { useLibrary } from "@/contexts/LibraryContext";
 import type { Book, ConnectionInfo } from "@/types/core";
 
 interface HostDashboardProps {
@@ -25,6 +26,8 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   onSelectFolder,
   onChangeRole,
 }) => {
+  const { clearError } = useLibrary();
+
   return (
     <div className="min-h-screen flex flex-col bg-base-100 font-sans selection:bg-primary/30">
       <SkipLink />
@@ -60,7 +63,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                     {libraryPath ? "Update Library" : "Select Library"}
                   </button>
                   {error && (
-                    <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
+                      <button
+                        type="button"
+                        onClick={clearError}
+                        className="btn btn-ghost btn-xs btn-circle h-4 w-4 min-h-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
