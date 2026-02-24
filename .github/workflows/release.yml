@@ -134,6 +134,25 @@ jobs:
         run: |
             export NDK_HOME=$ANDROID_NDK_HOME
             pnpm tauri android init
+
+            # Fix Tauri template bug: BuildTask.kt is generated without a package
+            # declaration, but RustPlugin.kt imports it with a package-qualified name
+            BUILDSRC_SRC="src-tauri/gen/android/buildSrc/src/main"
+            PKG_DIR="$BUILDSRC_SRC/java/com/jdluu/shelfsync/kotlin"
+            KOTLIN_DIR="$BUILDSRC_SRC/kotlin"
+            if [ -f "$KOTLIN_DIR/BuildTask.kt" ]; then
+              mkdir -p "$PKG_DIR"
+              { echo 'package com.jdluu.shelfsync.kotlin'; echo ''; cat "$KOTLIN_DIR/BuildTask.kt"; } > "$PKG_DIR/BuildTask.kt"
+              rm "$KOTLIN_DIR/BuildTask.kt"
+            fi
+            if [ -f "$KOTLIN_DIR/RustPlugin.kt" ]; then
+              mkdir -p "$PKG_DIR"
+              { echo 'package com.jdluu.shelfsync.kotlin'; echo ''; cat "$KOTLIN_DIR/RustPlugin.kt"; } > "$PKG_DIR/RustPlugin.kt"
+              rm "$KOTLIN_DIR/RustPlugin.kt"
+            fi
+            sed -i 's|implementationClass = "RustPlugin"|implementationClass = "com.jdluu.shelfsync.kotlin.RustPlugin"|' \
+              "$BUILDSRC_SRC/../build.gradle.kts"
+
             if [ -f "src-tauri/gen/android/keystore.properties" ]; then
               pnpm tauri android build --aab
               pnpm tauri android build --apk

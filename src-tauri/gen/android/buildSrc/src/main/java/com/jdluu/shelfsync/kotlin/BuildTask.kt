@@ -3,8 +3,6 @@ package com.jdluu.shelfsync.kotlin
 import java.io.File
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
-import org.gradle.kotlin.dsl.get
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
