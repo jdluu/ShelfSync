@@ -36,5 +36,6 @@ export interface LibraryContextType {
   selectOfflineStorageFolder: () => Promise<void>;
   openLocalBook: (path: string) => Promise<void>;
   toggleReadStatus: (book: Book) => Promise<void>;
+  refresh: () => Promise<void>;
   clearError: () => void;
 }

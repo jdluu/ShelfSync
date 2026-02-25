@@ -40,7 +40,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   onToggleStatus,
   onChangeRole,
 }) => {
-  const { syncProgress, syncBooks, clearError } = useLibrary();
+  const { syncProgress, syncBooks, refresh, clearError } = useLibrary();
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortOption, setSortOption] = React.useState<SortOption>("title");
   const [selectionMode, setSelectionMode] = React.useState(false);
@@ -129,33 +129,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       <Header
         title="Client Dashboard"
         onChangeRole={onChangeRole}
-        actions={
-          connectedHost && (
-            <div className="flex items-center gap-1.5 sm:gap-2 mr-1 sm:mr-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectionMode(!selectionMode);
-                  setSelectedIds(new Set());
-                }}
-                className={`btn btn-xs sm:btn-sm ${selectionMode ? "btn-primary" : "btn-outline"}`}
-              >
-                <span className="hidden sm:inline">
-                  {selectionMode ? "Cancel Selection" : "Select Multiple"}
-                </span>
-                <span className="sm:hidden">{selectionMode ? "Cancel" : "Select"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={onDisconnect}
-                className="btn btn-xs sm:btn-sm btn-ghost border border-base-300"
-              >
-                <span className="hidden sm:inline">Disconnect</span>
-                <span className="sm:hidden">Exit</span>
-              </button>
-            </div>
-          )
-        }
       />
 
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
@@ -176,8 +149,18 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-60">
-                Connected
+              <div className="flex items-center gap-4">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-60">
+                  Connected
+                </div>
+                <button
+                  type="button"
+                  onClick={onDisconnect}
+                  className="btn btn-xs btn-ghost border border-base-300 gap-1"
+                >
+                  <WifiOff className="w-3 h-3" />
+                  <span>Exit</span>
+                </button>
               </div>
             </div>
           )}
@@ -229,33 +212,97 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm px-1 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
                 style={{ boxShadow: showScrollTop ? "0 4px 6px -1px rgb(0 0 0 / 0.1)" : "none" }}
               >
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm sm:text-lg font-bold">Available Books</h2>
-                    <span className="badge badge-primary badge-xs py-1.5 font-medium">
-                      {books.length}
-                    </span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm sm:text-lg font-bold">Available Books</h2>
+                      <span className="badge badge-primary badge-sm py-1 font-medium">
+                        {books.length}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => refresh()}
+                        className="btn btn-xs btn-circle btn-ghost"
+                        title="Refresh Library"
+                        disabled={loading}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-1 bg-base-200 p-0.5 rounded-lg border border-base-300">
+
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={`btn btn-xs btn-square ${viewMode === "grid" ? "btn-primary" : "btn-ghost"}`}
-                      title="Grid View"
+                      onClick={() => {
+                        setSelectionMode(!selectionMode);
+                        setSelectedIds(new Set());
+                      }}
+                      className={`btn btn-xs sm:btn-sm ${selectionMode ? "btn-primary" : "btn-ghost border-base-300"}`}
                     >
-                      <LayoutGrid className="w-3.5 h-3.5" />
+                      {selectionMode ? "Done" : "Select"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("list")}
-                      className={`btn btn-xs btn-square ${viewMode === "list" ? "btn-primary" : "btn-ghost"}`}
-                      title="List View"
-                    >
-                      <List className="w-3.5 h-3.5" />
-                    </button>
+
+                    <div className="flex items-center gap-1 bg-base-200 p-0.5 rounded-lg border border-base-300">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("grid")}
+                        className={`btn btn-xs btn-square ${viewMode === "grid" ? "btn-primary" : "btn-ghost"}`}
+                        title="Grid View"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode("list")}
+                        className={`btn btn-xs btn-square ${viewMode === "list" ? "btn-primary" : "btn-ghost"}`}
+                        title="List View"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {selectionMode && (
+                  <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2">
+                    <span className="text-xs font-bold text-primary px-1">
+                      {selectedIds.size} selected
+                    </span>
+                    <div className="flex gap-1 ml-auto">
+                      <button
+                        type="button"
+                        className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
+                        onClick={() => setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
+                        onClick={() => setSelectedIds(new Set())}
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 w-full">
                   <div className="flex-1">

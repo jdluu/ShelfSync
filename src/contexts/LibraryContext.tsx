@@ -404,6 +404,14 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const refresh = async () => {
+    // Re-fetch both manifest and local DB
+    await Promise.all([
+      remoteQuery.refetch(),
+      localQuery.refetch(),
+    ]);
+  };
+
   return (
     <LibraryContext.Provider
       value={{
@@ -429,6 +437,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
         selectOfflineStorageFolder,
         openLocalBook,
         toggleReadStatus,
+        refresh,
         clearError,
       }}
     >
