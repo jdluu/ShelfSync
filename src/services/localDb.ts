@@ -1,11 +1,11 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { Book } from "@/types/core";
+import { safeInvoke } from "@/utils/tauri";
 
 /**
  * Initializes the local database by calling the Rust backend.
  */
 export async function initDB() {
-  await invoke("init_local_db");
+  await safeInvoke<void>("init_local_db", {});
 }
 
 /**
@@ -14,7 +14,7 @@ export async function initDB() {
  * @param localPath The local filesystem path where the book is stored.
  */
 export async function saveBook(book: Book, localPath: string) {
-  await invoke("save_local_book", { book, localPath });
+  await safeInvoke<void>("save_local_book", { book, localPath });
 }
 
 /**
@@ -23,7 +23,7 @@ export async function saveBook(book: Book, localPath: string) {
  * @param status The new reading status.
  */
 export async function updateReadStatus(id: number, status: "unread" | "reading" | "finished") {
-  await invoke("update_local_read_status", { id, status });
+  await safeInvoke<void>("update_local_read_status", { id, status });
 }
 
 /**
@@ -31,5 +31,5 @@ export async function updateReadStatus(id: number, status: "unread" | "reading" 
  * @returns A promise resolving to an array of Book objects.
  */
 export async function getLocalBooks(): Promise<Book[]> {
-  return await invoke<Book[]>("get_local_books");
+  return (await safeInvoke<Book[]>("get_local_books", {})) ?? [];
 }

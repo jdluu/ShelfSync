@@ -1,5 +1,5 @@
 import { ArrowUp, LayoutGrid, List, Search, WifiOff } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
@@ -62,10 +62,14 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       const lower = searchTerm.toLowerCase();
       result = result.filter(
         (b) =>
-          (b.title?.toLowerCase().includes(lower) || false) ||
-          (b.authors?.toLowerCase().includes(lower) || false) ||
-          (b.series?.toLowerCase().includes(lower) || false) ||
-          (b.tags?.some((t) => t.toLowerCase().includes(lower)) || false),
+          b.title?.toLowerCase().includes(lower) ||
+          false ||
+          b.authors?.toLowerCase().includes(lower) ||
+          false ||
+          b.series?.toLowerCase().includes(lower) ||
+          false ||
+          b.tags?.some((t) => t.toLowerCase().includes(lower)) ||
+          false,
       );
     }
 
@@ -86,8 +90,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     return result;
   };
 
-  const filteredRemoteBooks = filterAndSort(books);
-  const filteredLocalBooks = filterAndSort(localBooks);
+  const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, searchTerm, sortOption]);
+  const filteredLocalBooks = useMemo(
+    () => filterAndSort(localBooks),
+    [localBooks, searchTerm, sortOption],
+  );
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -126,10 +133,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   return (
     <>
       <SkipLink />
-      <Header
-        title="Client Dashboard"
-        onChangeRole={onChangeRole}
-      />
+      <Header title="Client Dashboard" onChangeRole={onChangeRole} />
 
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
         <div className="container mx-auto max-w-7xl">
@@ -208,7 +212,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
           ) : connectedHost ? (
             <div className="flex flex-col gap-4">
-              <div 
+              <div
                 className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm px-1 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
                 style={{ boxShadow: showScrollTop ? "0 4px 6px -1px rgb(0 0 0 / 0.1)" : "none" }}
               >
@@ -289,7 +293,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       <button
                         type="button"
                         className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
-                        onClick={() => setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))}
+                        onClick={() =>
+                          setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))
+                        }
                       >
                         All
                       </button>
@@ -314,11 +320,13 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 </div>
               </div>
 
-              <div className={`grid gap-3 sm:gap-4 ${
-                viewMode === "grid" 
-                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8" 
-                  : "grid-cols-1 md:grid-cols-2"
-              }`}>
+              <div
+                className={`grid gap-3 sm:gap-4 ${
+                  viewMode === "grid"
+                    ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
+                    : "grid-cols-1 md:grid-cols-2"
+                }`}
+              >
                 {filteredRemoteBooks.map((book) => (
                   <BookCard
                     key={book.id}
@@ -343,9 +351,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     icon={Search}
                     title="No Books Found"
                     description={
-                      searchTerm
-                        ? `No results for "${searchTerm}"`
-                        : "Library is empty."
+                      searchTerm ? `No results for "${searchTerm}"` : "Library is empty."
                     }
                     actionLabel={searchTerm ? "Clear Search" : undefined}
                     onAction={() => setSearchTerm("")}
@@ -360,11 +366,13 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               {localBooks.length > 0 && (
                 <div className="pt-8 border-t border-base-300">
                   <h2 className="text-xl font-bold mb-4">On My Device</h2>
-                  <div className={`grid gap-3 sm:gap-4 ${
-                    viewMode === "grid" 
-                      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6" 
-                      : "grid-cols-1 md:grid-cols-2"
-                  }`}>
+                  <div
+                    className={`grid gap-3 sm:gap-4 ${
+                      viewMode === "grid"
+                        ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
+                        : "grid-cols-1 md:grid-cols-2"
+                    }`}
+                  >
                     {filteredLocalBooks.map((book) => (
                       <BookCard
                         key={book.id}
