@@ -137,7 +137,8 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
             </button>
           </div>
           <p className="text-[10px] text-base-content/50 italic px-1">
-            Tip: If you're using an Android Emulator on this PC, try connecting to <code className="text-success font-bold">10.0.2.2</code>.
+            Tip: If you're using an Android Emulator on this PC, try connecting to{" "}
+            <code className="text-success font-bold">10.0.2.2</code>.
           </p>
         </div>
       </div>

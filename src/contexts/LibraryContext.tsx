@@ -406,10 +406,7 @@ export const LibraryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const refresh = async () => {
     // Re-fetch both manifest and local DB
-    await Promise.all([
-      remoteQuery.refetch(),
-      localQuery.refetch(),
-    ]);
+    await Promise.all([remoteQuery.refetch(), localQuery.refetch()]);
   };
 
   return (

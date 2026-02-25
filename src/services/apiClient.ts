@@ -88,7 +88,8 @@ export const httpClient = {
     try {
       const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, { headers });
       if (response.status === 401) throw new Error("Unauthorized");
-      if (!response.ok) throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
+      if (!response.ok)
+        throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
       return response.json();
     } catch (e: any) {
       console.error(`Fetch manifest error for http://${host.ip}:${host.port}/api/manifest:`, e);
