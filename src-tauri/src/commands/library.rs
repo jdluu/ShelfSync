@@ -1,4 +1,9 @@
-use crate::{core::db, error::AppError, models::Book, AppState};
+use crate::{
+    core::db,
+    error::{lock_or_err, AppError},
+    models::Book,
+    AppState,
+};
 use tauri::State;
 
 #[tauri::command]
@@ -16,10 +21,6 @@ pub fn get_books(
         store.set("library_path", serde_json::json!(library_path));
         let _ = store.save();
     }
-
-    // 3. Update Server State Cache
-    let ptr = format!("{:p}", &*state.server as *const crate::http::server::ServerState);
-    eprintln!("[COMMAND] [{}] Updating cache with {} books...", ptr, books.len());
 
     {
         let mut path_lock = state
@@ -85,7 +86,7 @@ pub async fn start_bulk_sync(
 ) -> Result<(), AppError> {
     // Clone the sync manager reference before locking
     let sync_manager = {
-        let sync_manager_lock = state.sync_manager.lock().expect("Poisoned lock");
+        let sync_manager_lock = lock_or_err(&state.sync_manager)?;
         sync_manager_lock
             .as_ref()
             .ok_or_else(|| AppError::Unknown("Sync manager not initialized".to_string()))?

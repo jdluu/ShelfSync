@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::sync::mpsc;
 
@@ -41,7 +42,11 @@ impl SyncManager {
         let active_queue_clone = active_queue.clone();
 
         tauri::async_runtime::spawn(async move {
-            let client = Client::new();
+            let client = Client::builder()
+                .connect_timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(300))
+                .build()
+                .unwrap_or_else(|_| Client::new());
             while let Some(task) = rx.recv().await {
                 // Process one task at a time
                 if let Err(e) = process_task::<R>(&app, &client, &task, &active_queue_clone).await {
@@ -49,9 +54,13 @@ impl SyncManager {
                 }
 
                 // Remove from active queue
-                let mut queue = active_queue_clone.lock().expect("Poisoned lock");
-                if !queue.is_empty() {
-                    queue.remove(0);
+                match active_queue_clone.lock() {
+                    Ok(mut queue) => {
+                        if !queue.is_empty() {
+                            queue.remove(0);
+                        }
+                    }
+                    Err(e) => log::warn!("Could not update sync queue: {}", e),
                 }
             }
         });
@@ -65,7 +74,10 @@ impl SyncManager {
     pub async fn add_tasks(&self, tasks: Vec<SyncTask>) -> Result<(), String> {
         // Add books to queue and collect tasks, then drop lock before sending
         let tasks_to_send: Vec<_> = {
-            let mut queue = self.active_queue.lock().expect("Poisoned lock");
+            let mut queue = match self.active_queue.lock() {
+                Ok(q) => q,
+                Err(_) => return Err("Failed to lock sync queue".to_string()),
+            };
             tasks
                 .into_iter()
                 .inspect(|task| {
@@ -147,9 +159,9 @@ fn emit_progress<R: Runtime>(
     error: Option<String>,
     queue: &Arc<Mutex<Vec<Book>>>,
 ) {
-    let (pos, total) = {
-        let q = queue.lock().expect("Poisoned lock");
-        (0, q.len()) // Simplified: active task is always at 0
+    let (pos, total) = match queue.lock() {
+        Ok(q) => (0, q.len()),
+        Err(_) => (0, 0),
     };
 
     let _ = app.emit(

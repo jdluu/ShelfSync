@@ -133,25 +133,29 @@ pub fn run() {
             let pin_str = if pin_path.exists() {
                 let raw = std::fs::read_to_string(&pin_path).unwrap_or_else(|_| "0000".to_string());
                 let trimmed = raw.trim().replace('"', "").to_string();
-                info!("Loaded PIN from persistence: '{}' (raw: '{:?}')", trimmed, raw);
+                info!("Loaded PIN from persistence");
                 trimmed
             } else {
                 let mut rng = rand::rng();
                 let pin: u32 = rng.random_range(1000..10000);
                 let p = pin.to_string();
-                info!("Generated new PIN: '{}'", p);
+                info!("Generated new PIN");
                 std::fs::write(&pin_path, &p).ok();
                 p
             };
-            info!("Server state initialized with PIN: '{}'", pin_str);
+            info!("Server PIN initialized.");
 
             let app_state = app.state::<AppState>();
             {
-                let mut pin = app_state.server.pin.lock().expect("Poisoned lock");
-                *pin = pin_str;
+                match app_state.server.pin.lock() {
+                    Ok(mut pin) => *pin = pin_str,
+                    Err(e) => error!("Failed to set PIN: {}", e),
+                }
 
-                let mut data_dir = app_state.server.app_data_dir.lock().expect("Poisoned lock");
-                *data_dir = Some(app_data_dir.clone());
+                match app_state.server.app_data_dir.lock() {
+                    Ok(mut data_dir) => *data_dir = Some(app_data_dir.clone()),
+                    Err(e) => error!("Failed to set app data dir: {}", e),
+                }
             }
 
             #[cfg(desktop)]
@@ -237,15 +241,13 @@ pub fn run() {
                         {
                             match db::get_calibre_metadata(&path) {
                                 Ok(books) => {
-                                    let mut path_lock = server_state
-                                        .library_path
-                                        .lock()
-                                        .expect("Poisoned lock");
-                                    *path_lock = Some(path.to_string());
+                                    if let Ok(mut path_lock) = server_state.library_path.lock() {
+                                        *path_lock = Some(path.to_string());
+                                    }
 
-                                    let mut books_lock =
-                                        server_state.books.lock().expect("Poisoned lock");
-                                    *books_lock = books;
+                                    if let Ok(mut books_lock) = server_state.books.lock() {
+                                        *books_lock = books;
+                                    }
                                 }
                                 Err(e) => {
                                     log::error!("[AUTO-LOAD] Failed to load metadata: {:?}", e);
@@ -266,20 +268,27 @@ pub fn run() {
 
             // 4. Init Sync Manager
             let sync_mgr = crate::core::sync::SyncManager::new(app.handle().clone());
-            {
-                let mut sm_lock = app_state.sync_manager.lock().expect("Poisoned lock");
-                *sm_lock = Some(sync_mgr);
+            match app_state.sync_manager.lock() {
+                Ok(mut sm_lock) => *sm_lock = Some(sync_mgr),
+                Err(e) => error!("Failed to init sync manager: {}", e),
             }
 
             // 5. Spawn server task
             let state_clone = app_state.server.clone();
+            let server_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                server::run(state_clone, 8080).await;
+                server::run(state_clone, 8080, server_handle).await;
             });
 
             // 6. Spawn mDNS task
             tauri::async_runtime::spawn(async move {
-                let mdns = mdns_sd::ServiceDaemon::new().expect("Failed to create mDNS daemon");
+                let mdns = match mdns_sd::ServiceDaemon::new() {
+                    Ok(d) => d,
+                    Err(e) => {
+                        error!("mDNS unavailable: {}. Discovery disabled.", e);
+                        return;
+                    }
+                };
 
                 // Broadcast
                 let machine_name = hostname::get()
@@ -311,38 +320,43 @@ pub fn run() {
                     let mut updated = false;
                     match event {
                         mdns_sd::ServiceEvent::ServiceResolved(info) => {
-                            let mut hosts = discovery.hosts.lock().expect("Poisoned lock");
-                            let ip = info
-                                .get_addresses()
-                                .iter()
-                                .next()
-                                .map(|a| a.to_string())
-                                .unwrap_or_default();
-                            let hostname = info.get_fullname().to_string();
+                            if let Ok(mut hosts) = discovery.hosts.lock() {
+                                let ip = info
+                                    .get_addresses()
+                                    .iter()
+                                    .next()
+                                    .map(|a| a.to_string())
+                                    .unwrap_or_default();
+                                let hostname = info.get_fullname().to_string();
 
-                            if !hosts.iter().any(|h| h.ip == ip) {
-                                hosts.push(ConnectionInfo {
-                                    ip,
-                                    port: info.get_port(),
-                                    hostname,
-                                    pin: None,
-                                });
-                                updated = true;
+                                if !hosts.iter().any(|h| h.ip == ip) {
+                                    hosts.push(ConnectionInfo {
+                                        ip,
+                                        port: info.get_port(),
+                                        hostname,
+                                        pin: None,
+                                    });
+                                    updated = true;
+                                }
                             }
                         }
                         mdns_sd::ServiceEvent::ServiceRemoved(_type, name) => {
-                            let mut hosts = discovery.hosts.lock().expect("Poisoned lock");
-                            let len_before = hosts.len();
-                            hosts.retain(|h| h.hostname != name);
-                            if hosts.len() != len_before {
-                                updated = true;
+                            if let Ok(mut hosts) = discovery.hosts.lock() {
+                                let len_before = hosts.len();
+                                hosts.retain(|h| h.hostname != name);
+                                if hosts.len() != len_before {
+                                    updated = true;
+                                }
                             }
                         }
                         _ => {}
                     }
 
                     if updated {
-                        let hosts = discovery.hosts.lock().expect("Poisoned lock").clone();
+                        let hosts = match discovery.hosts.lock() {
+                            Ok(h) => h.clone(),
+                            Err(_) => continue,
+                        };
                         if let Err(e) = handle.emit("discovery-update", hosts) {
                             error!("Failed to emit discovery update: {}", e);
                         }

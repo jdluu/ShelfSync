@@ -1,4 +1,5 @@
 use serde::{Serialize, Serializer};
+use std::sync::{Mutex, MutexGuard};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -11,13 +12,18 @@ pub enum AppError {
     #[error("Library not found: {0}")]
     LibraryNotFound(String),
 
+    #[error("Internal lock error")]
+    LockPoisoned,
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
 
-// Implement Serialize manually or via `serde_repr` if needed,
-// but for Tauri simple string serialization of the error message is often enough
-// OR we can serialize it as a struct { code, message }.
+/// Safely acquires a `Mutex` lock, returning `AppError::LockPoisoned` on failure.
+pub fn lock_or_err<T>(mutex: &Mutex<T>) -> Result<MutexGuard<T>, AppError> {
+    mutex.lock().map_err(|_| AppError::LockPoisoned)
+}
+
 impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -27,7 +33,6 @@ impl Serialize for AppError {
     }
 }
 
-// Helper for simple string conversions (legacy support)
 impl From<String> for AppError {
     fn from(s: String) -> Self {
         AppError::Unknown(s)

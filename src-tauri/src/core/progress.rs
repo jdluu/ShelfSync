@@ -30,7 +30,7 @@ pub fn update_progress(app_data_dir: &Path, book_id: i64, status: &str) -> Resul
     let conn = Connection::open(db_path)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs() as i64;
 
     conn.execute(

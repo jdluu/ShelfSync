@@ -10,6 +10,7 @@ use axum::{
 use log::{error, info};
 use std::path::Path as FilePath;
 use std::sync::{Arc, Mutex};
+use tauri::Emitter;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use tower_http::cors::CorsLayer;
@@ -32,7 +33,7 @@ pub struct ServerState {
 
 pub type SharedState = Arc<ServerState>;
 
-pub async fn run(state: SharedState, port: u16) {
+pub async fn run(state: SharedState, port: u16, app_handle: tauri::AppHandle) {
     let app = Router::new()
         .route("/api/manifest", get(get_manifest))
         .route("/api/cover/{book_id}", get(get_cover))
@@ -47,6 +48,10 @@ pub async fn run(state: SharedState, port: u16) {
         Ok(l) => l,
         Err(e) => {
             error!("Failed to bind to address {}: {}", val, e);
+            let _ = app_handle.emit(
+                "server-error",
+                format!("Port {} is in use. Server could not start.", port),
+            );
             return;
         }
     };
@@ -74,7 +79,10 @@ async fn get_manifest(
     }
 
     // Return cached books directly
-    let books = state.books.lock().expect("Poisoned lock");
+    let books = match state.books.lock() {
+        Ok(b) => b,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
     Json(books.clone()).into_response()
 }
 
@@ -93,7 +101,10 @@ async fn get_cover(
     }
 
     let library_path = {
-        let guard = state.library_path.lock().unwrap();
+        let guard = match state.library_path.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match &*guard {
             Some(p) => p.clone(),
             None => {
@@ -103,7 +114,10 @@ async fn get_cover(
     };
 
     let book = {
-        let books = state.books.lock().unwrap();
+        let books = match state.books.lock() {
+            Ok(b) => b,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match books.iter().find(|b| b.id == book_id) {
             Some(b) => b.clone(),
             None => return (StatusCode::NOT_FOUND, "Book not found").into_response(),
@@ -119,7 +133,10 @@ async fn get_cover(
     }
 
     let app_data_dir = {
-        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        let guard = match state.app_data_dir.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match &*guard {
             Some(p) => p.clone(),
             None => {
@@ -132,7 +149,13 @@ async fn get_cover(
         Ok(bytes) => Response::builder()
             .header(header::CONTENT_TYPE, "image/jpeg")
             .body(Body::from(bytes))
-            .unwrap(),
+            .unwrap_or_else(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to build response",
+                )
+                    .into_response()
+            }),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
     }
 }
@@ -152,7 +175,10 @@ async fn download_book(
     }
 
     let library_path = {
-        let guard = state.library_path.lock().unwrap();
+        let guard = match state.library_path.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match &*guard {
             Some(p) => p.clone(),
             None => {
@@ -162,7 +188,10 @@ async fn download_book(
     };
 
     let book = {
-        let books = state.books.lock().unwrap();
+        let books = match state.books.lock() {
+            Ok(b) => b,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match books.iter().find(|b| b.id == book_id) {
             Some(b) => b.clone(),
             None => return (StatusCode::NOT_FOUND, "Book not found").into_response(),
@@ -204,14 +233,23 @@ async fn build_file_response(file_path: &FilePath, found_format: &str) -> axum::
             };
 
             // Set filename in content-disposition
-            let filename = file_path.file_name().unwrap().to_string_lossy().to_string();
+            let filename = file_path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_else(|| "download".to_string());
             let disposition = format!("attachment; filename=\"{}\"", filename);
 
             Response::builder()
                 .header(header::CONTENT_TYPE, content_type)
                 .header(header::CONTENT_DISPOSITION, disposition)
                 .body(body)
-                .unwrap()
+                .unwrap_or_else(|_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to build response",
+                    )
+                        .into_response()
+                })
         }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "File open error").into_response(),
     }
@@ -266,33 +304,20 @@ fn resize_and_save_cover(
     dest_path: &std::path::Path,
 ) -> Result<Vec<u8>, String> {
     let img = image::open(src_path).map_err(|_| "Failed to open image")?;
-    // Resize to a reasonable thumbnail size (maintaining aspect ratio)
-    // 300x450 is good for the UI cards
     let resized = img.resize(300, 450, image::imageops::FilterType::Lanczos3);
 
-    // Save to cache
-    resized
-        .save(dest_path)
-        .map_err(|_| "Failed to save to cache")?;
-
-    // Write to bytes for response
+    // Encode to bytes once, then write those bytes to disk
     let mut bytes: Vec<u8> = Vec::new();
     let mut cursor = std::io::Cursor::new(&mut bytes);
     resized
         .write_to(&mut cursor, image::ImageFormat::Jpeg)
         .map_err(|_| "Failed to encode image")?;
 
+    std::fs::write(dest_path, &bytes).map_err(|_| "Failed to save to cache")?;
+
     Ok(bytes)
 }
 
-/// Helper to find a book file in the specified directory.
-///
-/// Searches for files matching the requested format (case-insensitive).
-/// If the requested format i not found, searches for a set of fallback formats (epub, pdf, mobi, cbz).
-///
-/// # Returns
-///
-/// Returns `Some((PathBuf, String))` containing the path and the found format, or `None`.
 async fn find_book_file(
     book_dir: &std::path::Path,
     requested_format: &str,
@@ -305,32 +330,27 @@ async fn find_book_file(
         }
     }
 
-    let mut found_path = None;
-    let mut found_format = String::new();
+    // Read directory once, then search in-memory
+    let mut entries = Vec::new();
+    let mut dir_entries = match tokio::fs::read_dir(book_dir).await {
+        Ok(d) => d,
+        Err(_) => return None,
+    };
+    while let Ok(Some(entry)) = dir_entries.next_entry().await {
+        entries.push(entry.path());
+    }
 
-    // Re-scanning dir for each format is inefficient but safe and simple for small dirs
     for fmt in search_formats {
-        let mut dir_entries = match tokio::fs::read_dir(book_dir).await {
-            Ok(d) => d,
-            Err(_) => return None,
-        };
-
-        while let Ok(Some(entry)) = dir_entries.next_entry().await {
-            let path = entry.path();
+        for path in &entries {
             if let Some(ext) = path.extension() {
                 if ext.to_string_lossy().to_lowercase() == fmt {
-                    found_path = Some(path);
-                    found_format = fmt;
-                    break;
+                    return Some((path.clone(), fmt));
                 }
             }
         }
-        if found_path.is_some() {
-            break;
-        }
     }
 
-    found_path.map(|p| (p, found_format))
+    None
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -351,19 +371,26 @@ async fn check_pin(
     State(state): State<SharedState>,
     Json(payload): Json<PinRequest>,
 ) -> impl IntoResponse {
-    let pin = state.pin.lock().expect("Poisoned lock");
-    info!("PIN check: received='{}', expected='{}'", payload.pin, *pin);
-    if payload.pin == *pin {
+    let pin = match state.pin.lock() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+    let valid = payload.pin == *pin;
+    info!(
+        "PIN check: result={}",
+        if valid { "accepted" } else { "rejected" }
+    );
+    if valid {
         let token = uuid::Uuid::new_v4().to_string();
-        state
-            .authorized_tokens
-            .lock()
-            .unwrap()
-            .insert(token.clone());
-        info!("PIN correct. Issued token: {}", token);
+        if let Ok(mut tokens) = state.authorized_tokens.lock() {
+            tokens.insert(token.clone());
+        } else {
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response();
+        }
+        info!("PIN accepted. Issued new token.");
         (StatusCode::OK, Json(AuthResponse { token })).into_response()
     } else {
-        error!("PIN mismatch! received='{}', expected='{}'", payload.pin, *pin);
+        error!("PIN rejected.");
         (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
     }
 }
@@ -381,7 +408,10 @@ async fn get_progress(
     }
 
     let app_data_dir = {
-        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        let guard = match state.app_data_dir.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match &*guard {
             Some(p) => p.clone(),
             None => {
@@ -420,7 +450,10 @@ async fn update_progress(
     }
 
     let app_data_dir = {
-        let guard = state.app_data_dir.lock().expect("Poisoned lock");
+        let guard = match state.app_data_dir.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
         match &*guard {
             Some(p) => p.clone(),
             None => {
@@ -444,7 +477,10 @@ fn is_authorized(headers: &header::HeaderMap, state: &SharedState) -> bool {
     if let Some(auth_header) = headers.get(header::AUTHORIZATION) {
         if let Ok(auth_str) = auth_header.to_str() {
             if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                return state.authorized_tokens.lock().unwrap().contains(token);
+                if let Ok(tokens) = state.authorized_tokens.lock() {
+                    return tokens.contains(token);
+                }
+                return false;
             }
         }
     }
