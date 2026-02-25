@@ -1,22 +1,28 @@
-use crate::error::AppError;
+use crate::error::{lock_or_err, AppError};
 use crate::models::Book;
 use crate::AppState;
 use rusqlite::{params, Connection};
 use tauri::State;
 
-/// Initializes the local client-side SQLite database.
-/// Creates the 'books' table and handles migrations for the 'read_status' column.
-#[tauri::command]
-pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
+/// Opens the local client-side SQLite database.
+///
+/// Acquires the `app_data_dir` lock, constructs the DB path, and returns an open connection.
+fn open_client_db(state: &AppState) -> Result<Connection, AppError> {
     let app_data_dir = {
-        let guard = state.server.app_data_dir.lock().expect("Poisoned lock");
+        let guard = lock_or_err(&state.server.app_data_dir)?;
         guard
             .clone()
             .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?
     };
-
     let db_path = app_data_dir.join("shelfsync_client.db");
-    let conn = Connection::open(db_path)?;
+    Ok(Connection::open(db_path)?)
+}
+
+/// Initializes the local client-side SQLite database.
+/// Creates the 'books' table and handles migrations for the 'read_status' column.
+#[tauri::command]
+pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
+    let conn = open_client_db(&state)?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS books (
@@ -54,15 +60,7 @@ pub fn save_local_book(
     local_path: String,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    let app_data_dir = {
-        let guard = state.server.app_data_dir.lock().expect("Poisoned lock");
-        guard
-            .clone()
-            .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?
-    };
-
-    let db_path = app_data_dir.join("shelfsync_client.db");
-    let conn = Connection::open(db_path)?;
+    let conn = open_client_db(&state)?;
 
     conn.execute(
         "INSERT INTO books (title, authors, remote_id, format, local_path, read_status) 
@@ -87,15 +85,7 @@ pub fn update_local_read_status(
     status: String,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    let app_data_dir = {
-        let guard = state.server.app_data_dir.lock().expect("Poisoned lock");
-        guard
-            .clone()
-            .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?
-    };
-
-    let db_path = app_data_dir.join("shelfsync_client.db");
-    let conn = Connection::open(db_path)?;
+    let conn = open_client_db(&state)?;
 
     conn.execute(
         "UPDATE books SET read_status = ?1 WHERE id = ?2",
@@ -109,7 +99,7 @@ pub fn update_local_read_status(
 #[tauri::command]
 pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError> {
     let app_data_dir = {
-        let guard = state.server.app_data_dir.lock().expect("Poisoned lock");
+        let guard = lock_or_err(&state.server.app_data_dir)?;
         guard
             .clone()
             .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?
