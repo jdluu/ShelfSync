@@ -1,5 +1,5 @@
 import { ArrowUp, LayoutGrid, List, Search, WifiOff } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
@@ -9,38 +9,75 @@ import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
-import { useLibrary } from "@/contexts/LibraryContext";
 import { Discovery } from "@/features/discovery/Discovery";
-import type { Book, Host } from "@/types/core";
+import { useHostManifest } from "@/hooks/useLibraryQuery";
+import { useSyncProgress } from "@/hooks/useSyncProgress";
+import { useAuthStore } from "@/store/authStore";
+import { useLibraryStore } from "@/store/libraryStore";
+import { useSyncStore } from "@/store/syncStore";
+import type { Book } from "@/types/core";
+import { isTauri } from "@/utils/tauri";
 
 interface ClientDashboardProps {
-  books: Book[];
-  localBooks: Book[];
-  loading: boolean;
-  error: string | null;
-  connectedHost: Host | null;
-  onConnect: (host: Host) => void;
-  onDisconnect: () => void;
-  onSync: (book: Book) => Promise<void>;
-  onOpenBook: (path: string) => void;
-  onToggleStatus: (book: Book) => Promise<void>;
   onChangeRole: () => void;
 }
 
-export const ClientDashboard: React.FC<ClientDashboardProps> = ({
-  books,
-  localBooks,
-  loading,
-  error,
-  connectedHost,
-  onConnect,
-  onDisconnect,
-  onSync,
-  onOpenBook,
-  onToggleStatus,
-  onChangeRole,
-}) => {
-  const { syncProgress, syncBooks, refresh, clearError } = useLibrary();
+export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }) => {
+  const { appMode, offlineStoragePath, localBooks, toggleReadStatus, setLocalBooks } =
+    useLibraryStore();
+  const { connectedHost, authTokens, setAuthRequired, setPairingHost, connect, disconnect } =
+    useAuthStore();
+  const { syncProgress, manualError, clearError, syncBooks } = useSyncStore();
+
+  const hostKey = connectedHost ? `${connectedHost.ip}:${connectedHost.port}` : "";
+  const token = authTokens[hostKey];
+
+  const remoteQuery = useHostManifest(connectedHost, token, appMode === "client");
+
+  const books = remoteQuery.data || [];
+  const loading = remoteQuery.isLoading;
+  const error =
+    manualError ||
+    (remoteQuery.error?.message !== "Unauthorized" ? remoteQuery.error?.message : null);
+
+  const booksRef = useRef(books);
+  useEffect(() => {
+    booksRef.current = books;
+  }, [books]);
+
+  useSyncProgress(booksRef, offlineStoragePath, setLocalBooks);
+
+  useEffect(() => {
+    if (remoteQuery.error?.message === "Unauthorized") {
+      setAuthRequired(true);
+      setPairingHost(connectedHost);
+    } else {
+      setAuthRequired(false);
+    }
+  }, [remoteQuery.error, connectedHost, setAuthRequired, setPairingHost]);
+
+  const refresh = async () => {
+    await remoteQuery.refetch();
+  };
+
+  const openLocalBook = async (path: string) => {
+    if (isTauri()) {
+      const { openPath } = await import("@tauri-apps/plugin-opener");
+      await openPath(path);
+    } else {
+      console.warn("Opening book path in browser (not supported):", path);
+    }
+  };
+
+  const syncBook = async (book: Book) => {
+    if (connectedHost && token) {
+      await syncBooks([book], connectedHost, token, offlineStoragePath);
+    }
+  };
+
+  const handleToggleStatus = (book: Book) => {
+    return toggleReadStatus(book, connectedHost, token);
+  };
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortOption, setSortOption] = React.useState<SortOption>("title");
   const [selectionMode, setSelectionMode] = React.useState(false);
@@ -54,47 +91,47 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const filterAndSort = (list: Book[]) => {
-    let result = [...list];
+  const filterAndSort = useCallback(
+    (list: Book[]) => {
+      let result = [...list];
 
-    // Filter
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
-      result = result.filter(
-        (b) =>
-          b.title?.toLowerCase().includes(lower) ||
-          false ||
-          b.authors?.toLowerCase().includes(lower) ||
-          false ||
-          b.series?.toLowerCase().includes(lower) ||
-          false ||
-          b.tags?.some((t) => t.toLowerCase().includes(lower)) ||
-          false,
-      );
-    }
-
-    // Sort
-    result.sort((a, b) => {
-      if (sortOption === "title") return a.title.localeCompare(b.title);
-      if (sortOption === "author") return a.authors.localeCompare(b.authors);
-      if (sortOption === "recent") return (b.id || 0) - (a.id || 0);
-      if (sortOption === "series") {
-        const sA = a.series || "";
-        const sB = b.series || "";
-        if (sA !== sB) return sA.localeCompare(sB);
-        return (a.series_index || 0) - (b.series_index || 0);
+      // Filter
+      if (searchTerm) {
+        const lower = searchTerm.toLowerCase();
+        result = result.filter(
+          (b) =>
+            b.title?.toLowerCase().includes(lower) ||
+            false ||
+            b.authors?.toLowerCase().includes(lower) ||
+            false ||
+            b.series?.toLowerCase().includes(lower) ||
+            false ||
+            b.tags?.some((t) => t.toLowerCase().includes(lower)) ||
+            false,
+        );
       }
-      return 0;
-    });
 
-    return result;
-  };
+      // Sort
+      result.sort((a, b) => {
+        if (sortOption === "title") return a.title.localeCompare(b.title);
+        if (sortOption === "author") return a.authors.localeCompare(b.authors);
+        if (sortOption === "recent") return (b.id || 0) - (a.id || 0);
+        if (sortOption === "series") {
+          const sA = a.series || "";
+          const sB = b.series || "";
+          if (sA !== sB) return sA.localeCompare(sB);
+          return (a.series_index || 0) - (b.series_index || 0);
+        }
+        return 0;
+      });
 
-  const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, searchTerm, sortOption]);
-  const filteredLocalBooks = useMemo(
-    () => filterAndSort(localBooks),
-    [localBooks, searchTerm, sortOption],
+      return result;
+    },
+    [searchTerm, sortOption],
   );
+
+  const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, filterAndSort]);
+  const filteredLocalBooks = useMemo(() => filterAndSort(localBooks), [localBooks, filterAndSort]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -113,7 +150,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   }, [selectionMode, filteredRemoteBooks]);
 
   const handleSync = async (book: Book) => {
-    await onSync(book);
+    await syncBook(book);
   };
 
   const toggleSelection = (id: number) => {
@@ -124,8 +161,12 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   };
 
   const startBulkSync = async () => {
-    const toSync = books.filter((b) => selectedIds.has(b.id));
-    await syncBooks(toSync);
+    const toSync = books.filter((b: Book) => selectedIds.has(b.id));
+    if (connectedHost && token) {
+      await syncBooks(toSync, connectedHost, token, offlineStoragePath).catch((e) =>
+        console.error("Batch sync failed:", e),
+      );
+    }
     setSelectionMode(false);
     setSelectedIds(new Set());
   };
@@ -159,7 +200,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={onDisconnect}
+                  onClick={disconnect}
                   className="btn btn-xs btn-ghost border border-base-300 gap-1"
                 >
                   <WifiOff className="w-3 h-3" />
@@ -207,6 +248,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
               aria-busy="true"
             >
               {Array.from({ length: 12 }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeletons are static loading placeholders
                 <SkeletonCard key={i} />
               ))}
             </div>
@@ -228,12 +270,22 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
+                        onClick={disconnect}
+                        className="btn btn-ghost btn-sm btn-circle"
+                        title="Disconnect"
+                      >
+                        <WifiOff className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => refresh()}
                         className="btn btn-xs btn-circle btn-ghost"
                         title="Refresh Library"
                         disabled={loading}
                       >
                         <svg
+                          aria-label="wifi-off"
+                          role="img"
                           xmlns="http://www.w3.org/2000/svg"
                           className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                           fill="none"
@@ -361,7 +413,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             </div>
           ) : (
             <div className="flex flex-col gap-12">
-              <Discovery onConnect={onConnect} />
+              <Discovery onConnect={connect} />
 
               {localBooks.length > 0 && (
                 <div className="pt-8 border-t border-base-300">
@@ -379,8 +431,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                         book={book}
                         variant="local"
                         compact={viewMode === "grid"}
-                        onAction={() => onOpenBook(book.local_path || "")}
-                        onToggleStatus={onToggleStatus}
+                        onAction={() => book.local_path && openLocalBook(book.local_path)}
+                        onToggleStatus={() => handleToggleStatus(book)}
                         actionLabel="Read"
                         actionColor="green"
                       />

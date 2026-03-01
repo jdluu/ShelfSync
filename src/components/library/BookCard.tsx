@@ -48,6 +48,8 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   if (compact) {
     return (
+      // biome-ignore lint/a11y/noStaticElementInteractions: role is dynamically assigned
+      // biome-ignore lint/a11y/useKeyWithClickEvents: handled dynamically
       <div
         className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary ${
           selected

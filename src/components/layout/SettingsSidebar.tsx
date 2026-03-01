@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useLibrary } from "@/contexts/LibraryContext";
+import { useLibraryStore } from "@/store/libraryStore";
 import { isMobile, isTauri } from "@/utils/tauri";
 
 interface HelpArticle {
@@ -187,6 +187,23 @@ interface SettingsSidebarProps {
   onChangeRole?: () => void;
   hostIp?: string;
 }
+const applyTheme = (t: "light" | "dark" | "system") => {
+  let effectiveTheme: "light" | "dark";
+  if (t === "system") {
+    effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } else {
+    effectiveTheme = t;
+  }
+  const documentElement = document.documentElement;
+  documentElement.setAttribute("data-theme", effectiveTheme);
+  localStorage.setItem("theme-preference", t);
+
+  // Update system theme color for mobile status bars/etc
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute("content", effectiveTheme === "dark" ? "#1d232a" : "#ffffff");
+  }
+};
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
@@ -194,29 +211,11 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onChangeRole,
   hostIp,
 }) => {
-  const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibrary();
+  const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibraryStore();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark" | "system">(
     (localStorage.getItem("theme-preference") as "light" | "dark" | "system") || "system",
   );
-
-  const applyTheme = (t: "light" | "dark" | "system") => {
-    let effectiveTheme: "light" | "dark";
-    if (t === "system") {
-      effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    } else {
-      effectiveTheme = t;
-    }
-    const documentElement = document.documentElement;
-    documentElement.setAttribute("data-theme", effectiveTheme);
-    localStorage.setItem("theme-preference", t);
-
-    // Update system theme color for mobile status bars/etc
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute("content", effectiveTheme === "dark" ? "#1d232a" : "#ffffff");
-    }
-  };
 
   useEffect(() => {
     applyTheme(theme);
@@ -397,6 +396,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   )}
 
                   <button
+                    type="button"
                     className="w-full flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 hover:bg-base-200 transition-colors"
                     onClick={() => {
                       handleClose();
@@ -424,6 +424,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
                   <button
+                    type="button"
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("setup_host")}
                   >
@@ -431,6 +432,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     <span className="text-sm font-medium">Setting up Host</span>
                   </button>
                   <button
+                    type="button"
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("select_library")}
                   >
@@ -438,6 +440,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     <span className="text-sm font-medium">Selecting Library</span>
                   </button>
                   <button
+                    type="button"
                     className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
                     onClick={() => setActiveArticleId("not_found")}
                   >

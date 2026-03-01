@@ -11,71 +11,12 @@ use crate::{
     models::ConnectionInfo,
 };
 use log::{error, info};
-use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rand::Rng;
 use std::sync::{Arc, Mutex};
-use tauri::{Emitter, Manager};
-
-fn get_lan_ip() -> std::net::IpAddr {
-    // Try to find a non-loopback, non-virtual IP.
-    if let Ok(interfaces) = NetworkInterface::show() {
-        info!("Detected network interfaces:");
-        for iface in &interfaces {
-            for addr in &iface.addr {
-                info!("  - Interface {}: {:?}", iface.name, addr.ip());
-            }
-        }
-
-        // Preferred order: Ethernet/Wi-Fi (usually start with 192.168, 10, or 172.16-31)
-        for iface in &interfaces {
-            for addr in &iface.addr {
-                let ip = addr.ip();
-                if let std::net::IpAddr::V4(ipv4) = ip {
-                    if ipv4.is_loopback() {
-                        continue;
-                    }
-
-                    let octets = ipv4.octets();
-                    // 192.168.x.x
-                    if octets[0] == 192 && octets[1] == 168 {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
-                    }
-                    // 10.x.x.x
-                    if octets[0] == 10 {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
-                    }
-                    // 172.16.x.x - 172.31.x.x
-                    if octets[0] == 172 && (16..=31).contains(&octets[1]) {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
-                    }
-                }
-            }
-        }
-
-        // Fallback to any non-loopback V4
-        for iface in &interfaces {
-            for addr in &iface.addr {
-                let ip = addr.ip();
-                if let std::net::IpAddr::V4(ipv4) = ip {
-                    if !ipv4.is_loopback() {
-                        info!("Falling back to non-loopback IP: {}", ip);
-                        return ip;
-                    }
-                }
-            }
-        }
-    }
-
-    let fallback = local_ip_address::local_ip().unwrap_or_else(|_| "127.0.0.1".parse().unwrap());
-    info!("Ultimate IP fallback: {}", fallback);
-    fallback
-}
+use tauri::Manager;
 
 pub struct DiscoveryState {
-    hosts: Mutex<Vec<ConnectionInfo>>,
+    pub hosts: Mutex<Vec<ConnectionInfo>>,
 }
 
 // wrapper for Tauri state to hold the same Arc
@@ -160,72 +101,9 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
-                // System Tray Setup
-                let quit_i =
-                    tauri::menu::MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
-                        .expect("Failed to create menu item");
-                let show_i = tauri::menu::MenuItem::with_id(
-                    app,
-                    "show",
-                    "Show ShelfSync",
-                    true,
-                    None::<&str>,
-                )
-                .expect("Failed to create menu item");
-                let hide_i =
-                    tauri::menu::MenuItem::with_id(app, "hide", "Hide", true, None::<&str>)
-                        .expect("Failed to create menu item");
-                let menu = tauri::menu::Menu::with_items(
-                    app,
-                    &[
-                        &show_i,
-                        &hide_i,
-                        &tauri::menu::PredefinedMenuItem::separator(app)
-                            .expect("Failed to create separator"),
-                        &quit_i,
-                    ],
-                )
-                .expect("Failed to create menu");
-
-                let _tray = tauri::tray::TrayIconBuilder::new()
-                    .menu(&menu)
-                    .show_menu_on_left_click(false)
-                    .on_menu_event(|app, event| match event.id().as_ref() {
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        "show" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                        "hide" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.hide();
-                            }
-                        }
-                        _ => {}
-                    })
-                    .on_tray_icon_event(|tray, event| match event {
-                        tauri::tray::TrayIconEvent::Click {
-                            button: tauri::tray::MouseButton::Left,
-                            ..
-                        } => {
-                            let app = tray.app_handle();
-                            if let Some(window) = app.get_webview_window("main") {
-                                if window.is_visible().unwrap_or(false) {
-                                    let _ = window.hide();
-                                } else {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
-                            }
-                        }
-                        _ => {}
-                    })
-                    .build(app)
-                    .expect("Failed to build tray icon");
+                if let Err(e) = crate::core::tray::setup_tray(app) {
+                    error!("Failed to setup tray icon: {}", e);
+                }
             }
 
             // 2. Load Settings from persistent store (Async)
@@ -281,88 +159,8 @@ pub fn run() {
             });
 
             // 6. Spawn mDNS task
-            tauri::async_runtime::spawn(async move {
-                let mdns = match mdns_sd::ServiceDaemon::new() {
-                    Ok(d) => d,
-                    Err(e) => {
-                        error!("mDNS unavailable: {}. Discovery disabled.", e);
-                        return;
-                    }
-                };
-
-                // Broadcast
-                let machine_name = hostname::get()
-                    .map(|h| h.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| "ShelfSync-Host".to_string());
-
-                let service_type = "_shelfsync._tcp.local.";
-                let instance_name = format!("{}'s Library", machine_name);
-                let my_ip = get_lan_ip();
-                let properties = [("version", "0.1.0")];
-                let host_name = format!("{}.local.", machine_name.replace(" ", "-"));
-
-                let service_info = mdns_sd::ServiceInfo::new(
-                    service_type,
-                    &instance_name,
-                    &host_name,
-                    my_ip.to_string(),
-                    8080,
-                    &properties[..],
-                )
-                .expect("Valid mDNS service info");
-
-                mdns.register(service_info)
-                    .expect("Failed to register mDNS service");
-
-                // Browse
-                let receiver = mdns.browse(service_type).expect("Failed to browse");
-                while let Ok(event) = receiver.recv_async().await {
-                    let mut updated = false;
-                    match event {
-                        mdns_sd::ServiceEvent::ServiceResolved(info) => {
-                            if let Ok(mut hosts) = discovery.hosts.lock() {
-                                let ip = info
-                                    .get_addresses()
-                                    .iter()
-                                    .next()
-                                    .map(|a| a.to_string())
-                                    .unwrap_or_default();
-                                let hostname = info.get_fullname().to_string();
-
-                                if !hosts.iter().any(|h| h.ip == ip) {
-                                    hosts.push(ConnectionInfo {
-                                        ip,
-                                        port: info.get_port(),
-                                        hostname,
-                                        pin: None,
-                                    });
-                                    updated = true;
-                                }
-                            }
-                        }
-                        mdns_sd::ServiceEvent::ServiceRemoved(_type, name) => {
-                            if let Ok(mut hosts) = discovery.hosts.lock() {
-                                let len_before = hosts.len();
-                                hosts.retain(|h| h.hostname != name);
-                                if hosts.len() != len_before {
-                                    updated = true;
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-
-                    if updated {
-                        let hosts = match discovery.hosts.lock() {
-                            Ok(h) => h.clone(),
-                            Err(_) => continue,
-                        };
-                        if let Err(e) = handle.emit("discovery-update", hosts) {
-                            error!("Failed to emit discovery update: {}", e);
-                        }
-                    }
-                }
-            });
+            let my_ip = crate::core::network::get_lan_ip();
+            crate::core::mdns::spawn_mdns_task(handle, discovery, my_ip);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

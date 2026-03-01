@@ -1,32 +1,25 @@
-import { ChevronsUpDown, Folder, Monitor, Network, X } from "lucide-react";
+import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
 import type React from "react";
 import QRCode from "react-qr-code";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
-import { useLibrary } from "@/contexts/LibraryContext";
-import type { Book, ConnectionInfo } from "@/types/core";
+import { useLocalLibrary } from "@/hooks/useLibraryQuery";
+import { useLibraryStore } from "@/store/libraryStore";
+import type { ConnectionInfo } from "@/types/core";
 
 interface HostDashboardProps {
-  books: Book[];
-  loading: boolean;
-  error: string | null;
-  libraryPath: string;
   connectionInfo: ConnectionInfo | null;
-  onSelectFolder: () => void;
   onChangeRole: () => void;
 }
 
-export const HostDashboard: React.FC<HostDashboardProps> = ({
-  books,
-  loading,
-  error,
-  libraryPath,
-  connectionInfo,
-  onSelectFolder,
-  onChangeRole,
-}) => {
-  const { clearError } = useLibrary();
+export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, onChangeRole }) => {
+  const { libraryPath, selectLibraryFolder } = useLibraryStore();
+  const localQuery = useLocalLibrary(libraryPath);
+
+  const loading = localQuery.isLoading;
+  const error = localQuery.error?.message;
+  const books = localQuery.data || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-base-100 font-sans selection:bg-primary/30">
@@ -56,24 +49,15 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                 <div className="space-y-2">
                   <button
                     type="button"
-                    onClick={onSelectFolder}
+                    onClick={selectLibraryFolder}
                     className="btn btn-primary btn-lg w-full shadow-lg group active:scale-95 transition-transform"
                     disabled={loading}
                   >
                     {libraryPath ? "Update Library" : "Select Library"}
                   </button>
-                  {error && (
-                    <div className="flex items-center justify-center gap-2">
-                      <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
-                      <button
-                        type="button"
-                        onClick={clearError}
-                        className="btn btn-ghost btn-xs btn-circle h-4 w-4 min-h-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-error text-xs font-semibold animate-pulse">{error}</p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

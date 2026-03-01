@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { PinModal } from "@/components/ui/PinModal";
 import { DiscoveryProvider, useDiscovery } from "@/contexts/DiscoveryContext";
-import { LibraryProvider, useLibrary } from "@/contexts/LibraryContext";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
 import { useAppStore } from "@/store/appStore";
+import { useAuthStore } from "@/store/authStore";
+import { useLibraryStore } from "@/store/libraryStore";
 
 function InitializingView() {
   return (
@@ -27,50 +28,51 @@ function InitializingView() {
 function useAppContentState() {
   const role = useAppStore((state) => state.role);
   const setRole = useAppStore((state) => state.setRole);
-  const library = useLibrary();
+
+  const { setAppMode, loadSettings } = useLibraryStore();
+  const { disconnect, loadTokens } = useAuthStore();
+
   const discovery = useDiscovery();
   const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
+      await Promise.all([loadSettings(), loadTokens()]);
       setTimeout(() => setAppLoading(false), 500);
     };
     init();
-  }, []);
+  }, [loadSettings, loadTokens]);
 
   const handleRoleSelect = async (selectedRole: "host" | "client") => {
     setRole(selectedRole);
-    if (selectedRole === "host") {
-      await library.setAppMode("host");
-    } else {
-      await library.setAppMode("client");
-    }
+    await setAppMode(selectedRole);
   };
 
   const handleChangeRole = async () => {
-    await library.setAppMode("unselected");
+    await setAppMode("unselected");
     if (role === "client") {
-      library.disconnect();
+      disconnect();
     }
     setRole("unselected");
   };
 
-  return { role, appLoading, library, discovery, handleRoleSelect, handleChangeRole };
+  return { role, appLoading, discovery, handleRoleSelect, handleChangeRole };
 }
 
 function AppContent() {
-  const { role, appLoading, library, discovery, handleRoleSelect, handleChangeRole } =
-    useAppContentState();
+  const { role, appLoading, discovery, handleRoleSelect, handleChangeRole } = useAppContentState();
+
+  const { authRequired, pairingHost, pair, disconnect } = useAuthStore();
 
   if (appLoading) return <InitializingView />;
 
-  if (library.authRequired) {
+  if (authRequired) {
     return (
       <PinModal
-        hostName={library.pairingHost?.hostname || "Unknown Host"}
-        onPair={library.pair}
-        onCancel={library.disconnect}
-        loading={library.loading}
+        hostName={pairingHost?.hostname || "Unknown Host"}
+        onPair={pair}
+        onCancel={disconnect}
+        loading={false}
       />
     );
   }
@@ -81,41 +83,17 @@ function AppContent() {
 
   if (role === "host") {
     return (
-      <HostDashboard
-        books={library.books}
-        loading={library.loading}
-        error={library.error}
-        libraryPath={library.libraryPath}
-        connectionInfo={discovery.myConnectionInfo}
-        onSelectFolder={library.selectLibraryFolder}
-        onChangeRole={handleChangeRole}
-      />
+      <HostDashboard connectionInfo={discovery.myConnectionInfo} onChangeRole={handleChangeRole} />
     );
   }
 
-  return (
-    <ClientDashboard
-      books={library.books}
-      localBooks={library.localBooks}
-      loading={library.loading}
-      error={library.error}
-      connectedHost={library.connectedHost}
-      onConnect={library.connectToHost}
-      onDisconnect={library.disconnect}
-      onSync={library.syncBook}
-      onOpenBook={library.openLocalBook}
-      onToggleStatus={library.toggleReadStatus}
-      onChangeRole={handleChangeRole}
-    />
-  );
+  return <ClientDashboard onChangeRole={handleChangeRole} />;
 }
 
 function App() {
   return (
     <DiscoveryProvider>
-      <LibraryProvider>
-        <AppContent />
-      </LibraryProvider>
+      <AppContent />
     </DiscoveryProvider>
   );
 }

@@ -25,3 +25,9 @@ export interface ConnectionInfo {
 }
 
 export type Host = ConnectionInfo;
+
+declare global {
+  interface Window {
+    __TEST_MOCK_MANIFEST_RESULTS__?: Book[];
+  }
+}
