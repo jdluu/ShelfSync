@@ -142,7 +142,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
           ) : connectedHost ? (
             <div className="flex flex-col gap-4">
               <ClientToolbar
-                disconnect={disconnect}
                 refresh={refresh}
                 loading={loading}
                 selectionMode={selectionMode}
