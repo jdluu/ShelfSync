@@ -1,185 +1,10 @@
-import {
-  ArrowLeft,
-  FileText,
-  Library,
-  Monitor,
-  Moon,
-  Settings,
-  Sun,
-  User,
-  Wifi,
-  X,
-} from "lucide-react";
+import { ArrowLeft, FileText, Library, Settings, User, Wifi, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
 import { isMobile, isTauri } from "@/utils/tauri";
-
-interface HelpArticle {
-  id: string;
-  title: string;
-  content: React.ReactNode;
-}
-
-const ARTICLES: Record<string, HelpArticle> = {
-  select_library: {
-    id: "select_library",
-    title: "How to select a library?",
-    content: (
-      <div className="space-y-4">
-        <p>
-          To start sharing your books, you need to point ShelfSync to your Calibre library folder.
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-base-content/70">
-          <li>
-            Open the <strong>Host Dashboard</strong>.
-          </li>
-          <li>
-            Click the <strong>Select Folder</strong> button in the Library Selection card.
-          </li>
-          <li>
-            Navigate to your Calibre library (the folder containing{" "}
-            <code className="bg-base-300 px-1 rounded">metadata.db</code>).
-          </li>
-          <li>
-            Click <strong>Open/Select</strong>.
-          </li>
-        </ol>
-        <p className="text-sm text-base-content/60 italic">
-          Note: ShelfSync requires read access to this folder to index your books.
-        </p>
-      </div>
-    ),
-  },
-  setup_host: {
-    id: "setup_host",
-    title: "Setting up your first host",
-    content: (
-      <div className="space-y-4">
-        <p>The Host device acts as the server for your books.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>
-            Ensure your Host computer and Client device are on the{" "}
-            <strong>same Wi-Fi network</strong>.
-          </li>
-          <li>Select a library to activate the sharing service.</li>
-          <li>
-            Once active, a <strong>QR Code</strong> and <strong>Connection Info</strong> will
-            appear.
-          </li>
-          <li>Keep this window open while you connect your client device.</li>
-        </ul>
-      </div>
-    ),
-  },
-  not_found: {
-    id: "not_found",
-    title: "Client cannot find host",
-    content: (
-      <div className="space-y-4">
-        <p>If your client can't see the host, try these steps:</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>Verify both devices are on the exact same Wi-Fi SSID.</li>
-          <li>
-            Check that the Host Dashboard shows <strong>"Live Sync"</strong> (Active).
-          </li>
-          <li>Disable any VPNs on either device, as they can interfere with local discovery.</li>
-          <li>
-            Use the <strong>"Manual Connect"</strong> option on the client and enter the IP address
-            shown on the host.
-          </li>
-        </ul>
-      </div>
-    ),
-  },
-  firewall: {
-    id: "firewall",
-    title: "Firewall issues",
-    content: (
-      <div className="space-y-4">
-        <p>Windows or MacOS firewalls may block incoming connections.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>
-            When you first run ShelfSync, you should see a firewall prompt. Choose{" "}
-            <strong>"Allow access"</strong> for Private networks.
-          </li>
-          <li>Check your antivirus software settings if discovery consistently fails.</li>
-          <li>
-            The default port is <strong>8080</strong>; ensure this port is not being used by another
-            app.
-          </li>
-        </ul>
-      </div>
-    ),
-  },
-  ip_changes: {
-    id: "ip_changes",
-    title: "IP address changes",
-    content: (
-      <div className="space-y-4">
-        <p>Local IP addresses can change if your router restarts or your device reconnects.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>
-            If the client loses connection, check the Host Dashboard for the current{" "}
-            <strong>Host IP</strong>.
-          </li>
-          <li>
-            Most modern routers will keep your IP the same, but it's the first thing to check if
-            sync stops working.
-          </li>
-        </ul>
-      </div>
-    ),
-  },
-  add_books: {
-    id: "add_books",
-    title: "Adding new books",
-    content: (
-      <div className="space-y-4">
-        <p>ShelfSync reads your Calibre database directly.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>Add your new books to Calibre as usual.</li>
-          <li>
-            Once Calibre has updated its database, ShelfSync will pick up the changes on the next
-            refresh or restart.
-          </li>
-          <li>Connected clients will see the new books immediately in their "Home" view.</li>
-        </ul>
-      </div>
-    ),
-  },
-  sync_metadata: {
-    id: "sync_metadata",
-    title: "Syncing metadata",
-    content: (
-      <div className="space-y-4">
-        <p>Metadata includes titles, authors, series info, and covers.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>Metadata is synced automatically every time you browse the library.</li>
-          <li>
-            If a cover is missing, ensure the image file exists in the Calibre folder on the host.
-          </li>
-        </ul>
-      </div>
-    ),
-  },
-  delete_books: {
-    id: "delete_books",
-    title: "Deleting books",
-    content: (
-      <div className="space-y-4">
-        <p>Management must be done on the Host computer.</p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
-          <li>
-            Deleting a book from the Client Dashboard only removes the <strong>offline copy</strong>{" "}
-            from your mobile device.
-          </li>
-          <li>To permanently remove a book from the library, use Calibre on your Host computer.</li>
-        </ul>
-      </div>
-    ),
-  },
-};
+import { ThemeSwitcher } from "./ThemeSwitcher";
+import { ARTICLES } from "./help/helpArticles";
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -187,24 +12,16 @@ interface SettingsSidebarProps {
   onChangeRole?: () => void;
   hostIp?: string;
 }
-const applyTheme = (t: "light" | "dark" | "system") => {
-  let effectiveTheme: "light" | "dark";
-  if (t === "system") {
-    effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  } else {
-    effectiveTheme = t;
-  }
-  const documentElement = document.documentElement;
-  documentElement.setAttribute("data-theme", effectiveTheme);
-  localStorage.setItem("theme-preference", t);
 
-  // Update system theme color for mobile status bars/etc
-  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-  if (metaThemeColor) {
-    metaThemeColor.setAttribute("content", effectiveTheme === "dark" ? "#1d232a" : "#ffffff");
-  }
-};
-
+/**
+ * Full-height sidebar panel for application settings, help articles, and system info.
+ *
+ * Slides in from the right edge. Contains:
+ * - Theme switcher (via `ThemeSwitcher`)
+ * - Session management (offline storage, role switching)
+ * - Support & Help (article browser)
+ * - System information (host IP, version)
+ */
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
   onClose,
@@ -213,41 +30,6 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 }) => {
   const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibraryStore();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(
-    (localStorage.getItem("theme-preference") as "light" | "dark" | "system") || "system",
-  );
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (theme === "system") {
-        applyTheme("system");
-      }
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [theme]);
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const currentTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark";
-      // Only sync back if not in system mode (to avoid infinite loops or clashing)
-      if (theme !== "system" && currentTheme && currentTheme !== theme) {
-        setTheme(currentTheme);
-      }
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => observer.disconnect();
-  }, [theme]);
 
   const handleClose = () => {
     onClose();
@@ -283,6 +65,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                 type="button"
                 onClick={() => setActiveArticleId(null)}
                 className="btn btn-ghost btn-xs btn-circle mr-1"
+                aria-label="Back to settings"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -291,7 +74,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               {activeArticleId ? "Help Article" : "Settings"}
             </h2>
           </div>
-          <button type="button" onClick={handleClose} className="btn btn-ghost btn-sm btn-circle">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="btn btn-ghost btn-sm btn-circle"
+            aria-label="Close settings"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -315,52 +103,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
-              {/* Appearance Section */}
-              <section>
-                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
-                  Appearance
-                </h3>
-                <div className="flex flex-col gap-3 p-1 bg-base-200/50 rounded-xl border border-base-300">
-                  <div className="grid grid-cols-3 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setTheme("light")}
-                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "light"
-                          ? "bg-base-100 shadow-sm text-primary"
-                          : "hover:bg-base-200 text-base-content/60"
-                      }`}
-                    >
-                      <Sun className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase">Light</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTheme("dark")}
-                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "dark"
-                          ? "bg-base-100 shadow-sm text-primary"
-                          : "hover:bg-base-200 text-base-content/60"
-                      }`}
-                    >
-                      <Moon className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase">Dark</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTheme("system")}
-                      className={`flex flex-col items-center gap-2 py-3 px-2 rounded-lg transition-all ${
-                        theme === "system"
-                          ? "bg-base-100 shadow-sm text-primary"
-                          : "hover:bg-base-200 text-base-content/60"
-                      }`}
-                    >
-                      <Monitor className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase">System</span>
-                    </button>
-                  </div>
-                </div>
-              </section>
+              <ThemeSwitcher />
 
               {/* Roles Section */}
               {onChangeRole && (
@@ -453,7 +196,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               {/* About Section */}
               <section className="pt-4 border-t border-base-300">
                 <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
-                  <h4 className="text-[10px] font-bold text-base-content/40 uppercase tracking-widest">
+                  <h4 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest">
                     System Information
                   </h4>
                   <div className="space-y-1">
