@@ -16,9 +16,13 @@ pub async fn get_books(
     if !db_path.exists() {
         return Err(AppError::LibraryNotFound(library_path.clone()));
     }
-    
+
     let cfg = deadpool_sqlite::Config::new(&db_path);
-    let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).map_err(|e| AppError::Unknown(e.to_string()))?.build().map_err(|e| AppError::Unknown(e.to_string()))?;
+    let pool = cfg
+        .builder(deadpool_sqlite::Runtime::Tokio1)
+        .map_err(|e| AppError::Unknown(e.to_string()))?
+        .build()
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     // 1. Fetch from DB
     let books = db::get_calibre_metadata(&pool).await?;
@@ -45,7 +49,7 @@ pub async fn get_books(
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books.clone();
     }
-    
+
     let mut pool_lock = state.server.db_pool.write().await;
     *pool_lock = Some(pool);
 
@@ -62,9 +66,13 @@ pub async fn set_library_path(
     if !db_path.exists() {
         return Err(AppError::LibraryNotFound(path.clone()));
     }
-    
+
     let cfg = deadpool_sqlite::Config::new(&db_path);
-    let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).map_err(|e| AppError::Unknown(e.to_string()))?.build().map_err(|e| AppError::Unknown(e.to_string()))?;
+    let pool = cfg
+        .builder(deadpool_sqlite::Runtime::Tokio1)
+        .map_err(|e| AppError::Unknown(e.to_string()))?
+        .build()
+        .map_err(|e| AppError::Unknown(e.to_string()))?;
 
     // 1. Fetch and cache books
     let books = db::get_calibre_metadata(&pool).await?;
@@ -92,7 +100,7 @@ pub async fn set_library_path(
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books;
     }
-    
+
     let mut pool_lock = state.server.db_pool.write().await;
     *pool_lock = Some(pool);
 

@@ -8,8 +8,8 @@ use std::path::Path as FilePath;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
-use super::SharedState;
 use super::auth::is_authorized;
+use super::SharedState;
 
 /// Handler for `GET /api/manifest`.
 ///

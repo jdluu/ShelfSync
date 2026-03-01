@@ -6,8 +6,8 @@ use axum::{
 };
 use std::path::Path as FilePath;
 
-use super::SharedState;
 use super::auth::is_authorized;
+use super::SharedState;
 
 /// Handler for `GET /api/cover/{book_id}`.
 ///
@@ -26,7 +26,7 @@ pub async fn get_cover(
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
     let mut authorized = is_authorized(&header_map, &state);
-    
+
     // Fallback: check query parameter token if header auth failed
     if !authorized {
         if let Some(ref q_token) = query.token {

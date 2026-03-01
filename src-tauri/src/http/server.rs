@@ -33,15 +33,16 @@ pub async fn run(
     let listener = match tokio::net::TcpListener::bind(&val_preferred).await {
         Ok(l) => l,
         Err(e) => {
-            warn!("Failed to bind to preferred port {}: {}. Falling back to random port.", preferred_port, e);
+            warn!(
+                "Failed to bind to preferred port {}: {}. Falling back to random port.",
+                preferred_port, e
+            );
             match tokio::net::TcpListener::bind("0.0.0.0:0").await {
                 Ok(l) => l,
                 Err(e) => {
                     error!("Failed to bind to any port: {}", e);
-                    let _ = app_handle.emit(
-                        "server-error",
-                        format!("Failed to start server: {}", e),
-                    );
+                    let _ =
+                        app_handle.emit("server-error", format!("Failed to start server: {}", e));
                     return Err(e.to_string());
                 }
             }
@@ -92,11 +93,8 @@ mod tests {
             [],
         )
         .unwrap();
-        conn.execute(
-            "CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)",
-            [],
-        )
-        .unwrap();
+        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", [])
+            .unwrap();
         conn.execute(
             "CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)",
             [],
@@ -113,10 +111,22 @@ mod tests {
             [],
         )
         .unwrap();
-        conn.execute("CREATE TABLE comments (id INTEGER PRIMARY KEY, book INTEGER, text TEXT)", []).unwrap();
-        conn.execute("CREATE TABLE ratings (id INTEGER PRIMARY KEY, rating REAL)", []).unwrap();
+        conn.execute(
+            "CREATE TABLE comments (id INTEGER PRIMARY KEY, book INTEGER, text TEXT)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "CREATE TABLE ratings (id INTEGER PRIMARY KEY, rating REAL)",
+            [],
+        )
+        .unwrap();
         conn.execute("CREATE TABLE books_ratings_link (id INTEGER PRIMARY KEY, book INTEGER, rating INTEGER)", []).unwrap();
-        conn.execute("CREATE TABLE languages (id INTEGER PRIMARY KEY, lang_code TEXT)", []).unwrap();
+        conn.execute(
+            "CREATE TABLE languages (id INTEGER PRIMARY KEY, lang_code TEXT)",
+            [],
+        )
+        .unwrap();
         conn.execute("CREATE TABLE books_languages_link (id INTEGER PRIMARY KEY, book INTEGER, lang_code INTEGER)", []).unwrap();
 
         conn.execute("INSERT INTO books (id, title, path, series, series_index, pubdate) VALUES (1, 'Server Test Book', 'test/book', NULL, 1.0, '2023-01-01T00:00:00+00:00')", []).unwrap();
@@ -154,7 +164,11 @@ mod tests {
     async fn populate_books(state: &SharedState, lib_path: &str) {
         let db_path = std::path::Path::new(lib_path).join("metadata.db");
         let cfg = deadpool_sqlite::Config::new(db_path);
-        let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).unwrap().build().unwrap();
+        let pool = cfg
+            .builder(deadpool_sqlite::Runtime::Tokio1)
+            .unwrap()
+            .build()
+            .unwrap();
 
         let mut books = state.books.lock().unwrap();
         *books = db::get_calibre_metadata(&pool).await.unwrap();

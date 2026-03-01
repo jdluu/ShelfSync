@@ -4,8 +4,8 @@ use axum::{
     response::{IntoResponse, Json},
 };
 
-use super::SharedState;
 use super::auth::is_authorized;
+use super::SharedState;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ProgressUpdate {
