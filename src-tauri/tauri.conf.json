@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http://localhost:8080 http://localhost:* http://* https://* data: blob:; connect-src 'self' http://localhost:* http://* https://* ws://localhost:*; font-src 'self' data:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' http: https: data: blob:; connect-src 'self' http: https: ws: wss:; font-src 'self' data:"
     },
     "trayIcon": {
       "iconPath": "icons/32x32.png"

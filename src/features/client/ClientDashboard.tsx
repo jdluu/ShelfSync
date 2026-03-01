@@ -54,6 +54,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     selectAll,
     selectNone,
     startBulkSync,
+    token, // From useClientDashboard
   } = useClientDashboard();
 
   return (
@@ -171,6 +172,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                     <BookCard
                       book={book}
                       host={connectedHost}
+                      token={token || undefined}
                       variant="remote"
                       compact={viewMode === "grid"}
                       onAction={() => syncBook(book)}

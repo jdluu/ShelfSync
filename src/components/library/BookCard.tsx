@@ -6,6 +6,7 @@ import type { Book, Host } from "@/types/core";
 interface BookCardProps {
   book: Book;
   host?: Host | null;
+  token?: string;
   variant: "remote" | "local" | "host-view";
   onAction?: (book: Book) => void;
   onToggleStatus?: (book: Book) => void;
@@ -21,6 +22,7 @@ interface BookCardProps {
 export const BookCard: React.FC<BookCardProps> = ({
   book,
   host,
+  token,
   variant,
   onAction,
   onToggleStatus,
@@ -36,7 +38,9 @@ export const BookCard: React.FC<BookCardProps> = ({
   const [imgLoaded, setImgLoaded] = useState(false);
 
   // Construct cover URL if we have a host
-  const coverUrl = host ? `http://${host.ip}:${host.port}/api/cover/${book.id}` : undefined;
+  const coverUrl = host
+    ? `http://${host.ip}:${host.port}/api/cover/${book.id}${token ? `?token=${token}` : ""}`
+    : undefined;
 
   const getStatusColor = (status: string | null | undefined) => {
     if (status === "finished") return "badge-success";

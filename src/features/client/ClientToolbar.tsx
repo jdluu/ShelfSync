@@ -1,10 +1,9 @@
-import { LayoutGrid, List, WifiOff } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import type React from "react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
 
 interface ClientToolbarProps {
-  disconnect: () => void;
   refresh: () => void;
   loading: boolean;
   selectionMode: boolean;
@@ -29,7 +28,6 @@ interface ClientToolbarProps {
  * search bar, and sort menu.
  */
 export const ClientToolbar: React.FC<ClientToolbarProps> = ({
-  disconnect,
   refresh,
   loading,
   selectionMode,
@@ -59,15 +57,6 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={disconnect}
-              className="btn btn-ghost btn-sm btn-circle"
-              title="Disconnect"
-              aria-label="Disconnect from host"
-            >
-              <WifiOff className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={refresh}

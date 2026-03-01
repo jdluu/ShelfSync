@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
@@ -13,13 +13,32 @@ use super::auth::is_authorized;
 ///
 /// Returns the cover image for the specified book as a JPEG.
 /// Uses a disk-based cache to store resized thumbnails.
-/// Requires `Authorization: Bearer <token>` header.
+/// Requires `Authorization: Bearer <token>` header OR `?token=<token>` query parameter.
+#[derive(serde::Deserialize)]
+pub struct CoverQuery {
+    token: Option<String>,
+}
+
 pub async fn get_cover(
     header_map: header::HeaderMap,
     Path(book_id): Path<i64>,
+    Query(query): Query<CoverQuery>,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
+    let mut authorized = is_authorized(&header_map, &state);
+    
+    // Fallback: check query parameter token if header auth failed
+    if !authorized {
+        if let Some(ref q_token) = query.token {
+            if let Ok(tokens) = state.authorized_tokens.lock() {
+                if tokens.contains(q_token) {
+                    authorized = true;
+                }
+            }
+        }
+    }
+
+    if !authorized {
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
