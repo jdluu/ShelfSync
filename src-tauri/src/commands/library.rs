@@ -18,7 +18,9 @@ pub async fn get_books(
     }
 
     let mut cfg = deadpool_sqlite::Config::new(&db_path);
-    cfg.pool.as_mut().unwrap().max_size = 16;
+    let mut pool_config = deadpool_sqlite::PoolConfig::default();
+    pool_config.max_size = 16;
+    cfg.pool = Some(pool_config);
     let pool = cfg
         .builder(deadpool_sqlite::Runtime::Tokio1)
         .map_err(|e| AppError::Unknown(e.to_string()))?
@@ -69,7 +71,9 @@ pub async fn set_library_path(
     }
 
     let mut cfg = deadpool_sqlite::Config::new(&db_path);
-    cfg.pool.as_mut().unwrap().max_size = 16;
+    let mut pool_config = deadpool_sqlite::PoolConfig::default();
+    pool_config.max_size = 16;
+    cfg.pool = Some(pool_config);
     let pool = cfg
         .builder(deadpool_sqlite::Runtime::Tokio1)
         .map_err(|e| AppError::Unknown(e.to_string()))?
