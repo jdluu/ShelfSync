@@ -42,11 +42,13 @@ pub fn run() {
     let discovery_clone = discovery_state.clone();
 
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             server: Arc::new(http::ServerState {
                 library_path: Mutex::new(None),
@@ -120,22 +122,31 @@ pub fn run() {
                             let db_path = std::path::Path::new(&path).join("metadata.db");
                             if db_path.exists() {
                                 let cfg = deadpool_sqlite::Config::new(&db_path);
-                                if let Ok(pool) = cfg.builder(deadpool_sqlite::Runtime::Tokio1).unwrap().build() {
+                                if let Ok(pool) = cfg
+                                    .builder(deadpool_sqlite::Runtime::Tokio1)
+                                    .unwrap()
+                                    .build()
+                                {
                                     match db::get_calibre_metadata(&pool).await {
                                         Ok(books) => {
-                                            if let Ok(mut path_lock) = server_state.library_path.lock() {
+                                            if let Ok(mut path_lock) =
+                                                server_state.library_path.lock()
+                                            {
                                                 *path_lock = Some(path.to_string());
                                             }
 
                                             if let Ok(mut books_lock) = server_state.books.lock() {
                                                 *books_lock = books;
                                             }
-                                            
+
                                             let mut pool_lock = server_state.db_pool.write().await;
                                             *pool_lock = Some(pool);
                                         }
                                         Err(e) => {
-                                            log::error!("[AUTO-LOAD] Failed to load metadata: {:?}", e);
+                                            log::error!(
+                                                "[AUTO-LOAD] Failed to load metadata: {:?}",
+                                                e
+                                            );
                                         }
                                     }
                                 } else {
@@ -167,15 +178,15 @@ pub fn run() {
             // 5. Spawn server task and get bound port
             let state_clone = app_state.server.clone();
             let server_handle = app.handle().clone();
-            
+
             // We need to wait for the server to start to know what port it bound to
             let (tx, rx) = std::sync::mpsc::channel();
-            
+
             tauri::async_runtime::spawn(async move {
                 let result = http::server::run(state_clone, 8080, server_handle).await;
                 let _ = tx.send(result);
             });
-            
+
             let bound_port = match rx.recv() {
                 Ok(Ok(port)) => port,
                 _ => {
