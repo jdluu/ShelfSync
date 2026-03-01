@@ -12,6 +12,10 @@ pub struct Book {
     pub series_index: f64,
     pub tags: Vec<String>,
     pub publisher: Option<String>,
+    pub description: Option<String>,
+    pub rating: Option<f64>,
+    pub language: Option<String>,
+    pub published_date: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]

@@ -163,11 +163,6 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
               Connect
             </button>
           </div>
-          <p className="text-[10px] text-base-content/50 italic px-1">
-            Tip: For Android Emulators, ensure the Host is bound to{" "}
-            <code className="text-success font-bold">0.0.0.0</code> and connect to{" "}
-            <code className="text-success font-bold">10.0.2.2</code>.
-          </p>
         </div>
       </div>
     </div>

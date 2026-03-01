@@ -80,7 +80,7 @@ mod tests {
         let db_path = path.join("metadata.db");
         let conn = Connection::open(&db_path).unwrap();
 
-        conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL)", []).unwrap();
+        conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL, pubdate TEXT)", []).unwrap();
         conn.execute(
             "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)",
             [],
@@ -113,8 +113,13 @@ mod tests {
             [],
         )
         .unwrap();
+        conn.execute("CREATE TABLE comments (id INTEGER PRIMARY KEY, book INTEGER, text TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE ratings (id INTEGER PRIMARY KEY, rating REAL)", []).unwrap();
+        conn.execute("CREATE TABLE books_ratings_link (id INTEGER PRIMARY KEY, book INTEGER, rating INTEGER)", []).unwrap();
+        conn.execute("CREATE TABLE languages (id INTEGER PRIMARY KEY, lang_code TEXT)", []).unwrap();
+        conn.execute("CREATE TABLE books_languages_link (id INTEGER PRIMARY KEY, book INTEGER, lang_code INTEGER)", []).unwrap();
 
-        conn.execute("INSERT INTO books (id, title, path, series, series_index) VALUES (1, 'Server Test Book', 'test/book', NULL, 1.0)", []).unwrap();
+        conn.execute("INSERT INTO books (id, title, path, series, series_index, pubdate) VALUES (1, 'Server Test Book', 'test/book', NULL, 1.0, '2023-01-01T00:00:00+00:00')", []).unwrap();
         conn.execute("INSERT INTO authors (id, name) VALUES (1, 'Tester')", [])
             .unwrap();
         conn.execute(
