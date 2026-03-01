@@ -5192,7 +5192,7 @@ dependencies = [
 
 [[package]]
 name = "shelfsync"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "axum",
  "axum-test",
