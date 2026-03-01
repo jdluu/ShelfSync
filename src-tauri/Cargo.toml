@@ -1,6 +1,6 @@
 [package]
 name = "shelfsync"
-version = "1.0.1"
+version = "1.0.2"
 description = "Secure cross-device library synchronization"
 authors = ["jdluu"]
 edition = "2021"
