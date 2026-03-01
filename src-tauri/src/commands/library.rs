@@ -17,7 +17,8 @@ pub async fn get_books(
         return Err(AppError::LibraryNotFound(library_path.clone()));
     }
 
-    let cfg = deadpool_sqlite::Config::new(&db_path);
+    let mut cfg = deadpool_sqlite::Config::new(&db_path);
+    cfg.pool.as_mut().unwrap().max_size = 16;
     let pool = cfg
         .builder(deadpool_sqlite::Runtime::Tokio1)
         .map_err(|e| AppError::Unknown(e.to_string()))?
@@ -67,7 +68,8 @@ pub async fn set_library_path(
         return Err(AppError::LibraryNotFound(path.clone()));
     }
 
-    let cfg = deadpool_sqlite::Config::new(&db_path);
+    let mut cfg = deadpool_sqlite::Config::new(&db_path);
+    cfg.pool.as_mut().unwrap().max_size = 16;
     let pool = cfg
         .builder(deadpool_sqlite::Runtime::Tokio1)
         .map_err(|e| AppError::Unknown(e.to_string()))?

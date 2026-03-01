@@ -121,7 +121,8 @@ pub fn run() {
                         {
                             let db_path = std::path::Path::new(&path).join("metadata.db");
                             if db_path.exists() {
-                                let cfg = deadpool_sqlite::Config::new(&db_path);
+                                let mut cfg = deadpool_sqlite::Config::new(&db_path);
+                                cfg.pool.as_mut().unwrap().max_size = 16;
                                 if let Ok(pool) = cfg
                                     .builder(deadpool_sqlite::Runtime::Tokio1)
                                     .unwrap()
