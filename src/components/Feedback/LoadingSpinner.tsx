@@ -8,7 +8,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = "Loadi
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-4">
       <span className="loading loading-spinner text-accent loading-lg"></span>
-      <p className="text-base-content/60">{message}</p>
+      <p className="text-base-content/70">{message}</p>
     </div>
   );
 };

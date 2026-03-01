@@ -48,26 +48,36 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   if (compact) {
     return (
-      // biome-ignore lint/a11y/noStaticElementInteractions: role is dynamically assigned
-      // biome-ignore lint/a11y/useKeyWithClickEvents: handled dynamically
       <div
-        className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none relative ${
           selected
-            ? "border-primary bg-primary/10 shadow-md"
+            ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary"
             : "border-base-300 hover:shadow-md hover:bg-base-300"
-        } ${selectable ? "cursor-pointer" : ""}`}
-        onClick={selectable ? onSelect : undefined}
-        role={selectable ? "button" : undefined}
-        tabIndex={selectable ? 0 : undefined}
+        }`}
       >
+        {selectable && onSelect && (
+          <button
+            type="button"
+            className="absolute inset-0 w-full h-full z-10 bg-transparent border-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect();
+            }}
+            aria-label={`Select ${book.title}`}
+            aria-pressed={selected}
+          />
+        )}
         <div className="card-body p-3 flex flex-col items-center text-center gap-2">
           {selectable && (
-            <div className="absolute top-2 right-2 z-10">
+            <div className="absolute top-2 right-2 z-20">
               <input
                 type="checkbox"
                 checked={selected}
-                className="checkbox checkbox-primary checkbox-xs"
+                className="checkbox checkbox-primary checkbox-xs pointer-events-none"
                 readOnly
+                aria-hidden="true"
+                tabIndex={-1}
               />
             </div>
           )}
@@ -79,7 +89,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 )}
                 <img
                   src={coverUrl}
-                  alt={book.title}
+                  alt={`Cover of ${book.title}`}
                   className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
                   onError={() => {
                     setImgError(true);
@@ -108,15 +118,16 @@ export const BookCard: React.FC<BookCardProps> = ({
             >
               {book.title}
             </h3>
-            <p className="text-[10px] text-base-content/60 truncate" title={book.authors}>
+            <p className="text-[10px] text-base-content/70 truncate" title={book.authors}>
               {book.authors}
             </p>
           </div>
           {onAction && variant === "remote" && (
             <button
               type="button"
-              className="btn btn-xs btn-primary w-full"
+              className="btn btn-xs btn-primary w-full relative z-20"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onAction(book);
               }}
@@ -131,31 +142,36 @@ export const BookCard: React.FC<BookCardProps> = ({
   }
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: role is dynamically assigned
     <div
-      className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 ${
+      className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none relative ${
         selected
-          ? "border-primary bg-primary/10 shadow-md"
+          ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary ring-offset-2 ring-offset-base-100"
           : "border-base-300 hover:shadow-md hover:bg-base-300"
-      } ${selectable ? "cursor-pointer" : ""}`}
-      onClick={selectable ? onSelect : undefined}
-      onKeyDown={(e) => {
-        if (selectable && onSelect && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-      role={selectable ? "button" : undefined}
-      tabIndex={selectable ? 0 : undefined}
+      }`}
     >
+      {selectable && onSelect && (
+        <button
+          type="button"
+          className="absolute inset-0 w-full h-full z-10 bg-transparent border-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onSelect();
+          }}
+          aria-label={`Select ${book.title}`}
+          aria-pressed={selected}
+        />
+      )}
       <div className="card-body p-4 relative">
         {selectable && (
-          <div className="absolute top-2 right-2 z-10">
+          <div className="absolute top-2 right-2 z-20">
             <input
               type="checkbox"
               checked={selected}
-              className="checkbox checkbox-primary"
+              className="checkbox checkbox-primary pointer-events-none"
               readOnly
+              aria-hidden="true"
+              tabIndex={-1}
             />
           </div>
         )}
@@ -198,7 +214,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             <h3 className="text-sm font-bold truncate w-full" title={book.title}>
               {book.title}
             </h3>
-            <p className="text-sm text-base-content/60 truncate w-full" title={book.authors}>
+            <p className="text-sm text-base-content/70 truncate w-full" title={book.authors}>
               {book.authors}
             </p>
 
@@ -233,11 +249,13 @@ export const BookCard: React.FC<BookCardProps> = ({
                 {onToggleStatus && (
                   <button
                     type="button"
-                    className={`badge badge-xs sm:badge-sm cursor-pointer ${getStatusColor(book.read_status)}`}
+                    className={`badge badge-xs sm:badge-sm cursor-pointer relative z-20 ${getStatusColor(book.read_status)}`}
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onToggleStatus(book);
                     }}
+                    aria-label={`Mark ${book.title} as ${book.read_status === "finished" ? "unread" : book.read_status === "reading" ? "finished" : "reading"}`}
                   >
                     {book.read_status || "unread"}
                   </button>
@@ -260,8 +278,9 @@ export const BookCard: React.FC<BookCardProps> = ({
                 {onAction && (
                   <button
                     type="button"
-                    className="btn btn-xs btn-primary flex-1"
+                    className="btn btn-xs btn-primary flex-1 relative z-20"
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       onAction(book);
                     }}
@@ -276,8 +295,9 @@ export const BookCard: React.FC<BookCardProps> = ({
             {variant === "local" && onAction && actionLabel && (
               <button
                 type="button"
-                className={`btn btn-xs mt-2 w-full ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
+                className={`btn btn-xs mt-2 w-full relative z-20 ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   onAction(book);
                 }}

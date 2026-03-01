@@ -31,7 +31,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
                 </div>
                 <div className="space-y-2 sm:space-y-4">
                   <h2 className="text-2xl sm:text-3xl font-bold">Host Mode</h2>
-                  <p className="text-sm sm:text-base text-base-content/60 leading-relaxed max-w-xs mx-auto">
+                  <p className="text-sm sm:text-base text-base-content/70 leading-relaxed max-w-xs mx-auto">
                     Share your library with other devices on your local network.
                   </p>
                 </div>
@@ -53,7 +53,7 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
                 </div>
                 <div className="space-y-2 sm:space-y-4">
                   <h2 className="text-2xl sm:text-3xl font-bold">Client Mode</h2>
-                  <p className="text-sm sm:text-base text-base-content/60 leading-relaxed max-w-xs mx-auto">
+                  <p className="text-sm sm:text-base text-base-content/70 leading-relaxed max-w-xs mx-auto">
                     Access and sync books from an active ShelfSync host.
                   </p>
                 </div>

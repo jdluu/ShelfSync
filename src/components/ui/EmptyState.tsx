@@ -20,7 +20,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <Icon className="w-12 h-12 text-base-content/50" />
       <div className="flex flex-col gap-1">
         <h3 className="text-lg font-bold">{title}</h3>
-        <p className="text-base-content/60 max-w-[300px]">{description}</p>
+        <p className="text-base-content/70 max-w-[300px]">{description}</p>
       </div>
       {actionLabel && onAction && (
         <button

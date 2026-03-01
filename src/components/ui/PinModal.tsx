@@ -20,7 +20,12 @@ export const PinModal: React.FC<PinModalProps> = ({ hostName, onPair, onCancel, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pin-modal-title"
+    >
       <div className="bg-base-200 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-base-300">
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex justify-center">
@@ -30,8 +35,10 @@ export const PinModal: React.FC<PinModalProps> = ({ hostName, onPair, onCancel, 
           </div>
 
           <div className="text-center flex flex-col gap-1">
-            <h2 className="text-2xl font-bold">Pairing Required</h2>
-            <p className="text-sm text-base-content/60">
+            <h2 id="pin-modal-title" className="text-2xl font-bold">
+              Pairing Required
+            </h2>
+            <p className="text-sm text-base-content/70">
               Enter the 4-digit PIN displayed on <strong>{hostName}</strong>
             </p>
           </div>
@@ -42,6 +49,9 @@ export const PinModal: React.FC<PinModalProps> = ({ hostName, onPair, onCancel, 
             placeholder="0000"
             className="input input-lg text-center text-2xl font-bold tracking-widest w-full bg-base-100"
             disabled={loading}
+            aria-label="4-digit pairing PIN"
+            inputMode="numeric"
+            autoComplete="one-time-code"
           />
 
           <div className="flex w-full gap-3">

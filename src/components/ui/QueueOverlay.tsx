@@ -30,14 +30,18 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
   const totalCount = items.length;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 max-h-[400px] bg-base-100 rounded-xl shadow-2xl border border-base-300 flex flex-col overflow-hidden backdrop-blur-md">
+    <output
+      className="fixed bottom-6 right-6 z-50 w-80 max-h-[400px] bg-base-100 rounded-xl shadow-2xl border border-base-300 flex flex-col overflow-hidden backdrop-blur-md"
+      aria-live="polite"
+      aria-label="Sync progress"
+    >
       <div className="p-4 border-b border-base-200 bg-base-200/50">
         <div className="flex justify-between items-center">
           <div className="flex gap-2 items-center">
             <Download className="text-info" />
             <div className="flex flex-col">
               <span className="font-bold text-sm">Sync Progress</span>
-              <span className="text-xs text-base-content/60">
+              <span className="text-xs text-base-content/70">
                 {completedCount} of {totalCount} syncs finished
               </span>
             </div>
@@ -61,7 +65,7 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
                     value={p.progress * 100}
                     max="100"
                   ></progress>
-                  <div className="flex justify-between text-[10px] text-base-content/60">
+                  <div className="flex justify-between text-[10px] text-base-content/70">
                     <span>Downloading...</span>
                     <span>{Math.round(p.progress * 100)}%</span>
                   </div>
@@ -76,7 +80,7 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
           </div>
         )}
       </div>
-    </div>
+    </output>
   );
 };
 

@@ -41,7 +41,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
 
               <div className="relative">
                 <div className="w-32 h-32 rounded-3xl bg-base-300 flex items-center justify-center group-hover:bg-primary/5 transition-all duration-300">
-                  <Folder className="w-16 h-16 text-base-content/40 group-hover:text-primary/70 transition-colors" />
+                  <Folder className="w-16 h-16 text-base-content/50 group-hover:text-primary/70 transition-colors" />
                 </div>
               </div>
 
@@ -61,10 +61,10 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-base-content/40 font-medium text-xs uppercase tracking-wider">
+                  <p className="text-base-content/50 font-medium text-xs uppercase tracking-wider">
                     {libraryPath ? "Library Active" : "No library selected."}
                   </p>
-                  <p className="text-sm text-base-content/60 px-4 line-clamp-2 break-all font-mono">
+                  <p className="text-sm text-base-content/70 px-4 line-clamp-2 break-all font-mono">
                     {libraryPath || "Choose your Calibre library folder to begin."}
                   </p>
                   {books.length > 0 && (
@@ -102,7 +102,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
                       <div className="bg-base-300/30 p-4 rounded-xl border border-base-300 flex items-center justify-between group hover:bg-base-300/50 transition-colors">
                         <div className="space-y-1">
-                          <p className="text-[10px] font-bold text-base-content/40 uppercase tracking-wider">
+                          <p className="text-[10px] font-bold text-base-content/50 uppercase tracking-wider">
                             Host IP
                           </p>
                           <p className="text-xl font-bold font-mono text-base-content/90 tracking-tight">
@@ -114,7 +114,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
 
                       <div className="bg-base-300/30 p-4 rounded-xl border border-base-300 flex items-center justify-between group hover:bg-base-300/50 transition-colors">
                         <div className="space-y-1">
-                          <p className="text-[10px] font-bold text-base-content/40 uppercase tracking-wider">
+                          <p className="text-[10px] font-bold text-base-content/50 uppercase tracking-wider">
                             Port
                           </p>
                           <p className="text-xl font-bold font-mono text-base-content/90 tracking-tight">
@@ -139,7 +139,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 gap-4 grow">
                     <span className="loading loading-ring loading-lg text-primary"></span>
-                    <p className="text-base-content/40 font-medium">Initializing network...</p>
+                    <p className="text-base-content/50 font-medium">Initializing network...</p>
                   </div>
                 )}
               </div>
