@@ -25,8 +25,14 @@ jobs:
           cache: 'pnpm'
 
       # Standard Build Flow
-      - name: install Rust stable
+      - name: install Rust stable (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
         uses: dtolnay/rust-toolchain@stable
+      - name: install Rust stable (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -35,7 +41,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev javascriptcoregtk-4.1-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: Build Desktop
@@ -134,6 +140,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
