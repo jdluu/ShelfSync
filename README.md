@@ -1,6 +1,7 @@
 # ShelfSync
 
 ![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20Android-success?style=for-the-badge)
+
 ![Tauri](https://img.shields.io/badge/Tauri-021021?style=for-the-badge&logo=tauri&logoColor=24C8DB)
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
