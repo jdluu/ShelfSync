@@ -32,11 +32,6 @@ export const useHostManifest = (host: Host | null, token: string | undefined, en
     queryFn: async () => {
       if (!host) throw new Error("No host selected");
 
-      // TEST HOOK: Bypass Tauri HTTP client during pure Chromium tab multi-instance E2E testing
-      if (window.__TEST_MOCK_MANIFEST_RESULTS__) {
-        return window.__TEST_MOCK_MANIFEST_RESULTS__;
-      }
-
       return httpClient.getManifest(host, token);
     },
     enabled: enabled && !!host,

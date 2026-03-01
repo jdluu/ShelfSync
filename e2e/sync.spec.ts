@@ -19,25 +19,27 @@ test.describe("Multi-Instance Sync", () => {
     const clientPage = await newTauriPage();
     await clientPage.getByRole("button", { name: /Client \(Mobile\)/i }).click();
 
-    // Wait for discovery to find the host (Window 1)
-    // Discovery uses api.network.discoverHosts() which we might need to mock if it's too slow/real
+    // Wait for discovery UI
     await expect(clientPage.getByText(/Connect to a Host/i)).toBeVisible();
 
-    await expect(clientPage.getByText(/Connect to a Host/i)).toBeVisible();
-
-    await clientPage.evaluate(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: test backdoor
-      (window as any).__TEST_MOCK_MANIFEST_RESULTS__ = [
-        {
-          id: 1,
-          title: "The Great Gatsby",
-          authors: "F. Scott Fitzgerald",
-          series_index: 1,
-          formats: ["epub"],
-          tags: [],
-          path: "mocked",
-        },
-      ];
+    // Intercept the manifest API call with Playwright's page.route()
+    // instead of injecting a global mock into production code.
+    await clientPage.route("**/api/manifest", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            title: "The Great Gatsby",
+            authors: "F. Scott Fitzgerald",
+            series_index: 1,
+            formats: ["epub"],
+            tags: [],
+            path: "mocked",
+          },
+        ]),
+      });
     });
 
     // Fill in the Manual Connection form to bypass flaky UDP mDNS locally
@@ -54,7 +56,7 @@ test.describe("Multi-Instance Sync", () => {
     await expect(clientPage.getByText("Connected To")).toBeVisible();
     await expect(clientPage.getByText("Live Sync").first()).toBeVisible();
 
-    // Wait for the real mock database to propagate its books across the network
+    // Wait for the mocked manifest data to render
     await expect(clientPage.getByText("The Great Gatsby")).toBeVisible();
 
     // Verify we can see the sync button for the book
