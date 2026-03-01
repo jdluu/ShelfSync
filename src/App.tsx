@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { PinModal } from "@/components/ui/PinModal";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
@@ -97,7 +98,12 @@ function AppContent() {
 }
 
 function App() {
-  return <AppContent />;
+  return (
+    <>
+      <AppContent />
+      <ToastContainer />
+    </>
+  );
 }
 
 export default App;

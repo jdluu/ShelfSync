@@ -4,7 +4,7 @@ import { isTauri } from "@/utils/tauri";
  * Displays a native notification to the user for critical errors.
  *
  * Uses `tauri-plugin-notification` when running inside Tauri, which shows
- * an OS-native notification (toast on Windows, notification center on macOS/mobile).
+ * an OS-native notification (toast on Windows, notification center on Linux/mobile).
  * Falls back to `console.error` in browser environments.
  *
  * @param title   - Short heading for the notification (e.g., "Sync Failed").
