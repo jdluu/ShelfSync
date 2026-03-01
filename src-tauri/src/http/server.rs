@@ -1,509 +1,85 @@
-use crate::models::Book;
-use axum::{
-    body::Body,
-    extract::{Path, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Json, Response},
-    routing::get,
-    Router,
-};
-use log::{error, info};
-use std::path::Path as FilePath;
-use std::sync::{Arc, Mutex};
+use axum::{routing::get, Router};
+use log::{error, info, warn};
 use tauri::Emitter;
-use tokio::fs::File;
-use tokio_util::io::ReaderStream;
 use tower_http::cors::CorsLayer;
 
-/// Application state shared across all HTTP handlers.
-///
-/// Contains the library path, book metadata, authentication PIN, and authorized tokens.
-pub struct ServerState {
-    /// Path to the Calibre library (e.g., "/Users/name/Calibre Library").
-    pub library_path: Mutex<Option<String>>,
-    /// In-memory cache of book metadata.
-    pub books: Mutex<Vec<Book>>,
-    /// 4-digit PIN for initial device pairing.
-    pub pin: Mutex<String>,
-    /// Set of authorized bearer tokens.
-    pub authorized_tokens: Mutex<std::collections::HashSet<String>>,
-    /// Directory for storing application data (cache, settings, etc.).
-    pub app_data_dir: Mutex<Option<std::path::PathBuf>>,
-}
+use super::{auth, books, covers, progress, SharedState};
 
-pub type SharedState = Arc<ServerState>;
-
-pub async fn run(state: SharedState, port: u16, app_handle: tauri::AppHandle) {
+/// Runs the Axum server on the specified port.
+/// If the port is in use, it will fall back to port 0 (random available port).
+/// Returns the actual port the server bound to, or an error if it failed completely.
+pub async fn run(
+    state: SharedState,
+    preferred_port: u16,
+    app_handle: tauri::AppHandle,
+) -> Result<u16, String> {
     let app = Router::new()
-        .route("/api/manifest", get(get_manifest))
-        .route("/api/cover/{book_id}", get(get_cover))
-        .route("/api/download/{book_id}/{format}", get(download_book))
-        .route("/api/check-pin", axum::routing::post(check_pin))
-        .route("/api/progress", get(get_progress).post(update_progress))
+        .route("/api/manifest", get(books::get_manifest))
+        .route("/api/cover/{book_id}", get(covers::get_cover))
+        .route(
+            "/api/download/{book_id}/{format}",
+            get(books::download_book),
+        )
+        .route("/api/check-pin", axum::routing::post(auth::check_pin))
+        .route(
+            "/api/progress",
+            get(progress::get_progress).post(progress::update_progress),
+        )
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let val = format!("0.0.0.0:{}", port);
-    let listener = match tokio::net::TcpListener::bind(&val).await {
+    // Try preferred port first, fall back to 0 (random) if in use
+    let val_preferred = format!("0.0.0.0:{}", preferred_port);
+    let listener = match tokio::net::TcpListener::bind(&val_preferred).await {
         Ok(l) => l,
         Err(e) => {
-            error!("Failed to bind to address {}: {}", val, e);
-            let _ = app_handle.emit(
-                "server-error",
-                format!("Port {} is in use. Server could not start.", port),
-            );
-            return;
-        }
-    };
-
-    if let Ok(addr) = listener.local_addr() {
-        info!("Server listening on {}", addr);
-    }
-
-    if let Err(e) = axum::serve(listener, app).await {
-        error!("Server error: {}", e);
-    }
-}
-// ...
-
-/// Handler for `GET /api/manifest`.
-///
-/// Returns the full list of books in the library.
-/// Requires `Authorization: Bearer <token>` header.
-async fn get_manifest(
-    header_map: header::HeaderMap,
-    State(state): State<SharedState>,
-) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
-
-    // Return cached books directly
-    let books = match state.books.lock() {
-        Ok(b) => b,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-    };
-    Json(books.clone()).into_response()
-}
-
-/// Handler for `GET /api/cover/{book_id}`.
-///
-/// Returns the cover image for the specified book as a JPEG.
-/// Uses a disk-based cache to store resized thumbnails.
-/// Requires `Authorization: Bearer <token>` header.
-async fn get_cover(
-    header_map: header::HeaderMap,
-    Path(book_id): Path<i64>,
-    State(state): State<SharedState>,
-) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
-
-    let library_path = {
-        let guard = match state.library_path.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "Library path not set").into_response()
-            }
-        }
-    };
-
-    let book = {
-        let books = match state.books.lock() {
-            Ok(b) => b,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match books.iter().find(|b| b.id == book_id) {
-            Some(b) => b.clone(),
-            None => return (StatusCode::NOT_FOUND, "Book not found").into_response(),
-        }
-    };
-
-    let cover_path = FilePath::new(&library_path)
-        .join(&book.path)
-        .join("cover.jpg");
-
-    if !cover_path.exists() {
-        return (StatusCode::NOT_FOUND, "Cover not found").into_response();
-    }
-
-    let app_data_dir = {
-        let guard = match state.app_data_dir.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
-            }
-        }
-    };
-
-    match get_cached_or_resized_cover(&app_data_dir, &cover_path, book_id).await {
-        Ok(bytes) => Response::builder()
-            .header(header::CONTENT_TYPE, "image/jpeg")
-            .body(Body::from(bytes))
-            .unwrap_or_else(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to build response",
-                )
-                    .into_response()
-            }),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
-    }
-}
-
-/// Handler for `GET /api/download/{book_id}/{format}`.
-///
-/// Downloads the book file in the requested format (e.g., "epub", "pdf").
-/// Searches for the file in the book's directory, falling back to other common formats if the requested one is not found.
-/// Requires `Authorization: Bearer <token>` header.
-async fn download_book(
-    header_map: header::HeaderMap,
-    Path((book_id, format)): Path<(i64, String)>,
-    State(state): State<SharedState>,
-) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
-
-    let library_path = {
-        let guard = match state.library_path.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "Library path not set").into_response()
-            }
-        }
-    };
-
-    let book = {
-        let books = match state.books.lock() {
-            Ok(b) => b,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match books.iter().find(|b| b.id == book_id) {
-            Some(b) => b.clone(),
-            None => return (StatusCode::NOT_FOUND, "Book not found").into_response(),
-        }
-    };
-
-    let book_dir = FilePath::new(&library_path).join(&book.path);
-
-    let (file_path, found_format) = match find_book_file(&book_dir, &format).await {
-        Some(res) => res,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                "Format not found (checked: epub, pdf, mobi, cbz)",
-            )
-                .into_response()
-        }
-    };
-
-    build_file_response(&file_path, &found_format)
-        .await
-        .into_response()
-}
-
-// Helper block
-async fn build_file_response(file_path: &FilePath, found_format: &str) -> axum::response::Response {
-    match File::open(file_path).await {
-        Ok(file) => {
-            let stream = ReaderStream::new(file);
-            let body = Body::from_stream(stream);
-
-            // Determine content type
-            let content_type = match found_format {
-                "epub" => "application/epub+zip",
-                "pdf" => "application/pdf",
-                "mobi" => "application/x-mobipocket-ebook",
-                "cbz" => "application/vnd.comicbook+zip",
-                _ => "application/octet-stream",
-            };
-
-            // Set filename in content-disposition
-            let filename = file_path
-                .file_name()
-                .map(|f| f.to_string_lossy().to_string())
-                .unwrap_or_else(|| "download".to_string());
-            let disposition = format!("attachment; filename=\"{}\"", filename);
-
-            Response::builder()
-                .header(header::CONTENT_TYPE, content_type)
-                .header(header::CONTENT_DISPOSITION, disposition)
-                .body(body)
-                .unwrap_or_else(|_| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to build response",
-                    )
-                        .into_response()
-                })
-        }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "File open error").into_response(),
-    }
-}
-
-// Helper functions
-
-/// Helper to retrieve a cover image from cache or resize it from the source.
-///
-/// # Arguments
-///
-/// * `app_data_dir` - The application data directory where cache is stored.
-/// * `cover_path` - The absolute path to the source cover image.
-/// * `book_id` - The unique ID of the book, used for cache filenames.
-///
-/// # Returns
-///
-/// Returns `Ok(Vec<u8>)` containing the JPEG bytes, or an error string.
-async fn get_cached_or_resized_cover(
-    app_data_dir: &std::path::Path,
-    cover_path: &std::path::Path,
-    book_id: i64,
-) -> Result<Vec<u8>, String> {
-    // Cache logic: app_data_dir/cache/covers/{book_id}.jpg
-    let cache_dir = app_data_dir.join("cache").join("covers");
-    let cache_file_path = cache_dir.join(format!("{}.jpg", book_id));
-
-    // 1. Try serving from cache first
-    if cache_file_path.exists() {
-        if let Ok(bytes) = tokio::fs::read(&cache_file_path).await {
-            return Ok(bytes);
-        }
-    }
-
-    // 2. If not in cache, resize and save
-    let cover_path_owned = cover_path.to_path_buf();
-    let cache_dir_owned = cache_dir.clone();
-    let cache_file_path_owned = cache_file_path.clone();
-
-    // Offload CPU-intensive image resizing to a blocking thread
-    tokio::task::spawn_blocking(move || {
-        // Ensure cache directory exists
-        std::fs::create_dir_all(&cache_dir_owned).map_err(|_| "Failed to create cache dir")?;
-        resize_and_save_cover(&cover_path_owned, &cache_file_path_owned)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-fn resize_and_save_cover(
-    src_path: &std::path::Path,
-    dest_path: &std::path::Path,
-) -> Result<Vec<u8>, String> {
-    let img = image::open(src_path).map_err(|_| "Failed to open image")?;
-    let resized = img.resize(300, 450, image::imageops::FilterType::Lanczos3);
-
-    // Encode to bytes once, then write those bytes to disk
-    let mut bytes: Vec<u8> = Vec::new();
-    let mut cursor = std::io::Cursor::new(&mut bytes);
-    resized
-        .write_to(&mut cursor, image::ImageFormat::Jpeg)
-        .map_err(|_| "Failed to encode image")?;
-
-    std::fs::write(dest_path, &bytes).map_err(|_| "Failed to save to cache")?;
-
-    Ok(bytes)
-}
-
-async fn find_book_file(
-    book_dir: &std::path::Path,
-    requested_format: &str,
-) -> Option<(std::path::PathBuf, String)> {
-    // Fallback order: requested -> epub -> pdf -> mobi -> cbz
-    let mut search_formats = vec![requested_format.to_lowercase()];
-    for f in ["epub", "pdf", "mobi", "cbz"] {
-        if !search_formats.contains(&f.to_string()) {
-            search_formats.push(f.to_string());
-        }
-    }
-
-    // Read directory once, then search in-memory
-    let mut entries = Vec::new();
-    let mut dir_entries = match tokio::fs::read_dir(book_dir).await {
-        Ok(d) => d,
-        Err(_) => return None,
-    };
-    while let Ok(Some(entry)) = dir_entries.next_entry().await {
-        entries.push(entry.path());
-    }
-
-    for fmt in search_formats {
-        for path in &entries {
-            if let Some(ext) = path.extension() {
-                if ext.to_string_lossy().to_lowercase() == fmt {
-                    return Some((path.clone(), fmt));
+            warn!("Failed to bind to preferred port {}: {}. Falling back to random port.", preferred_port, e);
+            match tokio::net::TcpListener::bind("0.0.0.0:0").await {
+                Ok(l) => l,
+                Err(e) => {
+                    error!("Failed to bind to any port: {}", e);
+                    let _ = app_handle.emit(
+                        "server-error",
+                        format!("Failed to start server: {}", e),
+                    );
+                    return Err(e.to_string());
                 }
             }
         }
-    }
-
-    None
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-struct PinRequest {
-    pin: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct AuthResponse {
-    token: String,
-}
-
-/// Handler for `POST /api/check-pin`.
-///
-/// Verifies the 4-digit PIN provided by the client.
-/// If correct, returns a new bearer token for subsequent requests.
-async fn check_pin(
-    State(state): State<SharedState>,
-    Json(payload): Json<PinRequest>,
-) -> impl IntoResponse {
-    let pin = match state.pin.lock() {
-        Ok(p) => p,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-    };
-    let valid = payload.pin == *pin;
-    info!(
-        "PIN check: result={}",
-        if valid { "accepted" } else { "rejected" }
-    );
-    if valid {
-        let token = uuid::Uuid::new_v4().to_string();
-        if let Ok(mut tokens) = state.authorized_tokens.lock() {
-            tokens.insert(token.clone());
-        } else {
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response();
-        }
-        info!("PIN accepted. Issued new token.");
-        (StatusCode::OK, Json(AuthResponse { token })).into_response()
-    } else {
-        error!("PIN rejected.");
-        (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
-    }
-}
-
-/// Handler for `GET /api/progress`.
-///
-/// Returns current reading progress for all books.
-/// Requires `Authorization: Bearer <token>` header.
-async fn get_progress(
-    header_map: header::HeaderMap,
-    State(state): State<SharedState>,
-) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
-
-    let app_data_dir = {
-        let guard = match state.app_data_dir.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
-            }
-        }
     };
 
-    match crate::core::progress::get_all_progress(&app_data_dir) {
-        Ok(records) => Json(records).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("DB Error: {}", e),
-        )
-            .into_response(),
-    }
-}
+    let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
+    info!("Server listening on port {}", actual_port);
 
-#[derive(serde::Deserialize, serde::Serialize)]
-struct ProgressUpdate {
-    book_id: i64,
-    status: String,
-}
-
-/// Handler for `POST /api/progress`.
-///
-/// Updates the reading progress/status for a specific book.
-/// Requires `Authorization: Bearer <token>` header.
-async fn update_progress(
-    header_map: header::HeaderMap,
-    State(state): State<SharedState>,
-    Json(payload): Json<ProgressUpdate>,
-) -> impl IntoResponse {
-    if !is_authorized(&header_map, &state) {
-        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
-
-    let app_data_dir = {
-        let guard = match state.app_data_dir.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
-            }
+    tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, app).await {
+            error!("Server error: {}", e);
         }
-    };
+    });
 
-    match crate::core::progress::update_progress(&app_data_dir, payload.book_id, &payload.status) {
-        Ok(_) => StatusCode::OK.into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("DB Error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-/// Validates the `Authorization` header against the set of authorized tokens.
-fn is_authorized(headers: &header::HeaderMap, state: &SharedState) -> bool {
-    if let Some(auth_header) = headers.get(header::AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if let Some(token) = auth_str.strip_prefix("Bearer ") {
-                if let Ok(tokens) = state.authorized_tokens.lock() {
-                    return tokens.contains(token);
-                }
-                return false;
-            }
-        }
-    }
-    false
+    Ok(actual_port)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::{ServerState, SharedState};
     use super::*;
     use crate::core::db;
+    use crate::http::auth::{AuthResponse, PinRequest};
+    use axum::http::header;
     use axum_test::TestServer;
     use rusqlite::Connection;
     use std::fs;
     use std::path::Path;
+    use std::sync::{Arc, Mutex};
     use tempfile::tempdir;
 
-    // Helper to generate a mini mock lib for server tests (similar to gen_mock_lib but smaller/scoped)
+    /// Generates a minimal mock Calibre library for server tests.
     fn setup_mock_lib(path: &Path) {
         fs::create_dir_all(path).unwrap();
         let db_path = path.join("metadata.db");
         let conn = Connection::open(&db_path).unwrap();
 
-        // Create all tables required by get_calibre_metadata query
         conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, path TEXT, series INTEGER, series_index REAL)", []).unwrap();
         conn.execute(
             "CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)",
@@ -516,8 +92,11 @@ mod tests {
             [],
         )
         .unwrap();
-        conn.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)", [])
-            .unwrap();
+        conn.execute(
+            "CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT)",
+            [],
+        )
+        .unwrap();
         conn.execute(
             "CREATE TABLE books_tags_link (id INTEGER PRIMARY KEY, book INTEGER, tag INTEGER)",
             [],
@@ -535,7 +114,6 @@ mod tests {
         )
         .unwrap();
 
-        // Insert test data
         conn.execute("INSERT INTO books (id, title, path, series, series_index) VALUES (1, 'Server Test Book', 'test/book', NULL, 1.0)", []).unwrap();
         conn.execute("INSERT INTO authors (id, name) VALUES (1, 'Tester')", [])
             .unwrap();
@@ -553,13 +131,9 @@ mod tests {
         fs::write(book_dir.join("cover.jpg"), "fake cover").unwrap();
     }
 
-    #[tokio::test]
-    async fn test_manifest() {
-        let dir = tempdir().unwrap();
-        setup_mock_lib(dir.path());
-
-        let state = Arc::new(ServerState {
-            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
+    fn make_state(dir: &Path) -> SharedState {
+        Arc::new(ServerState {
+            library_path: Mutex::new(Some(dir.to_str().unwrap().to_string())),
             books: Mutex::new(Vec::new()),
             pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
@@ -567,17 +141,24 @@ mod tests {
                 set.insert("test-token".to_string());
                 set
             }),
-            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
-        });
+            app_data_dir: Mutex::new(Some(dir.to_path_buf())),
+        })
+    }
 
-        // Pre-populate cache because get_manifest now reads from cache!
-        {
-            let mut books = state.books.lock().unwrap();
-            *books = db::get_calibre_metadata(dir.path().to_str().unwrap()).unwrap();
-        }
+    fn populate_books(state: &SharedState, lib_path: &str) {
+        let mut books = state.books.lock().unwrap();
+        *books = db::get_calibre_metadata(lib_path).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_manifest() {
+        let dir = tempdir().unwrap();
+        setup_mock_lib(dir.path());
+        let state = make_state(dir.path());
+        populate_books(&state, dir.path().to_str().unwrap());
 
         let app = Router::new()
-            .route("/api/manifest", get(get_manifest))
+            .route("/api/manifest", get(books::get_manifest))
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
@@ -596,27 +177,14 @@ mod tests {
     async fn test_download_book() {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
-
-        let state = Arc::new(ServerState {
-            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
-            books: Mutex::new(Vec::new()),
-            pin: Mutex::new("1234".to_string()),
-            authorized_tokens: Mutex::new({
-                let mut set = std::collections::HashSet::new();
-                set.insert("test-token".to_string());
-                set
-            }),
-            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
-        });
-
-        // Pre-populate cache
-        {
-            let mut books = state.books.lock().unwrap();
-            *books = db::get_calibre_metadata(dir.path().to_str().unwrap()).unwrap();
-        }
+        let state = make_state(dir.path());
+        populate_books(&state, dir.path().to_str().unwrap());
 
         let app = Router::new()
-            .route("/api/download/{book_id}/{format}", get(download_book))
+            .route(
+                "/api/download/{book_id}/{format}",
+                get(books::download_book),
+            )
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
@@ -635,31 +203,15 @@ mod tests {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
 
-        // Create a real (small) image file for resizing test
         let img = image::RgbImage::new(100, 100);
         let cover_path = dir.path().join("test/book/cover.jpg");
         img.save(cover_path).unwrap();
 
-        let state = Arc::new(ServerState {
-            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
-            books: Mutex::new(Vec::new()),
-            pin: Mutex::new("1234".to_string()),
-            authorized_tokens: Mutex::new({
-                let mut set = std::collections::HashSet::new();
-                set.insert("test-token".to_string());
-                set
-            }),
-            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
-        });
-
-        // Pre-populate cache
-        {
-            let mut books = state.books.lock().unwrap();
-            *books = db::get_calibre_metadata(dir.path().to_str().unwrap()).unwrap();
-        }
+        let state = make_state(dir.path());
+        populate_books(&state, dir.path().to_str().unwrap());
 
         let app = Router::new()
-            .route("/api/cover/{book_id}", get(get_cover))
+            .route("/api/cover/{book_id}", get(covers::get_cover))
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
@@ -670,32 +222,21 @@ mod tests {
 
         response.assert_status_ok();
         response.assert_header("content-type", "image/jpeg");
-
-        // Ensure we got some bytes back
-        let bytes = response.as_bytes();
-        assert!(!bytes.is_empty());
+        assert!(!response.as_bytes().is_empty());
     }
 
     #[tokio::test]
     async fn test_check_pin() {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
-
-        let state = Arc::new(ServerState {
-            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
-            books: Mutex::new(Vec::new()),
-            pin: Mutex::new("1234".to_string()),
-            authorized_tokens: Mutex::new(std::collections::HashSet::new()),
-            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
-        });
+        let state = make_state(dir.path());
 
         let app = Router::new()
-            .route("/api/check-pin", axum::routing::post(check_pin))
-            .with_state(state.clone());
+            .route("/api/check-pin", axum::routing::post(auth::check_pin))
+            .with_state(state);
 
         let server = TestServer::new(app).unwrap();
 
-        // Arrange
         let payload = PinRequest {
             pin: "1234".to_string(),
         };
@@ -703,15 +244,13 @@ mod tests {
             pin: "9999".to_string(),
         };
 
-        // Act & Assert (Success)
         let response = server.post("/api/check-pin").json(&payload).await;
         response.assert_status_ok();
         let auth_resp = response.json::<AuthResponse>();
         assert!(!auth_resp.token.is_empty());
 
-        // Act & Assert (Failure)
         let response_fail = server.post("/api/check-pin").json(&bad_payload).await;
-        response_fail.assert_status(StatusCode::UNAUTHORIZED);
+        response_fail.assert_status(axum::http::StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -719,7 +258,6 @@ mod tests {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
 
-        // Additional initialization for tracking reading state outside of core db
         {
             let db_path = dir.path().join("progress.db");
             let conn = Connection::open(&db_path).unwrap();
@@ -734,31 +272,22 @@ mod tests {
             .unwrap();
         }
 
-        let state = Arc::new(ServerState {
-            library_path: Mutex::new(Some(dir.path().to_str().unwrap().to_string())),
-            books: Mutex::new(Vec::new()),
-            pin: Mutex::new("1234".to_string()),
-            authorized_tokens: Mutex::new({
-                let mut set = std::collections::HashSet::new();
-                set.insert("test-token".to_string());
-                set
-            }),
-            app_data_dir: Mutex::new(Some(dir.path().to_path_buf())),
-        });
+        let state = make_state(dir.path());
 
         let app = Router::new()
-            .route("/api/progress", get(get_progress).post(update_progress))
+            .route(
+                "/api/progress",
+                get(progress::get_progress).post(progress::update_progress),
+            )
             .with_state(state);
 
         let server = TestServer::new(app).unwrap();
 
-        // Arrange
-        let payload = ProgressUpdate {
+        let payload = crate::http::progress::ProgressUpdate {
             book_id: 1,
             status: "reading".to_string(),
         };
 
-        // Act & Assert Updates
         let update_resp = server
             .post("/api/progress")
             .add_header(header::AUTHORIZATION, "Bearer test-token")
@@ -766,7 +295,6 @@ mod tests {
             .await;
         update_resp.assert_status_ok();
 
-        // Act & Assert State Retained
         let get_resp = server
             .get("/api/progress")
             .add_header(header::AUTHORIZATION, "Bearer test-token")

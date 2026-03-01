@@ -3,7 +3,7 @@ use log::error;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
-pub fn spawn_mdns_task(handle: AppHandle, discovery: Arc<DiscoveryState>, my_ip: std::net::IpAddr) {
+pub fn spawn_mdns_task(handle: AppHandle, discovery: Arc<DiscoveryState>, my_ip: std::net::IpAddr, port: u16) {
     tauri::async_runtime::spawn(async move {
         let mdns = match mdns_sd::ServiceDaemon::new() {
             Ok(d) => d,
@@ -28,7 +28,7 @@ pub fn spawn_mdns_task(handle: AppHandle, discovery: Arc<DiscoveryState>, my_ip:
             &instance_name,
             &host_name,
             my_ip.to_string(),
-            8080,
+            port,
             &properties[..],
         )
         .expect("Valid mDNS service info");

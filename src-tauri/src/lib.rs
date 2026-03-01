@@ -7,7 +7,6 @@ pub mod models;
 use crate::{
     commands::{library, network},
     core::db,
-    http::server,
     models::ConnectionInfo,
 };
 use log::{error, info};
@@ -21,7 +20,7 @@ pub struct DiscoveryState {
 
 // wrapper for Tauri state to hold the same Arc
 pub struct AppState {
-    pub server: server::SharedState,
+    pub server: http::SharedState,
     pub discovery: Arc<DiscoveryState>,
     pub sync_manager: Mutex<Option<crate::core::sync::SyncManager>>,
 }
@@ -49,7 +48,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .manage(AppState {
-            server: Arc::new(server::ServerState {
+            server: Arc::new(http::ServerState {
                 library_path: Mutex::new(None),
                 books: Mutex::new(Vec::new()),
                 pin: Mutex::new("0000".to_string()), // Temporary, updated in setup
@@ -151,16 +150,29 @@ pub fn run() {
                 Err(e) => error!("Failed to init sync manager: {}", e),
             }
 
-            // 5. Spawn server task
+            // 5. Spawn server task and get bound port
             let state_clone = app_state.server.clone();
             let server_handle = app.handle().clone();
+            
+            // We need to wait for the server to start to know what port it bound to
+            let (tx, rx) = std::sync::mpsc::channel();
+            
             tauri::async_runtime::spawn(async move {
-                server::run(state_clone, 8080, server_handle).await;
+                let result = http::server::run(state_clone, 8080, server_handle).await;
+                let _ = tx.send(result);
             });
+            
+            let bound_port = match rx.recv() {
+                Ok(Ok(port)) => port,
+                _ => {
+                    error!("Failed to start server completely. Defaulting to 8080 for mDNS.");
+                    8080
+                }
+            };
 
-            // 6. Spawn mDNS task
+            // 6. Spawn mDNS task with the actual bound port
             let my_ip = crate::core::network::get_lan_ip();
-            crate::core::mdns::spawn_mdns_task(handle, discovery, my_ip);
+            crate::core::mdns::spawn_mdns_task(handle, discovery, my_ip, bound_port);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
