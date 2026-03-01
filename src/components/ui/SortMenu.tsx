@@ -36,8 +36,10 @@ export const SortMenu: React.FC<SortMenuProps> = ({ value, onChange }) => {
         type="button"
         className="btn btn-sm btn-outline m-1"
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
-        <ArrowUpDown className="w-4 h-4 mr-1" />
+        <ArrowUpDown className="w-4 h-4 mr-1" aria-hidden="true" />
         Sort by: {labelMap[value]}
       </button>
       <ul className="dropdown-content z-[20] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300">
