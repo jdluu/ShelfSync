@@ -131,6 +131,10 @@ pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError
             series_index: 0.0,
             tags: Vec::new(),
             publisher: None,
+            description: None,
+            rating: None,
+            language: None,
+            published_date: None,
         })
     })?;
 
