@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Book, Host } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
+import { notifyError } from "@/utils/notifications";
 import { isTauri, safeInvoke } from "@/utils/tauri";
 
 interface SyncState {
@@ -28,7 +29,6 @@ export const useSyncStore = create<SyncState>((set) => ({
   clearError: () => set({ manualError: null }),
 
   syncBooks: async (booksToSync, connectedHost, token, offlineStoragePath) => {
-    if (window.__TEST_MOCK_MANIFEST_RESULTS__) return;
     try {
       const destRoot =
         offlineStoragePath ||
@@ -49,8 +49,8 @@ export const useSyncStore = create<SyncState>((set) => ({
         const permission = await isPermissionGranted();
         if (!permission) await requestPermission();
       }
-    } catch (e) {
-      console.error("Bulk sync failed:", e);
+    } catch (_) {
+      notifyError("Sync Failed", "Failed to start synchronization.");
       set({ manualError: "Failed to start synchronization." });
     }
   },

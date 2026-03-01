@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { httpClient } from "@/services/apiClient";
 import type { Host } from "@/types/core";
+import { notifyError } from "@/utils/notifications";
 import { safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
@@ -51,8 +52,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const store = await safeStoreLoad(STORE_PATH);
       const tokens = await store.get<Record<string, string>>("auth_tokens");
       if (tokens) set({ authTokens: tokens });
-    } catch (e) {
-      console.error("Failed to load tokens", e);
+    } catch (_) {
+      notifyError("Auth Error", "Failed to load saved authentication tokens.");
     }
   },
 
@@ -62,8 +63,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await store.set("auth_tokens", tokens);
       await store.save();
       set({ authTokens: tokens });
-    } catch (e) {
-      console.error("Failed to save tokens", e);
+    } catch (_) {
+      notifyError("Auth Error", "Failed to save authentication tokens.");
     }
   },
 }));

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { getLocalBooks, initDB, updateReadStatus } from "@/services/localDb";
 import type { Book, Host } from "@/types/core";
 import type { AppMode } from "@/types/library";
+import { notifyError } from "@/utils/notifications";
 import { isTauri, safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
@@ -36,8 +37,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         await initDB();
         const stored = await getLocalBooks();
         set({ localBooks: stored });
-      } catch (e) {
-        console.error("Failed to init local DB:", e);
+      } catch (_) {
+        notifyError("Database Error", "Failed to initialize local database.");
       }
     }
   },
@@ -48,8 +49,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const store = await safeStoreLoad(STORE_PATH);
       await store.set("library_path", path);
       await store.save();
-    } catch (e) {
-      console.error("Failed to save library path", e);
+    } catch (_) {
+      notifyError("Settings Error", "Failed to save library path.");
     }
   },
 
@@ -59,8 +60,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const store = await safeStoreLoad(STORE_PATH);
       await store.set("offline_storage_path", path);
       await store.save();
-    } catch (e) {
-      console.error("Failed to save offline storage path", e);
+    } catch (_) {
+      notifyError("Settings Error", "Failed to save offline storage path.");
     }
   },
 
@@ -78,8 +79,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         libraryPath: libPath || "",
         offlineStoragePath: offPath || "",
       });
-    } catch (e) {
-      console.error("Failed to load library settings", e);
+    } catch (_) {
+      notifyError("Settings Error", "Failed to load library settings.");
     }
   },
 
@@ -127,8 +128,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         const { httpClient } = await import("@/services/apiClient");
         await httpClient.updateProgress(connectedHost, token, book.remote_id || book.id, next);
       }
-    } catch (e) {
-      console.error("Failed to sync status", e);
+    } catch (_) {
+      notifyError("Sync Error", "Failed to update reading status.");
     }
   },
 }));
