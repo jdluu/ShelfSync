@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-03-01
+
+### Added
+* Added `framer-motion` layout animations to the synchronization progress queue for smoother UX transitions.
+
+### Changed
+* Hardened the host SQLite database connection pool to safely handle heavier concurrent reads from multiple devices.
+* Adjusted Nord theme palette base colors to guarantee WCAG AAA contrast accessibility in both light and dark modes.
+* Improved GitHub Actions Release pipeline to correctly parse and attach bracket-formatted changelog notes.
+* Separated platform badges from tech stack badges in the README for better layout stability.
+
 ## [1.0.0] - 2026-03-01
 
 ### Added
