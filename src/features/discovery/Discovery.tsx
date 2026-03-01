@@ -3,7 +3,7 @@ import type React from "react";
 import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { useDiscovery } from "@/contexts/DiscoveryContext";
+import { useDiscoveryStore } from "@/store/discoveryStore";
 
 interface Host {
   ip: string;
@@ -16,7 +16,7 @@ interface DiscoveryProps {
 }
 
 export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
-  const { hosts, scanning, scan, knownHosts } = useDiscovery();
+  const { hosts, scanning, scan, knownHosts } = useDiscoveryStore();
   const [manualIp, setManualIp] = useState("");
   const [manualPort, setManualPort] = useState("8080");
 
@@ -64,7 +64,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
                   </div>
                   <div>
                     <p className="font-semibold">{host.hostname}</p>
-                    <p className="text-xs text-base-content/60 font-mono">
+                    <p className="text-xs text-base-content/70 font-mono">
                       {host.ip}:{host.port}
                     </p>
                   </div>
@@ -86,7 +86,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
 
       {knownHosts.length > 0 && !scanning && hosts.length === 0 && (
         <div className="flex flex-col gap-3">
-          <h3 className="text-xs font-bold text-base-content/60 uppercase">Previous Connections</h3>
+          <h3 className="text-xs font-bold text-base-content/70 uppercase">Previous Connections</h3>
           {knownHosts.map((host) => (
             <button
               type="button"
@@ -109,7 +109,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
       )}
 
       <div className="pt-4 border-t border-base-300">
-        <h3 className="text-xs font-bold text-base-content/60 mb-3 flex items-center gap-2 uppercase">
+        <h3 className="text-xs font-bold text-base-content/70 mb-3 flex items-center gap-2 uppercase">
           <Plus className="w-4 h-4" />
           Manual Connection
         </h3>

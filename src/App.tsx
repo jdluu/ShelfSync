@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { PinModal } from "@/components/ui/PinModal";
-import { DiscoveryProvider, useDiscovery } from "@/contexts/DiscoveryContext";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
 import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
+import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
 
 function InitializingView() {
@@ -19,7 +19,7 @@ function InitializingView() {
     >
       <div className="flex flex-col items-center gap-4">
         <span className="loading loading-spinner loading-xl text-primary"></span>
-        <p className="text-lg font-medium text-base-content/60">Initializing ShelfSync...</p>
+        <p className="text-lg font-medium text-base-content/70">Initializing ShelfSync...</p>
       </div>
     </div>
   );
@@ -32,7 +32,9 @@ function useAppContentState() {
   const { setAppMode, loadSettings } = useLibraryStore();
   const { disconnect, loadTokens } = useAuthStore();
 
-  const discovery = useDiscovery();
+  const myConnectionInfo = useDiscoveryStore((s) => s.myConnectionInfo);
+  const initDiscovery = useDiscoveryStore((s) => s.init);
+
   const [appLoading, setAppLoading] = useState(true);
 
   useEffect(() => {
@@ -42,6 +44,11 @@ function useAppContentState() {
     };
     init();
   }, [loadSettings, loadTokens]);
+
+  useEffect(() => {
+    const cleanup = initDiscovery();
+    return cleanup;
+  }, [initDiscovery]);
 
   const handleRoleSelect = async (selectedRole: "host" | "client") => {
     setRole(selectedRole);
@@ -56,11 +63,12 @@ function useAppContentState() {
     setRole("unselected");
   };
 
-  return { role, appLoading, discovery, handleRoleSelect, handleChangeRole };
+  return { role, appLoading, myConnectionInfo, handleRoleSelect, handleChangeRole };
 }
 
 function AppContent() {
-  const { role, appLoading, discovery, handleRoleSelect, handleChangeRole } = useAppContentState();
+  const { role, appLoading, myConnectionInfo, handleRoleSelect, handleChangeRole } =
+    useAppContentState();
 
   const { authRequired, pairingHost, pair, disconnect } = useAuthStore();
 
@@ -82,20 +90,14 @@ function AppContent() {
   }
 
   if (role === "host") {
-    return (
-      <HostDashboard connectionInfo={discovery.myConnectionInfo} onChangeRole={handleChangeRole} />
-    );
+    return <HostDashboard connectionInfo={myConnectionInfo} onChangeRole={handleChangeRole} />;
   }
 
   return <ClientDashboard onChangeRole={handleChangeRole} />;
 }
 
 function App() {
-  return (
-    <DiscoveryProvider>
-      <AppContent />
-    </DiscoveryProvider>
-  );
+  return <AppContent />;
 }
 
 export default App;
