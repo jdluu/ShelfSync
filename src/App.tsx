@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
 import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useUpdater } from "@/hooks/useUpdater";
 
 function InitializingView() {
   return (
@@ -37,14 +38,16 @@ function useAppContentState() {
   const initDiscovery = useDiscoveryStore((s) => s.init);
 
   const [appLoading, setAppLoading] = useState(true);
+  const { checkForUpdates } = useUpdater();
 
   useEffect(() => {
     const init = async () => {
       await Promise.all([loadSettings(), loadTokens()]);
       setTimeout(() => setAppLoading(false), 500);
+      checkForUpdates(false);
     };
     init();
-  }, [loadSettings, loadTokens]);
+  }, [loadSettings, loadTokens, checkForUpdates]);
 
   useEffect(() => {
     const cleanup = initDiscovery();
