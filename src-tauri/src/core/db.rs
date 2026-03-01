@@ -1,30 +1,20 @@
 use crate::error::AppError;
 use crate::models::Book;
-use rusqlite::{Connection, OpenFlags};
-use std::path::Path;
 
 /**
- * Fetches book metadata from a Calibre library database.
+ * Fetches book metadata from a Calibre library database using an async connection pool.
  *
- * @summary Queries the Calibre `metadata.db` for book details, authors, and formats.
- * @param library_path - The absolute path to the Calibre library directory.
+ * @summary Queries the Calibre `metadata.db` for book details, authors, and formats via `deadpool-sqlite`.
+ * @param pool - The async connection pool to the Calibre library.
  * @returns {Result<Vec<Book>, AppError>} A list of Book structures or an error if the DB is inaccessible.
  */
-pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
-    let lib_path = Path::new(library_path);
-    let db_path = lib_path.join("metadata.db");
+pub async fn get_calibre_metadata(pool: &deadpool_sqlite::Pool) -> Result<Vec<Book>, AppError> {
+    let conn = pool.get().await.map_err(|e| AppError::Unknown(e.to_string()))?;
+    
+    conn.interact(move |conn| -> Result<Vec<Book>, AppError> {
+        let _ = conn.execute("PRAGMA busy_timeout = 5000", []);
 
-    log::info!("Accessing Calibre library at: {:?}", lib_path);
-
-    if !db_path.exists() {
-        return Err(AppError::LibraryNotFound(library_path.to_string()));
-    }
-
-    // Open in read-only mode with a busy timeout for safety
-    let conn = Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-    let _ = conn.execute("PRAGMA busy_timeout = 5000", []);
-
-    // 1. Get total book count
+        // 1. Get total book count
     let total: i64 = conn.query_row("SELECT count(*) FROM books", [], |r| r.get(0))?;
     if total == 0 {
         return Ok(Vec::new());
@@ -53,10 +43,8 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
     })?;
 
     let mut books = Vec::new();
-    for book_res in book_iter {
-        if let Ok(book) = book_res {
-            books.push(book);
-        }
+    for book in book_iter.flatten() {
+        books.push(book);
     }
 
     // 3. Batch-fetch authors via GROUP_CONCAT (eliminates N+1 queries)
@@ -101,18 +89,22 @@ pub fn get_calibre_metadata(library_path: &str) -> Result<Vec<Book>, AppError> {
         }
     }
 
-    log::info!(
-        "Successfully loaded {} books in {:?}.",
-        books.len(),
-        start.elapsed()
-    );
-    Ok(books)
+        log::info!(
+            "Successfully loaded {} books in {:?}.",
+            books.len(),
+            start.elapsed()
+        );
+        Ok(books)
+    })
+    .await
+    .map_err(|e| AppError::Unknown(e.to_string()))?
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use rusqlite::Connection;
+    use std::path::Path;
     use tempfile::tempdir;
 
     fn create_mock_calibre_db(path: &Path) {
@@ -144,11 +136,15 @@ mod tests {
         .unwrap();
     }
 
-    #[test]
-    fn test_get_calibre_metadata() {
+    #[tokio::test]
+    async fn test_get_calibre_metadata() {
         let dir = tempdir().unwrap();
         create_mock_calibre_db(dir.path());
-        let books = get_calibre_metadata(dir.path().to_str().unwrap()).unwrap();
+        
+        let cfg = deadpool_sqlite::Config::new(dir.path().join("metadata.db"));
+        let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).unwrap().build().unwrap();
+
+        let books = get_calibre_metadata(&pool).await.unwrap();
         assert_eq!(books.len(), 1);
         assert_eq!(books[0].title, "Test Book 1");
         assert_eq!(books[0].authors, "Author 1");

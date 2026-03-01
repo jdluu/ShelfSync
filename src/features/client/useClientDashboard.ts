@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SortOption } from "@/components/ui/SortMenu";
 import { useHostManifest } from "@/hooks/useLibraryQuery";
 import { useSyncProgress } from "@/hooks/useSyncProgress";
 import { useAuthStore } from "@/store/authStore";
@@ -6,7 +7,6 @@ import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { isTauri } from "@/utils/tauri";
-import type { SortOption } from "@/components/ui/SortMenu";
 
 /**
  * Custom hook encapsulating all ClientDashboard state and business logic.

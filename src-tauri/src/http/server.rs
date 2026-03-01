@@ -134,6 +134,7 @@ mod tests {
     fn make_state(dir: &Path) -> SharedState {
         Arc::new(ServerState {
             library_path: Mutex::new(Some(dir.to_str().unwrap().to_string())),
+            db_pool: tokio::sync::RwLock::new(None),
             books: Mutex::new(Vec::new()),
             pin: Mutex::new("1234".to_string()),
             authorized_tokens: Mutex::new({
@@ -145,9 +146,13 @@ mod tests {
         })
     }
 
-    fn populate_books(state: &SharedState, lib_path: &str) {
+    async fn populate_books(state: &SharedState, lib_path: &str) {
+        let db_path = std::path::Path::new(lib_path).join("metadata.db");
+        let cfg = deadpool_sqlite::Config::new(db_path);
+        let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).unwrap().build().unwrap();
+
         let mut books = state.books.lock().unwrap();
-        *books = db::get_calibre_metadata(lib_path).unwrap();
+        *books = db::get_calibre_metadata(&pool).await.unwrap();
     }
 
     #[tokio::test]
@@ -155,7 +160,7 @@ mod tests {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
         let state = make_state(dir.path());
-        populate_books(&state, dir.path().to_str().unwrap());
+        populate_books(&state, dir.path().to_str().unwrap()).await;
 
         let app = Router::new()
             .route("/api/manifest", get(books::get_manifest))
@@ -178,7 +183,7 @@ mod tests {
         let dir = tempdir().unwrap();
         setup_mock_lib(dir.path());
         let state = make_state(dir.path());
-        populate_books(&state, dir.path().to_str().unwrap());
+        populate_books(&state, dir.path().to_str().unwrap()).await;
 
         let app = Router::new()
             .route(
@@ -208,7 +213,7 @@ mod tests {
         img.save(cover_path).unwrap();
 
         let state = make_state(dir.path());
-        populate_books(&state, dir.path().to_str().unwrap());
+        populate_books(&state, dir.path().to_str().unwrap()).await;
 
         let app = Router::new()
             .route("/api/cover/{book_id}", get(covers::get_cover))

@@ -34,11 +34,12 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             }
             _ => {}
         })
-        .on_tray_icon_event(|tray, event| match event {
-            TrayIconEvent::Click {
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 ..
-            } => {
+            } = event
+            {
                 let app = tray.app_handle();
                 if let Some(window) = app.get_webview_window("main") {
                     if window.is_visible().unwrap_or(false) {
@@ -49,7 +50,6 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            _ => {}
         })
         .build(app)?;
 

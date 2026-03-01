@@ -13,6 +13,8 @@ use std::sync::{Arc, Mutex};
 pub struct ServerState {
     /// Path to the Calibre library (e.g., "/Users/name/Calibre Library").
     pub library_path: Mutex<Option<String>>,
+    /// Async database connection pool for the Calibre library.
+    pub db_pool: tokio::sync::RwLock<Option<deadpool_sqlite::Pool>>,
     /// In-memory cache of book metadata.
     pub books: Mutex<Vec<Book>>,
     /// 4-digit PIN for initial device pairing.

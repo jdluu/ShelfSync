@@ -7,13 +7,21 @@ use crate::{
 use tauri::State;
 
 #[tauri::command]
-pub fn get_books(
+pub async fn get_books(
     library_path: String,
     state: State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<Vec<Book>, AppError> {
+    let db_path = std::path::Path::new(&library_path).join("metadata.db");
+    if !db_path.exists() {
+        return Err(AppError::LibraryNotFound(library_path.clone()));
+    }
+    
+    let cfg = deadpool_sqlite::Config::new(&db_path);
+    let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).map_err(|e| AppError::Unknown(e.to_string()))?.build().map_err(|e| AppError::Unknown(e.to_string()))?;
+
     // 1. Fetch from DB
-    let books = db::get_calibre_metadata(&library_path)?;
+    let books = db::get_calibre_metadata(&pool).await?;
 
     // 2. Persist path
     use tauri_plugin_store::StoreExt;
@@ -37,40 +45,56 @@ pub fn get_books(
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books.clone();
     }
+    
+    let mut pool_lock = state.server.db_pool.write().await;
+    *pool_lock = Some(pool);
 
     Ok(books)
 }
 
 #[tauri::command]
-pub fn set_library_path(
+pub async fn set_library_path(
     path: String,
     state: State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<(), AppError> {
+    let db_path = std::path::Path::new(&path).join("metadata.db");
+    if !db_path.exists() {
+        return Err(AppError::LibraryNotFound(path.clone()));
+    }
+    
+    let cfg = deadpool_sqlite::Config::new(&db_path);
+    let pool = cfg.builder(deadpool_sqlite::Runtime::Tokio1).map_err(|e| AppError::Unknown(e.to_string()))?.build().map_err(|e| AppError::Unknown(e.to_string()))?;
+
     // 1. Fetch and cache books
-    let books = db::get_calibre_metadata(&path)?;
+    let books = db::get_calibre_metadata(&pool).await?;
 
     // 2. Persist path
     use tauri_plugin_store::StoreExt;
     if let Ok(store) = app.store("shelfsync_settings.json") {
-        store.set("library_path", serde_json::json!(path));
+        store.set("library_path", serde_json::json!(path.clone()));
         let _ = store.save();
     }
 
     // 3. Update State
-    let mut lib_path = state
-        .server
-        .library_path
-        .lock()
-        .map_err(|_| AppError::Unknown("Failed to lock library path".to_string()))?;
-    *lib_path = Some(path);
+    {
+        let mut lib_path = state
+            .server
+            .library_path
+            .lock()
+            .map_err(|_| AppError::Unknown("Failed to lock library path".to_string()))?;
+        *lib_path = Some(path);
 
-    let mut books_lock = state
-        .server
-        .books
-        .lock()
-        .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
-    *books_lock = books;
+        let mut books_lock = state
+            .server
+            .books
+            .lock()
+            .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
+        *books_lock = books;
+    }
+    
+    let mut pool_lock = state.server.db_pool.write().await;
+    *pool_lock = Some(pool);
 
     Ok(())
 }

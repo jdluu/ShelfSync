@@ -20,7 +20,7 @@ pub enum AppError {
 }
 
 /// Safely acquires a `Mutex` lock, returning `AppError::LockPoisoned` on failure.
-pub fn lock_or_err<T>(mutex: &Mutex<T>) -> Result<MutexGuard<T>, AppError> {
+pub fn lock_or_err<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, AppError> {
     mutex.lock().map_err(|_| AppError::LockPoisoned)
 }
 

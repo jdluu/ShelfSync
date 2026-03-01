@@ -71,6 +71,7 @@ pub async fn get_cover(
     match get_cached_or_resized_cover(&app_data_dir, &cover_path, book_id).await {
         Ok(bytes) => Response::builder()
             .header(header::CONTENT_TYPE, "image/jpeg")
+            .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
             .body(Body::from(bytes))
             .unwrap_or_else(|_| {
                 (

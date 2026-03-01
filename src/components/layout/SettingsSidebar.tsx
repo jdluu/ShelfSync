@@ -3,8 +3,8 @@ import type React from "react";
 import { useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
 import { isMobile, isTauri } from "@/utils/tauri";
-import { ThemeSwitcher } from "./ThemeSwitcher";
 import { ARTICLES } from "./help/helpArticles";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 interface SettingsSidebarProps {
   isOpen: boolean;

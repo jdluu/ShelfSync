@@ -50,6 +50,7 @@ pub fn run() {
         .manage(AppState {
             server: Arc::new(http::ServerState {
                 library_path: Mutex::new(None),
+                db_pool: tokio::sync::RwLock::new(None),
                 books: Mutex::new(Vec::new()),
                 pin: Mutex::new("0000".to_string()), // Temporary, updated in setup
                 authorized_tokens: Mutex::new(std::collections::HashSet::new()),
@@ -116,19 +117,32 @@ pub fn run() {
                             .get("library_path")
                             .and_then(|v| v.as_str().map(|s| s.to_string()))
                         {
-                            match db::get_calibre_metadata(&path) {
-                                Ok(books) => {
-                                    if let Ok(mut path_lock) = server_state.library_path.lock() {
-                                        *path_lock = Some(path.to_string());
-                                    }
+                            let db_path = std::path::Path::new(&path).join("metadata.db");
+                            if db_path.exists() {
+                                let cfg = deadpool_sqlite::Config::new(&db_path);
+                                if let Ok(pool) = cfg.builder(deadpool_sqlite::Runtime::Tokio1).unwrap().build() {
+                                    match db::get_calibre_metadata(&pool).await {
+                                        Ok(books) => {
+                                            if let Ok(mut path_lock) = server_state.library_path.lock() {
+                                                *path_lock = Some(path.to_string());
+                                            }
 
-                                    if let Ok(mut books_lock) = server_state.books.lock() {
-                                        *books_lock = books;
+                                            if let Ok(mut books_lock) = server_state.books.lock() {
+                                                *books_lock = books;
+                                            }
+                                            
+                                            let mut pool_lock = server_state.db_pool.write().await;
+                                            *pool_lock = Some(pool);
+                                        }
+                                        Err(e) => {
+                                            log::error!("[AUTO-LOAD] Failed to load metadata: {:?}", e);
+                                        }
                                     }
+                                } else {
+                                    log::error!("[AUTO-LOAD] Failed to build deadpool sqlite pool");
                                 }
-                                Err(e) => {
-                                    log::error!("[AUTO-LOAD] Failed to load metadata: {:?}", e);
-                                }
+                            } else {
+                                log::error!("[AUTO-LOAD] metadata.db not found at {:?}", db_path);
                             }
                         }
                     }

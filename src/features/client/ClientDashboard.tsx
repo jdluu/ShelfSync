@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { BookCard } from "@/components/library/BookCard";
+import { VirtualGrid } from "@/components/library/VirtualGrid";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -135,8 +136,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
               aria-busy="true"
             >
               {Array.from({ length: 12 }).map((_, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeletons are static loading placeholders
-                <SkeletonCard key={i} />
+                <SkeletonCard key={`skeleton-card-${i.toString()}`} />
               ))}
             </div>
           ) : connectedHost ? (
@@ -163,29 +163,27 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
               />
 
               {/* Book grid */}
-              <div
-                className={`grid gap-3 sm:gap-4 ${
-                  viewMode === "grid"
-                    ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
-                    : "grid-cols-1 md:grid-cols-2"
-                }`}
-              >
-                {filteredRemoteBooks.map((book) => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    host={connectedHost}
-                    variant="remote"
-                    compact={viewMode === "grid"}
-                    onAction={() => syncBook(book)}
-                    selected={selectedIds.has(book.id)}
-                    selectable={selectionMode}
-                    onSelect={() => toggleSelection(book.id)}
-                    syncStatus={syncProgress[book.id]}
-                    actionLabel="Sync"
-                    actionColor="blue"
-                  />
-                ))}
+              <div className="w-full">
+                <VirtualGrid
+                  items={filteredRemoteBooks}
+                  viewMode={viewMode}
+                  keyExtractor={(book) => book.id}
+                  renderItem={(book) => (
+                    <BookCard
+                      book={book}
+                      host={connectedHost}
+                      variant="remote"
+                      compact={viewMode === "grid"}
+                      onAction={() => syncBook(book)}
+                      selected={selectedIds.has(book.id)}
+                      selectable={selectionMode}
+                      onSelect={() => toggleSelection(book.id)}
+                      syncStatus={syncProgress[book.id]}
+                      actionLabel="Sync"
+                      actionColor="blue"
+                    />
+                  )}
+                />
               </div>
 
               {/* Empty search results */}
@@ -210,25 +208,23 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
               {localBooks.length > 0 && (
                 <div className="pt-8 border-t border-base-300">
                   <h2 className="text-xl font-bold mb-4">On My Device</h2>
-                  <div
-                    className={`grid gap-3 sm:gap-4 ${
-                      viewMode === "grid"
-                        ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
-                        : "grid-cols-1 md:grid-cols-2"
-                    }`}
-                  >
-                    {filteredLocalBooks.map((book) => (
-                      <BookCard
-                        key={book.id}
-                        book={book}
-                        variant="local"
-                        compact={viewMode === "grid"}
-                        onAction={() => book.local_path && openLocalBook(book.local_path)}
-                        onToggleStatus={() => handleToggleStatus(book)}
-                        actionLabel="Read"
-                        actionColor="green"
-                      />
-                    ))}
+                  <div className="w-full">
+                    <VirtualGrid
+                      items={filteredLocalBooks}
+                      viewMode={viewMode}
+                      keyExtractor={(book) => book.id}
+                      renderItem={(book) => (
+                        <BookCard
+                          book={book}
+                          variant="local"
+                          compact={viewMode === "grid"}
+                          onAction={() => book.local_path && openLocalBook(book.local_path)}
+                          onToggleStatus={() => handleToggleStatus(book)}
+                          actionLabel="Read"
+                          actionColor="green"
+                        />
+                      )}
+                    />
                   </div>
                 </div>
               )}
