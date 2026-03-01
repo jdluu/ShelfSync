@@ -1,4 +1,4 @@
-import { Book as BookIcon, Info } from "lucide-react";
+import { Book as BookIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import type { Book, Host } from "@/types/core";
@@ -11,7 +11,6 @@ interface BookCardProps {
   onAction?: (book: Book) => void;
   onToggleStatus?: (book: Book) => void;
   onInfoClick?: (book: Book, coverUrl?: string) => void;
-  onCoverClick?: (book: Book, coverUrl?: string) => void;
   selectable?: boolean;
   selected?: boolean;
   onSelect?: () => void;
@@ -29,7 +28,6 @@ export const BookCard: React.FC<BookCardProps> = ({
   onAction,
   onToggleStatus,
   onInfoClick,
-  onCoverClick,
   selectable,
   selected,
   onSelect,
@@ -89,32 +87,17 @@ export const BookCard: React.FC<BookCardProps> = ({
               />
             </div>
           )}
-          {onInfoClick && (
-            <button
-              type="button"
-              className="absolute top-2 left-2 z-20 btn btn-circle btn-xs btn-ghost bg-base-100/50 hover:bg-base-100/80"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onInfoClick(book, coverUrl);
-              }}
-              aria-label={`View details for ${book.title}`}
-            >
-              <Info className="w-3 h-3 text-base-content" />
-            </button>
-          )}
           <button
             type="button"
             className="w-full aspect-[2/3] bg-base-300 rounded-md overflow-hidden flex items-center justify-center relative shadow-sm max-w-[120px] mx-auto outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group"
             onClick={(e) => {
-              if (onCoverClick && coverUrl) {
+              if (onInfoClick) {
                 e.preventDefault();
                 e.stopPropagation();
-                onCoverClick(book, coverUrl);
+                onInfoClick(book, coverUrl);
               }
             }}
-            aria-label={`View full cover for ${book.title}`}
-            disabled={!coverUrl}
+            aria-label={`View details for ${book.title}`}
           >
             {!imgError && coverUrl ? (
               <>
@@ -195,33 +178,18 @@ export const BookCard: React.FC<BookCardProps> = ({
             />
           </div>
         )}
-        {onInfoClick && (
-          <button
-            type="button"
-            className="absolute top-2 right-10 z-20 btn btn-circle btn-sm btn-ghost bg-base-100/50 hover:bg-base-100/80"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onInfoClick(book, coverUrl);
-            }}
-            aria-label={`View details for ${book.title}`}
-          >
-            <Info className="w-4 h-4 text-base-content" />
-          </button>
-        )}
         <div className="flex items-start gap-3 sm:gap-4">
           <button
             type="button"
             className="w-16 h-24 sm:w-20 sm:h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group"
             onClick={(e) => {
-              if (onCoverClick && coverUrl) {
+              if (onInfoClick) {
                 e.preventDefault();
                 e.stopPropagation();
-                onCoverClick(book, coverUrl);
+                onInfoClick(book, coverUrl);
               }
             }}
-            aria-label={`View full cover for ${book.title}`}
-            disabled={!coverUrl}
+            aria-label={`View details for ${book.title}`}
           >
             {!imgError && coverUrl ? (
               <>

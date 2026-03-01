@@ -5,9 +5,9 @@ import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { BookCard } from "@/components/library/BookCard";
+import { GroupedShelf } from "@/components/library/GroupedShelf";
 import { VirtualGrid } from "@/components/library/VirtualGrid";
 import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
-import { CoverViewerModal } from "@/components/ui/CoverViewerModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import { SkeletonCard } from "@/components/ui/Skeleton";
@@ -58,18 +58,18 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     selectAll,
     selectNone,
     startBulkSync,
-    token, // From useClientDashboard
+    token,
+    groupBy,
+    setGroupBy,
+    groupedBooks,
+    selectGroup,
+    syncGroup,
   } = useClientDashboard();
 
   const [detailsBook, setDetailsBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
-  const [coverBook, setCoverBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
 
   const handleInfoClick = (book: Book, coverUrl?: string) => {
     setDetailsBook({ book, coverUrl });
-  };
-
-  const handleCoverClick = (book: Book, coverUrl?: string) => {
-    setCoverBook({ book, coverUrl });
   };
 
   return (
@@ -175,33 +175,68 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 selectNone={selectNone}
                 bookCount={books.length}
                 showScrollTop={showScrollTop}
+                groupBy={groupBy}
+                setGroupBy={setGroupBy}
               />
 
-              {/* Book grid */}
+              {/* Book grid / grouped shelves */}
               <div className="w-full">
-                <VirtualGrid
-                  items={filteredRemoteBooks}
-                  viewMode={viewMode}
-                  keyExtractor={(book) => book.id}
-                  renderItem={(book) => (
-                    <BookCard
-                      book={book}
-                      host={connectedHost}
-                      token={token || undefined}
-                      variant="remote"
-                      compact={viewMode === "grid"}
-                      onAction={() => syncBook(book)}
-                      onInfoClick={handleInfoClick}
-                      onCoverClick={handleCoverClick}
-                      selected={selectedIds.has(book.id)}
-                      selectable={selectionMode}
-                      onSelect={() => toggleSelection(book.id)}
-                      syncStatus={syncProgress[book.id]}
-                      actionLabel="Sync"
-                      actionColor="blue"
-                    />
-                  )}
-                />
+                {groupBy !== "none" && groupedBooks ? (
+                  // Grouped shelf view
+                  <div className="flex flex-col">
+                    {[...groupedBooks.entries()].map(([groupName, groupBooks]) => (
+                      <GroupedShelf
+                        key={groupName}
+                        title={groupName}
+                        books={groupBooks}
+                        viewMode={viewMode}
+                        onSyncAll={syncGroup}
+                        onSelectAll={selectGroup}
+                        renderItem={(book) => (
+                          <BookCard
+                            book={book}
+                            host={connectedHost}
+                            token={token || undefined}
+                            variant="remote"
+                            compact={viewMode === "grid"}
+                            onAction={() => syncBook(book)}
+                            onInfoClick={handleInfoClick}
+                            selected={selectedIds.has(book.id)}
+                            selectable={selectionMode}
+                            onSelect={() => toggleSelection(book.id)}
+                            syncStatus={syncProgress[book.id]}
+                            actionLabel="Sync"
+                            actionColor="blue"
+                          />
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  // Flat grid/list view
+                  <VirtualGrid
+                    items={filteredRemoteBooks}
+                    viewMode={viewMode}
+                    keyExtractor={(book) => book.id}
+                    renderItem={(book) => (
+                      <BookCard
+                        book={book}
+                        host={connectedHost}
+                        token={token || undefined}
+                        variant="remote"
+                        compact={viewMode === "grid"}
+                        onAction={() => syncBook(book)}
+                        onInfoClick={handleInfoClick}
+                        selected={selectedIds.has(book.id)}
+                        selectable={selectionMode}
+                        onSelect={() => toggleSelection(book.id)}
+                        syncStatus={syncProgress[book.id]}
+                        actionLabel="Sync"
+                        actionColor="blue"
+                      />
+                    )}
+                  />
+                )}
               </div>
 
               {/* Empty search results */}
@@ -238,7 +273,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                           compact={viewMode === "grid"}
                           onAction={() => book.local_path && openLocalBook(book.local_path)}
                           onInfoClick={handleInfoClick}
-                          onCoverClick={handleCoverClick}
                           onToggleStatus={() => handleToggleStatus(book)}
                           actionLabel="Read"
                           actionColor="green"
@@ -248,14 +282,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                   </div>
                 </div>
               )}
-
-              <div className="py-12">
-                <EmptyState
-                  icon={WifiOff}
-                  title="Not Connected"
-                  description="Connect to a host to browse books."
-                />
-              </div>
             </div>
           )}
         </div>
@@ -310,13 +336,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
         isDownloading={
           detailsBook?.book ? syncProgress[detailsBook.book.id]?.status === "downloading" : false
         }
-      />
-
-      <CoverViewerModal
-        isOpen={!!coverBook}
-        onClose={() => setCoverBook(null)}
-        imageUrl={coverBook?.coverUrl}
-        altText={`Cover of ${coverBook?.book?.title}`}
       />
 
       <QueueOverlay progress={syncProgress} />

@@ -1,4 +1,4 @@
-import { Book as BookIcon, FileText, Tag, X } from "lucide-react";
+import { Book as BookIcon, Calendar, FileText, Globe, Star, Building2, Tag, X } from "lucide-react";
 import type React from "react";
 import type { Book } from "@/types/core";
 
@@ -32,134 +32,210 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
     return "badge-ghost";
   };
 
+  /** Render star rating (Calibre stores 0-10, we display 0-5). */
+  const renderStars = (rating: number) => {
+    const stars = Math.round(rating / 2);
+    return (
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={`star-${i.toString()}`}
+            className={`w-3.5 h-3.5 ${i < stars ? "text-warning fill-warning" : "text-base-content/20"}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <dialog open={isOpen} className="modal modal-bottom sm:modal-middle bg-black/60 m-0 z-[1000]">
-      <div className="modal-box p-0 overflow-hidden relative border border-base-300 max-w-sm sm:max-w-md w-full">
-        {/* Header background with blurred cover */}
-        <div className="h-32 w-full relative bg-base-300 overflow-hidden flex items-center justify-center">
-          {coverUrl ? (
-            <img
-              src={coverUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover blur-md opacity-50 scale-110"
-              aria-hidden="true"
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-base-100 to-transparent" />
+      <div className="modal-box p-0 overflow-hidden relative border border-base-content/10 w-full max-w-md sm:max-w-lg shadow-2xl h-[100dvh] sm:h-auto sm:max-h-[85vh] flex flex-col rounded-none sm:rounded-2xl">
+        {/* Fixed close button */}
+        <button
+          type="button"
+          className="absolute top-4 right-4 btn btn-circle btn-sm bg-base-100/80 hover:bg-base-100 z-30 shadow-md border border-base-content/10"
+          onClick={onClose}
+          aria-label="Close modal"
+        >
+          <X className="w-5 h-5 text-base-content" />
+        </button>
 
-          <button
-            type="button"
-            className="absolute top-3 right-3 btn btn-circle btn-sm btn-ghost bg-base-100/30 hover:bg-base-100/70 z-10"
-            onClick={onClose}
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="px-6 pb-6 relative -mt-16 flex flex-col items-center">
-          {/* Cover Element */}
-          <div className="w-24 h-36 bg-base-200 rounded-md shadow-lg border border-base-300 overflow-hidden flex items-center justify-center flex-shrink-0 z-10">
+        {/* Scrollable Content Area — header scrolls with content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* Header background with blurred cover */}
+          <div className="h-36 w-full relative bg-base-300 overflow-hidden shrink-0">
             {coverUrl ? (
               <img
                 src={coverUrl}
-                alt={`Cover of ${book.title}`}
-                className="w-full h-full object-cover"
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-110"
+                aria-hidden="true"
               />
-            ) : (
-              <BookIcon className="w-8 h-8 text-base-content/50" aria-hidden="true" />
-            )}
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-base-100" />
           </div>
 
-          <div className="mt-4 text-center w-full">
-            <h2 className="text-xl font-bold leading-tight" title={book.title}>
-              {book.title}
-            </h2>
-            <p className="text-sm text-base-content/70 mt-1">{book.authors}</p>
-          </div>
-
-          <div className="mt-4 w-full flex flex-col gap-3 text-sm">
-            {book.series && (
-              <div className="flex justify-between items-center py-2 border-b border-base-200">
-                <span className="text-base-content/60 font-medium">Series</span>
-                <span className="font-bold text-accent text-right">
-                  {book.series}{" "}
-                  <span className="text-base-content/50 font-normal">#{book.series_index}</span>
-                </span>
-              </div>
-            )}
-
-            {book.formats && book.formats.length > 0 && (
-              <div className="flex justify-between items-center py-2 border-b border-base-200">
-                <span className="text-base-content/60 font-medium flex items-center gap-1">
-                  <FileText className="w-3 h-3" /> Formats
-                </span>
-                <div className="flex gap-1 flex-wrap justify-end">
-                  {book.formats.map((fmt) => (
-                    <span key={fmt} className="badge badge-outline badge-xs opacity-70">
-                      {fmt.toUpperCase()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {book.read_status && (
-              <div className="flex justify-between items-center py-2 border-b border-base-200">
-                <span className="text-base-content/60 font-medium">Status</span>
-                <span className={`badge badge-sm ${getStatusColor(book.read_status)}`}>
-                  {book.read_status}
-                </span>
-              </div>
-            )}
-
-            {book.tags && book.tags.length > 0 && (
-              <div className="py-2">
-                <span className="text-base-content/60 font-medium flex items-center gap-1 mb-2">
-                  <Tag className="w-3 h-3" /> Tags
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {book.tags.map((tag) => (
-                    <span key={tag} className="badge badge-ghost badge-sm border-base-300">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {book.path && (
-              <div className="py-2 mt-2">
-                <span className="text-xs text-base-content/50 font-medium">File Path</span>
-                <p className="text-[10px] font-mono text-base-content/60 break-all bg-base-200 p-2 rounded mt-1 border border-base-300">
-                  {book.path}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          {onAction && actionLabel && (
-            <div className="w-full mt-6 flex gap-2">
-              <button
-                type="button"
-                className={`btn flex-1 ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
-                onClick={() => onAction(book)}
-                disabled={isDownloading}
-              >
-                {isDownloading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    Syncing...
-                  </>
-                ) : (
-                  actionLabel
-                )}
-              </button>
+          <div className="px-5 pb-6 sm:px-6 relative -mt-20 flex flex-col items-center">
+            {/* Cover Element */}
+            <div className="w-28 h-40 bg-base-200 rounded-md shadow-2xl border border-base-content/10 overflow-hidden flex items-center justify-center flex-shrink-0 z-10">
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt={`Cover of ${book.title}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <BookIcon className="w-10 h-10 text-base-content/30" aria-hidden="true" />
+              )}
             </div>
-          )}
+
+            <div className="mt-4 text-center w-full px-2">
+              <h2
+                className="text-2xl font-black leading-tight tracking-tight text-base-content"
+                title={book.title}
+              >
+                {book.title}
+              </h2>
+              <p className="text-base text-base-content/70 mt-1 font-medium">{book.authors}</p>
+            </div>
+
+            {/* Rating */}
+            {book.rating != null && book.rating > 0 && (
+              <div className="mt-2">{renderStars(book.rating)}</div>
+            )}
+
+            {/* Description */}
+            {book.description && (
+              <p className="mt-3 text-sm text-base-content/70 leading-relaxed text-center px-2">
+                {book.description}
+              </p>
+            )}
+
+            <div className="mt-6 w-full flex flex-col text-sm bg-base-200/50 rounded-xl border border-base-content/5 overflow-hidden">
+              {book.series && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium">Series</span>
+                  <span className="font-bold text-base-content text-right text-xs">
+                    {book.series}{" "}
+                    <span className="text-base-content/50 font-normal">#{book.series_index}</span>
+                  </span>
+                </div>
+              )}
+
+              {book.publisher && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" /> Publisher
+                  </span>
+                  <span className="text-xs text-base-content font-medium">{book.publisher}</span>
+                </div>
+              )}
+
+              {book.published_date && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Published
+                  </span>
+                  <span className="text-xs text-base-content font-medium">
+                    {new Date(book.published_date).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {book.language && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" /> Language
+                  </span>
+                  <span className="text-xs text-base-content font-medium uppercase">
+                    {book.language}
+                  </span>
+                </div>
+              )}
+
+              {book.formats && book.formats.length > 0 && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" /> Formats
+                  </span>
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {book.formats.map((fmt) => (
+                      <span
+                        key={fmt}
+                        className="badge badge-neutral badge-sm bg-base-300 text-base-content border-none font-bold text-[10px] tracking-wider uppercase"
+                      >
+                        {fmt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {book.read_status && (
+                <div className="flex justify-between items-center py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium">Status</span>
+                  <span className={`badge badge-sm font-bold ${getStatusColor(book.read_status)}`}>
+                    {book.read_status}
+                  </span>
+                </div>
+              )}
+
+              {book.tags && book.tags.length > 0 && (
+                <div className="flex flex-col gap-2 py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5" /> Tags
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {book.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="badge badge-ghost badge-sm border-base-content/10 bg-base-100 text-[10px]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {book.path && (
+                <div className="flex flex-col gap-2 py-3 px-4 border-b border-base-content/5 last:border-0">
+                  <span className="text-base-content/60 font-medium flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" /> File Path
+                  </span>
+                  <p className="text-[11px] font-mono text-base-content/80 break-all bg-base-100 p-2.5 rounded-lg border border-base-content/5 shadow-inner">
+                    {book.path}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Sticky Actions */}
+        {onAction && actionLabel && (
+          <div className="sticky bottom-0 w-full p-4 bg-base-100 border-t border-base-content/5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <button
+              type="button"
+              className={`btn w-full shadow-sm font-bold tracking-wide ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
+              onClick={() => onAction(book)}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Syncing...
+                </>
+              ) : (
+                actionLabel
+              )}
+            </button>
+          </div>
+        )}
       </div>
       <form
         method="dialog"
