@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Book, Host } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
+import { useToastStore } from "@/store/toastStore";
 import { isTauri, safeInvoke } from "@/utils/tauri";
 
 interface SyncState {
@@ -30,17 +31,32 @@ export const useSyncStore = create<SyncState>((set) => ({
 
   syncBooks: async (booksToSync, connectedHost, token, offlineStoragePath) => {
     try {
+      // Guard: filter out books already being synced
+      const currentProgress = useSyncStore.getState().syncProgress;
+      const newBooks = booksToSync.filter((b) => {
+        const status = currentProgress[b.id]?.status;
+        return status !== "downloading" && status !== "pending";
+      });
+
+      if (newBooks.length === 0) {
+        useToastStore.getState().addToast("Already syncing — please wait.", "info");
+        return;
+      }
+
       const destRoot =
         offlineStoragePath ||
         (isTauri() ? await (await import("@tauri-apps/api/path")).appDataDir() : "");
 
       await safeInvoke("start_bulk_sync", {
-        books: booksToSync,
+        books: newBooks,
         hostIp: connectedHost.ip,
         hostPort: connectedHost.port,
         token: token,
         destinationRoot: destRoot,
       });
+
+      const count = newBooks.length;
+      useToastStore.getState().addToast(`Syncing ${count} book${count !== 1 ? "s" : ""}…`, "info");
 
       if (isTauri()) {
         const { isPermissionGranted, requestPermission } = await import(
@@ -50,6 +66,7 @@ export const useSyncStore = create<SyncState>((set) => ({
         if (!permission) await requestPermission();
       }
     } catch (_) {
+      useToastStore.getState().addToast("Sync failed — check connection.", "error");
       notifyError("Sync Failed", "Failed to start synchronization.");
       set({ manualError: "Failed to start synchronization." });
     }
