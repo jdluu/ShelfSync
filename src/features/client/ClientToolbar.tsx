@@ -2,6 +2,7 @@ import { LayoutGrid, List } from "lucide-react";
 import type React from "react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
+import type { GroupByOption } from "@/features/client/useClientDashboard";
 
 interface ClientToolbarProps {
   refresh: () => void;
@@ -19,6 +20,8 @@ interface ClientToolbarProps {
   selectNone: () => void;
   bookCount: number;
   showScrollTop: boolean;
+  groupBy: GroupByOption;
+  setGroupBy: (option: GroupByOption) => void;
 }
 
 /**
@@ -43,6 +46,8 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
   selectNone,
   bookCount,
   showScrollTop,
+  groupBy,
+  setGroupBy,
 }) => {
   return (
     <div
@@ -150,6 +155,32 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
         <div className="shrink-0">
           <SortMenu value={sortOption} onChange={setSortOption} />
         </div>
+      </div>
+
+      {/* Group-by chips */}
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1">
+        <span className="text-xs text-base-content/50 font-medium shrink-0 mr-1">Group:</span>
+        {(["series", "author", "tag", "none"] as const).map((option) => {
+          const labels: Record<GroupByOption, string> = {
+            series: "📚 Series",
+            author: "👤 Author",
+            tag: "🏷️ Tag",
+            none: "▤ All",
+          };
+          return (
+            <button
+              key={option}
+              type="button"
+              className={`btn btn-xs rounded-full whitespace-nowrap ${
+                groupBy === option ? "btn-primary" : "btn-ghost border border-base-300"
+              }`}
+              onClick={() => setGroupBy(option)}
+              aria-pressed={groupBy === option}
+            >
+              {labels[option]}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

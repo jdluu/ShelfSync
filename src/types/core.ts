@@ -9,6 +9,10 @@ export interface Book {
   series_index?: number | null;
   tags?: string[] | null;
   publisher?: string | null;
+  description?: string | null;
+  rating?: number | null;
+  language?: string | null;
+  published_date?: string | null;
 
   // Client-side only extensions
   local_path?: string | null;

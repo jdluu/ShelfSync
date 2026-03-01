@@ -8,6 +8,8 @@ import { useSyncStore } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { isTauri } from "@/utils/tauri";
 
+export type GroupByOption = "none" | "series" | "author" | "tag";
+
 /**
  * Custom hook encapsulating all ClientDashboard state and business logic.
  *
@@ -81,6 +83,7 @@ export function useClientDashboard() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [groupBy, setGroupBy] = useState<GroupByOption>("series");
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -129,6 +132,54 @@ export function useClientDashboard() {
   const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, filterAndSort]);
   const filteredLocalBooks = useMemo(() => filterAndSort(localBooks), [localBooks, filterAndSort]);
 
+  /** Group filtered books into a Map<groupName, Book[]> by the selected field. */
+  const groupedBooks = useMemo(() => {
+    if (groupBy === "none") return null;
+
+    const groups = new Map<string, Book[]>();
+    const standaloneKey = "Standalone";
+
+    for (const book of filteredRemoteBooks) {
+      let keys: string[] = [];
+
+      if (groupBy === "series") {
+        keys = book.series ? [book.series] : [];
+      } else if (groupBy === "author") {
+        keys = book.authors
+          ? book.authors
+              .split(",")
+              .map((a) => a.trim())
+              .filter(Boolean)
+          : [];
+      } else if (groupBy === "tag") {
+        keys = book.tags?.length ? book.tags : [];
+      }
+
+      if (keys.length === 0) {
+        const list = groups.get(standaloneKey) || [];
+        list.push(book);
+        groups.set(standaloneKey, list);
+      } else {
+        for (const key of keys) {
+          const list = groups.get(key) || [];
+          list.push(book);
+          groups.set(key, list);
+        }
+      }
+    }
+
+    // Sort groups alphabetically, but put Standalone last
+    const sorted = new Map(
+      [...groups.entries()].sort(([a], [b]) => {
+        if (a === standaloneKey) return 1;
+        if (b === standaloneKey) return -1;
+        return a.localeCompare(b);
+      }),
+    );
+
+    return sorted;
+  }, [filteredRemoteBooks, groupBy]);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -166,6 +217,23 @@ export function useClientDashboard() {
     setSelectedIds(new Set());
   };
 
+  /** Select all books in a given group. */
+  const selectGroup = (groupBooks: Book[]) => {
+    setSelectionMode(true);
+    const next = new Set(selectedIds);
+    for (const b of groupBooks) next.add(b.id);
+    setSelectedIds(next);
+  };
+
+  /** Sync all books in a given group. */
+  const syncGroup = async (groupBooks: Book[]) => {
+    if (connectedHost && token) {
+      await syncBooks(groupBooks, connectedHost, token, offlineStoragePath).catch((e) =>
+        console.error("Group sync failed:", e),
+      );
+    }
+  };
+
   return {
     connectedHost,
     connect,
@@ -199,5 +267,10 @@ export function useClientDashboard() {
     selectNone,
     startBulkSync,
     offlineStoragePath,
+    groupBy,
+    setGroupBy,
+    groupedBooks,
+    selectGroup,
+    syncGroup,
   };
 }
