@@ -168,7 +168,7 @@ jobs:
                   break
               if started:
                   content.append(line)
-              if line.startswith(f'## {version}'):
+              if line.startswith(f'## [{version}]') or line.startswith(f'## {version}'):
                   started = True
           output = "".join(content).strip()
           
