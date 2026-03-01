@@ -79,8 +79,8 @@ export const ARTICLES: Record<string, HelpArticle> = {
           </li>
           <li>Disable any VPNs on either device, as they can interfere with local discovery.</li>
           <li>
-            Use the <strong>"Manual Connect"</strong> option on the client and enter the IP address
-            shown on the host.
+            Use the <strong>"Manual Connection"</strong> option on the client and enter the IP
+            address shown on the host.
           </li>
         </ul>
       </div>
@@ -91,7 +91,7 @@ export const ARTICLES: Record<string, HelpArticle> = {
     title: "Firewall issues",
     content: (
       <div className="space-y-4">
-        <p>Windows or MacOS firewalls may block incoming connections.</p>
+        <p>Windows or Linux firewalls may block incoming connections.</p>
         <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
           <li>
             When you first run ShelfSync, you should see a firewall prompt. Choose{" "}
@@ -99,8 +99,8 @@ export const ARTICLES: Record<string, HelpArticle> = {
           </li>
           <li>Check your antivirus software settings if discovery consistently fails.</li>
           <li>
-            The default port is <strong>8080</strong>; ensure this port is not being used by another
-            app.
+            Ensure the port displayed on the Host Dashboard is not being blocked by another app or
+            firewall rule.
           </li>
         </ul>
       </div>
@@ -137,7 +137,9 @@ export const ARTICLES: Record<string, HelpArticle> = {
             Once Calibre has updated its database, ShelfSync will pick up the changes on the next
             refresh or restart.
           </li>
-          <li>Connected clients will see the new books immediately in their "Home" view.</li>
+          <li>
+            Connected clients will see the new books immediately in their "Available Books" view.
+          </li>
         </ul>
       </div>
     ),
@@ -165,10 +167,34 @@ export const ARTICLES: Record<string, HelpArticle> = {
         <p>Management must be done on the Host computer.</p>
         <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
           <li>
-            Deleting a book from the Client Dashboard only removes the <strong>offline copy</strong>{" "}
-            from your mobile device.
+            Deleting a book from the Client Dashboard only removes the{" "}
+            <strong>offline storage copy</strong> from your mobile device.
           </li>
           <li>To permanently remove a book from the library, use Calibre on your Host computer.</li>
+        </ul>
+      </div>
+    ),
+  },
+  browse_and_sync: {
+    id: "browse_and_sync",
+    title: "Browsing and Bulk Syncing",
+    content: (
+      <div className="space-y-4">
+        <p>ShelfSync makes it easy to navigate large libraries and download entire collections.</p>
+        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
+          <li>
+            Use the <strong>Group By</strong> chips (Series, Author, Tag, All) in the client toolbar
+            to organize your view.
+          </li>
+          <li>
+            When grouping by Series, Author, or Tag, you can use the <strong>Select All</strong> or{" "}
+            <strong>Sync All</strong> buttons on the group header to download the entire group at
+            once.
+          </li>
+          <li>
+            You can also use the <strong>Selection Mode</strong> (using the checkmark icon in the
+            header) to manually pick multiple specific books to sync.
+          </li>
         </ul>
       </div>
     ),

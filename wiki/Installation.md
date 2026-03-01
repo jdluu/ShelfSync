@@ -1,13 +1,12 @@
 # Installation Guide
 
-ShelfSync supports multiple platforms including Windows, macOS, Linux, and Android. Follow the instructions below to install the application on your device.
+ShelfSync supports multiple platforms including Windows, Linux, and Android. Follow the instructions below to install the application on your device.
 
-## Desktop Installation (Windows, macOS, Linux)
+## Desktop Installation (Windows, Linux)
 
 1. Navigate to the Releases page of the GitHub repository.
 2. Download the appropriate installer for your operating system:
    - **Windows**: `.msi` or `.exe` installer.
-   - **macOS**: `.dmg` or `.app` package.
    - **Linux**: `.deb` or `.AppImage` file.
 3. Run the installer and follow the on screen prompts to complete the setup.
 
@@ -20,7 +19,6 @@ ShelfSync supports multiple platforms including Windows, macOS, Linux, and Andro
 
 ## Version Requirements
 - **Windows**: Windows 10 or later is recommended.
-- **macOS**: macOS 11 (Big Sur) or later.
 - **Android**: Android 8.0 (Oreo) or later.
 
 Existing users should ensure they backup their local settings before performing a major version upgrade.

@@ -23,9 +23,9 @@ To access a shared library from another device:
 Once connected, you can browse the remote library:
 - **Search**: Use the search bar to find books by title or author.
 - **Filter**: Filter by category or reading status.
-- **Sync**: Click the **Sync** button on a book card to download it to your local device.
-- **Bulk Actions**: Use the **Select Multiple** feature to synchronize multiple books simultaneously.
+- **Sync**: Click the **Sync** button on a book card to download it to your **Offline Storage**.
+- **Bulk Actions**: Use the **Selection Mode** (checkmark icon) or **Group By** filters to synchronize multiple books or entire groups simultaneously.
 
 ## Reading Management
 
-Synchronized books appear in your local library. You can update their reading status (Unread, Reading, Finished) directly within the application to keep your progress tracked.
+Synchronized books appear in your **Offline Storage** (On My Device view). You can update their reading status (Unread, Reading, Finished) directly within the application to keep your progress tracked.

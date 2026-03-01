@@ -14,7 +14,7 @@ The ShelfSync backend provides a set of IPC (Inter Process Communication) comman
 - `discover_hosts()`: Scans the network and returns available ShelfSync instances.
 
 ## Host REST API
-The Host instance listens on port 1420 by default.
+The Host instance dynamically selects an available port, defaulting to 8080.
 
 ### Endpoints
 - **GET** `/api/manifest`: Returns the full catalog of books available in the Host library. Requires authentication.

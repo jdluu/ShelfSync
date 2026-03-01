@@ -11,7 +11,8 @@ ShelfSync provides a comprehensive set of features for local network e-book libr
 - **Local Network Discovery**: Automatically identifies active hosts on the network using local broadcasting.
 - **Pairing and Security**: Secure client authentication via a pairing PIN system.
 - **Background Syncing**: Downloads book files in the background with real time progress tracking.
-- **Bulk Sync**: Supports selecting and downloading multiple books in a single operation.
+- **Bulk Sync**: Supports downloading multiple books or entire collections (e.g., Series or Authors) in a single operation.
+- **Grouped Browsing**: Easily navigate large libraries by organizing books by Series, Author, Tag, or Date Added.
 
 ## User Experience
 - **Unified Design**: A clean, modern interface consistent across desktop and mobile platforms.
@@ -21,4 +22,4 @@ ShelfSync provides a comprehensive set of features for local network e-book libr
 
 ## Progress Tracking
 - **Reading Status**: Manually track progress for each book (Unread, Reading, Finished).
-- **Client Side Storage**: Maintains a local record of synced content for offline access.
+- **Offline Storage**: Maintains a local record of synced content for offline access on client devices.

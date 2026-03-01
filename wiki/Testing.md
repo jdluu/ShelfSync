@@ -18,6 +18,6 @@ The project uses Playwright for comprehensive multi instance testing. The suite 
 ## Running Tests
 To execute the testing suite locally:
 1. Ensure the development server is running (`pnpm dev`).
-2. Run the E2E command: `npm run test:e2e`.
+2. Run the E2E command: `pnpm run test:e2e`.
 
 Continuous Integration (CI) pulls are automatically verified using the same suite on every push to the repository.

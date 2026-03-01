@@ -17,9 +17,9 @@ The Client instance connects to a Host to browse and synchronize content.
 - **Local Database**: Maintains a local SQLite database to track synchronized content and reading progress.
 
 ## Network Communication
-Communication between instances occurs over HTTP and WebSockets within the local network. 
+Communication between instances occurs over HTTP and Tauri Events within the local network. 
 - **Authentication**: A PIN based pairing system ensures that only authorized clients can access the Host library.
-- **Progress Tracking**: Real time synchronization progress is communicated via WebSocket events.
+- **Progress Tracking**: Real time synchronization progress is communicated via Tauri events.
 
 ## Data Persistence
 The application uses SQLite for all metadata storage. Technical details regarding the database schema can be found in the API Reference section.

@@ -8,8 +8,8 @@ This guide addresses common issues encountered when setting up or using ShelfSyn
 If the Client device cannot find the Host automatically:
 - Ensure both devices are connected to the same local network (Wi-Fi or LAN).
 - Check that the Host application is open and in Host Mode.
-- Verify that your system firewall is not blocking incoming connections on the ShelfSync port (default 1420).
-- Attempt to connect manually using the Host IP address and Port.
+- Verify that your system firewall is not blocking incoming connections on the ShelfSync port (displayed on the Host Dashboard).
+- Attempt to connect manually using the **Manual Connection** option with the Host IP address and Port.
 
 ### Connection Timed Out
 - Verify that the Host device has not entered sleep mode.

@@ -2,20 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.0.0] - 2026-03-01
 
-### Features
+### Added
+* **Host/Client Architecture**: Seamlessly sync Calibre libraries across local networks.
+* **Calibre Integration**: Directly reads Calibre metadata without modifying original files.
+* **Automated Discovery**: mDNS support for automatic connection without IP entry.
+* **Format Support**: Built-in background engine for EPUB synchronization.
+* **Bulk Download**: Sync multiple books, entire series, authors, or tags at once.
+* **Grouped Browsing**: Navigate large libraries by Series, Author, Tag, and Date Added.
+* **Secure Pairing**: Protect your library with a 4-digit PIN authentication system.
+* **Dynamic Ports**: Automatic port fallback prevents startup failures if defaults are in use.
+* **Offline Storage**: Track reading progress and read offline directly on the client.
+* **Global Notifications**: Non-intrusive toast notifications track sync progress.
+* **Cross-Platform UI**: Responsive, accessible Nord-themed design across desktop and mobile.
 
-* **core:** implement dual-role architecture (Host/Client) for seamless local book synchronization
-* **sync:** develop background engine for EPUB files with real-time progress tracking
-* **discovery:** automated mDNS service discovery for easy host connection without manual IP entry
-* **security:** implement secure 4-digit PIN device pairing and bearer token authorization
-* **architecture:** consolidated state management using native Rust `rusqlite` database and `tauri-plugin-store`
-* **ui:** responsive, accessible design using Tailwind CSS, DaisyUI, and Nord theme
-
-### Bug Fixes
-
-* **sync:** resolve "failed to fetch" issues by enabling Android cleartext traffic and binding host to `0.0.0.0`
-* **security:** relax Content Security Policy to support various local network addressing schemes
-* **robustness:** eliminated widespread `.unwrap()` calls in favor of structured error handling and logging
-* **ui:** fixed various layout and theme application inconsistencies across desktop and mobile
+### Fixed
+* Prevent duplicate downloads when a book sync is already in progress.
+* Ensure cleartext local network traffic is allowed on Android clients.
+* Fixed various layout constraints and cutoff issues in the Book Details modal.
