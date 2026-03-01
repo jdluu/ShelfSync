@@ -1,175 +1,59 @@
-import { ArrowUp, LayoutGrid, List, Search, WifiOff } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUp, Search, WifiOff } from "lucide-react";
+import type React from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { BookCard } from "@/components/library/BookCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
-import { SearchBar } from "@/components/ui/SearchBar";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
 import { Discovery } from "@/features/discovery/Discovery";
-import { useHostManifest } from "@/hooks/useLibraryQuery";
-import { useSyncProgress } from "@/hooks/useSyncProgress";
-import { useAuthStore } from "@/store/authStore";
-import { useLibraryStore } from "@/store/libraryStore";
-import { useSyncStore } from "@/store/syncStore";
-import type { Book } from "@/types/core";
-import { isTauri } from "@/utils/tauri";
+import { ClientToolbar } from "./ClientToolbar";
+import { SelectionOverlay } from "./SelectionOverlay";
+import { useClientDashboard } from "./useClientDashboard";
 
 interface ClientDashboardProps {
   onChangeRole: () => void;
 }
 
+/**
+ * Client-side dashboard for browsing, selecting, and syncing books from a host.
+ *
+ * Renders the connection banner, book grid/list, offline library,
+ * and delegates toolbar/selection logic to sub-components.
+ */
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }) => {
-  const { appMode, offlineStoragePath, localBooks, toggleReadStatus, setLocalBooks } =
-    useLibraryStore();
-  const { connectedHost, authTokens, setAuthRequired, setPairingHost, connect, disconnect } =
-    useAuthStore();
-  const { syncProgress, manualError, clearError, syncBooks } = useSyncStore();
-
-  const hostKey = connectedHost ? `${connectedHost.ip}:${connectedHost.port}` : "";
-  const token = authTokens[hostKey];
-
-  const remoteQuery = useHostManifest(connectedHost, token, appMode === "client");
-
-  const books = remoteQuery.data || [];
-  const loading = remoteQuery.isLoading;
-  const error =
-    manualError ||
-    (remoteQuery.error?.message !== "Unauthorized" ? remoteQuery.error?.message : null);
-
-  const booksRef = useRef(books);
-  useEffect(() => {
-    booksRef.current = books;
-  }, [books]);
-
-  useSyncProgress(booksRef, offlineStoragePath, setLocalBooks);
-
-  useEffect(() => {
-    if (remoteQuery.error?.message === "Unauthorized") {
-      setAuthRequired(true);
-      setPairingHost(connectedHost);
-    } else {
-      setAuthRequired(false);
-    }
-  }, [remoteQuery.error, connectedHost, setAuthRequired, setPairingHost]);
-
-  const refresh = async () => {
-    await remoteQuery.refetch();
-  };
-
-  const openLocalBook = async (path: string) => {
-    if (isTauri()) {
-      const { openPath } = await import("@tauri-apps/plugin-opener");
-      await openPath(path);
-    } else {
-      console.warn("Opening book path in browser (not supported):", path);
-    }
-  };
-
-  const syncBook = async (book: Book) => {
-    if (connectedHost && token) {
-      await syncBooks([book], connectedHost, token, offlineStoragePath);
-    }
-  };
-
-  const handleToggleStatus = (book: Book) => {
-    return toggleReadStatus(book, connectedHost, token);
-  };
-  const [searchTerm, setSearchTerm] = React.useState("");
-  const [sortOption, setSortOption] = React.useState<SortOption>("title");
-  const [selectionMode, setSelectionMode] = React.useState(false);
-  const [selectedIds, setSelectedIds] = React.useState<Set<number>>(new Set());
-  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const filterAndSort = useCallback(
-    (list: Book[]) => {
-      let result = [...list];
-
-      // Filter
-      if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
-        result = result.filter(
-          (b) =>
-            b.title?.toLowerCase().includes(lower) ||
-            false ||
-            b.authors?.toLowerCase().includes(lower) ||
-            false ||
-            b.series?.toLowerCase().includes(lower) ||
-            false ||
-            b.tags?.some((t) => t.toLowerCase().includes(lower)) ||
-            false,
-        );
-      }
-
-      // Sort
-      result.sort((a, b) => {
-        if (sortOption === "title") return a.title.localeCompare(b.title);
-        if (sortOption === "author") return a.authors.localeCompare(b.authors);
-        if (sortOption === "recent") return (b.id || 0) - (a.id || 0);
-        if (sortOption === "series") {
-          const sA = a.series || "";
-          const sB = b.series || "";
-          if (sA !== sB) return sA.localeCompare(sB);
-          return (a.series_index || 0) - (b.series_index || 0);
-        }
-        return 0;
-      });
-
-      return result;
-    },
-    [searchTerm, sortOption],
-  );
-
-  const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, filterAndSort]);
-  const filteredLocalBooks = useMemo(() => filterAndSort(localBooks), [localBooks, filterAndSort]);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSelectionMode(false);
-        setSelectedIds(new Set());
-      }
-      if (selectionMode && (e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        const allFilteredIds = new Set(filteredRemoteBooks.map((b) => b.id));
-        setSelectedIds(allFilteredIds);
-      }
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [selectionMode, filteredRemoteBooks]);
-
-  const handleSync = async (book: Book) => {
-    await syncBook(book);
-  };
-
-  const toggleSelection = (id: number) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
-  };
-
-  const startBulkSync = async () => {
-    const toSync = books.filter((b: Book) => selectedIds.has(b.id));
-    if (connectedHost && token) {
-      await syncBooks(toSync, connectedHost, token, offlineStoragePath).catch((e) =>
-        console.error("Batch sync failed:", e),
-      );
-    }
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-  };
+  const {
+    connectedHost,
+    connect,
+    disconnect,
+    books,
+    loading,
+    error,
+    clearError,
+    refresh,
+    syncBook,
+    openLocalBook,
+    handleToggleStatus,
+    syncProgress,
+    searchTerm,
+    setSearchTerm,
+    sortOption,
+    setSortOption,
+    selectionMode,
+    setSelectionMode,
+    selectedIds,
+    viewMode,
+    setViewMode,
+    showScrollTop,
+    filteredRemoteBooks,
+    filteredLocalBooks,
+    localBooks,
+    toggleSelection,
+    selectAll,
+    selectNone,
+    startBulkSync,
+  } = useClientDashboard();
 
   return (
     <>
@@ -178,6 +62,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
 
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
         <div className="container mx-auto max-w-7xl">
+          {/* Connection banner */}
           {connectedHost && (
             <div className="mb-4 p-3 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -189,19 +74,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                   <p className="text-xs font-bold text-base-content/90 leading-none">
                     {connectedHost.hostname}
                   </p>
-                  <p className="text-[10px] font-mono opacity-40">
+                  <p className="text-[10px] font-mono opacity-50">
                     {connectedHost.ip}:{connectedHost.port}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-60">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-70">
                   Connected
                 </div>
                 <button
                   type="button"
                   onClick={disconnect}
                   className="btn btn-xs btn-ghost border border-base-300 gap-1"
+                  aria-label="Disconnect from host"
                 >
                   <WifiOff className="w-3 h-3" />
                   <span>Exit</span>
@@ -210,6 +96,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
             </div>
           )}
 
+          {/* Error banner */}
           {error && (
             <div role="alert" className="alert alert-error mb-6 flex justify-between items-start">
               <div className="flex gap-2">
@@ -218,10 +105,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                   className="stroke-current shrink-0 h-6 w-6"
                   fill="none"
                   viewBox="0 0 24 24"
-                  role="img"
-                  aria-label="Error"
+                  aria-hidden="true"
                 >
-                  <title>Error</title>
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -235,12 +120,14 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 type="button"
                 onClick={clearError}
                 className="btn btn-ghost btn-xs btn-circle"
+                aria-label="Dismiss error"
               >
                 ✕
               </button>
             </div>
           )}
 
+          {/* Loading state */}
           {loading ? (
             <div
               className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
@@ -254,124 +141,28 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
             </div>
           ) : connectedHost ? (
             <div className="flex flex-col gap-4">
-              <div
-                className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm px-1 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
-                style={{ boxShadow: showScrollTop ? "0 4px 6px -1px rgb(0 0 0 / 0.1)" : "none" }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm sm:text-lg font-bold">Available Books</h2>
-                      <span className="badge badge-primary badge-sm py-1 font-medium">
-                        {books.length}
-                      </span>
-                    </div>
+              <ClientToolbar
+                disconnect={disconnect}
+                refresh={refresh}
+                loading={loading}
+                selectionMode={selectionMode}
+                toggleSelectionMode={() => {
+                  setSelectionMode(!selectionMode);
+                }}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+                selectedCount={selectedIds.size}
+                selectAll={selectAll}
+                selectNone={selectNone}
+                bookCount={books.length}
+                showScrollTop={showScrollTop}
+              />
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={disconnect}
-                        className="btn btn-ghost btn-sm btn-circle"
-                        title="Disconnect"
-                      >
-                        <WifiOff className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => refresh()}
-                        className="btn btn-xs btn-circle btn-ghost"
-                        title="Refresh Library"
-                        disabled={loading}
-                      >
-                        <svg
-                          aria-label="wifi-off"
-                          role="img"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectionMode(!selectionMode);
-                        setSelectedIds(new Set());
-                      }}
-                      className={`btn btn-xs sm:btn-sm ${selectionMode ? "btn-primary" : "btn-ghost border-base-300"}`}
-                    >
-                      {selectionMode ? "Done" : "Select"}
-                    </button>
-
-                    <div className="flex items-center gap-1 bg-base-200 p-0.5 rounded-lg border border-base-300">
-                      <button
-                        type="button"
-                        onClick={() => setViewMode("grid")}
-                        className={`btn btn-xs btn-square ${viewMode === "grid" ? "btn-primary" : "btn-ghost"}`}
-                        title="Grid View"
-                      >
-                        <LayoutGrid className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewMode("list")}
-                        className={`btn btn-xs btn-square ${viewMode === "list" ? "btn-primary" : "btn-ghost"}`}
-                        title="List View"
-                      >
-                        <List className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {selectionMode && (
-                  <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2">
-                    <span className="text-xs font-bold text-primary px-1">
-                      {selectedIds.size} selected
-                    </span>
-                    <div className="flex gap-1 ml-auto">
-                      <button
-                        type="button"
-                        className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
-                        onClick={() =>
-                          setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))
-                        }
-                      >
-                        All
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
-                        onClick={() => setSelectedIds(new Set())}
-                      >
-                        None
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 w-full">
-                  <div className="flex-1">
-                    <SearchBar value={searchTerm} onChange={setSearchTerm} />
-                  </div>
-                  <div className="shrink-0">
-                    <SortMenu value={sortOption} onChange={setSortOption} />
-                  </div>
-                </div>
-              </div>
-
+              {/* Book grid */}
               <div
                 className={`grid gap-3 sm:gap-4 ${
                   viewMode === "grid"
@@ -386,7 +177,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                     host={connectedHost}
                     variant="remote"
                     compact={viewMode === "grid"}
-                    onAction={handleSync}
+                    onAction={() => syncBook(book)}
                     selected={selectedIds.has(book.id)}
                     selectable={selectionMode}
                     onSelect={() => toggleSelection(book.id)}
@@ -397,6 +188,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 ))}
               </div>
 
+              {/* Empty search results */}
               {connectedHost && filteredRemoteBooks.length === 0 && !loading && (
                 <div className="py-12">
                   <EmptyState
@@ -453,6 +245,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
         </div>
       </main>
 
+      {/* Scroll-to-top */}
       {showScrollTop && (
         <button
           type="button"
@@ -464,34 +257,16 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
         </button>
       )}
 
-      {selectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[2500] bg-base-100 p-4 rounded-xl shadow-2xl border border-primary w-[calc(100%-2rem)] max-w-md">
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-              <span className="font-bold">{selectedIds.size} selected</span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)))}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  onClick={() => setSelectedIds(new Set())}
-                >
-                  None
-                </button>
-              </div>
-            </div>
-            <button type="button" className="btn btn-primary w-full" onClick={startBulkSync}>
-              Sync Selected to Device
-            </button>
-          </div>
-        </div>
+      {/* Selection overlay */}
+      {selectionMode && (
+        <SelectionOverlay
+          selectedCount={selectedIds.size}
+          selectAll={selectAll}
+          selectNone={selectNone}
+          onBulkSync={startBulkSync}
+        />
       )}
+
       <QueueOverlay progress={syncProgress} />
       <Footer />
     </>
