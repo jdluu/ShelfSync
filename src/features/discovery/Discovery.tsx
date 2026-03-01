@@ -11,6 +11,30 @@ interface Host {
   hostname: string;
 }
 
+const getCleanHostname = (hostname: string) => {
+  return hostname
+    .replace(/'s Library\._shelfsync\._tcp\.local\.?$/i, "")
+    .replace(/\._shelfsync\._tcp\.local\.?$/i, "");
+};
+
+const deduplicateHosts = (hostList: Host[]) => {
+  return hostList.reduce((acc, current) => {
+    const cleanName = getCleanHostname(current.hostname);
+    const existingIdx = acc.findIndex((h) => getCleanHostname(h.hostname) === cleanName);
+
+    if (existingIdx === -1) {
+      acc.push(current);
+    } else {
+      const existing = acc[existingIdx];
+      // Prefer IPv4 over IPv6 if duplicate hostnames found
+      if (existing && current.ip.includes(".") && existing.ip.includes(":")) {
+        acc[existingIdx] = current;
+      }
+    }
+    return acc;
+  }, [] as Host[]);
+};
+
 interface DiscoveryProps {
   onConnect: (host: Host) => void;
 }
@@ -29,6 +53,9 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
       });
     }
   };
+
+  const activeHosts = deduplicateHosts(hosts);
+  const historyHosts = deduplicateHosts(knownHosts);
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,8 +76,8 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
             <SkeletonCard />
             <SkeletonCard />
           </div>
-        ) : hosts.length > 0 ? (
-          hosts.map((host) => (
+        ) : activeHosts.length > 0 ? (
+          activeHosts.map((host) => (
             <button
               type="button"
               key={`${host.ip}:${host.port}`}
@@ -63,7 +90,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
                     <Globe className="text-success w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-semibold">{host.hostname}</p>
+                    <p className="font-semibold">{getCleanHostname(host.hostname)}</p>
                     <p className="text-xs text-base-content/70 font-mono">
                       {host.ip}:{host.port}
                     </p>
@@ -84,10 +111,10 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
         )}
       </div>
 
-      {knownHosts.length > 0 && !scanning && hosts.length === 0 && (
+      {historyHosts.length > 0 && !scanning && activeHosts.length === 0 && (
         <div className="flex flex-col gap-3">
           <h3 className="text-xs font-bold text-base-content/70 uppercase">Previous Connections</h3>
-          {knownHosts.map((host) => (
+          {historyHosts.map((host) => (
             <button
               type="button"
               key={`history-${host.ip}`}
@@ -97,7 +124,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
               <div className="card-body px-4 py-3 w-full">
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col">
-                    <p className="text-sm font-medium">{host.hostname}</p>
+                    <p className="text-sm font-medium">{getCleanHostname(host.hostname)}</p>
                     <p className="text-[10px] text-base-content/50">{host.ip}</p>
                   </div>
                   <span className="badge badge-xs badge-ghost">History</span>
@@ -137,7 +164,8 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
             </button>
           </div>
           <p className="text-[10px] text-base-content/50 italic px-1">
-            Tip: If you're using an Android Emulator on this PC, try connecting to{" "}
+            Tip: For Android Emulators, ensure the Host is bound to{" "}
+            <code className="text-success font-bold">0.0.0.0</code> and connect to{" "}
             <code className="text-success font-bold">10.0.2.2</code>.
           </p>
         </div>

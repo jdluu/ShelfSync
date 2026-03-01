@@ -1,14 +1,18 @@
 import { ArrowUp, Search, WifiOff } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { BookCard } from "@/components/library/BookCard";
 import { VirtualGrid } from "@/components/library/VirtualGrid";
+import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
+import { CoverViewerModal } from "@/components/ui/CoverViewerModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Discovery } from "@/features/discovery/Discovery";
+import type { Book } from "@/types/core";
 import { ClientToolbar } from "./ClientToolbar";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { useClientDashboard } from "./useClientDashboard";
@@ -56,6 +60,17 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     startBulkSync,
     token, // From useClientDashboard
   } = useClientDashboard();
+
+  const [detailsBook, setDetailsBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
+  const [coverBook, setCoverBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
+
+  const handleInfoClick = (book: Book, coverUrl?: string) => {
+    setDetailsBook({ book, coverUrl });
+  };
+
+  const handleCoverClick = (book: Book, coverUrl?: string) => {
+    setCoverBook({ book, coverUrl });
+  };
 
   return (
     <>
@@ -176,6 +191,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                       variant="remote"
                       compact={viewMode === "grid"}
                       onAction={() => syncBook(book)}
+                      onInfoClick={handleInfoClick}
+                      onCoverClick={handleCoverClick}
                       selected={selectedIds.has(book.id)}
                       selectable={selectionMode}
                       onSelect={() => toggleSelection(book.id)}
@@ -220,6 +237,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                           variant="local"
                           compact={viewMode === "grid"}
                           onAction={() => book.local_path && openLocalBook(book.local_path)}
+                          onInfoClick={handleInfoClick}
+                          onCoverClick={handleCoverClick}
                           onToggleStatus={() => handleToggleStatus(book)}
                           actionLabel="Read"
                           actionColor="green"
@@ -263,6 +282,42 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
           onBulkSync={startBulkSync}
         />
       )}
+
+      <BookDetailsModal
+        isOpen={!!detailsBook}
+        onClose={() => setDetailsBook(null)}
+        book={detailsBook?.book || null}
+        coverUrl={detailsBook?.coverUrl}
+        actionLabel={
+          detailsBook?.book && localBooks.find((b) => b.id === detailsBook.book.id)
+            ? "Read"
+            : "Sync"
+        }
+        actionColor={
+          detailsBook?.book && localBooks.find((b) => b.id === detailsBook.book.id)
+            ? "green"
+            : "primary"
+        }
+        onAction={(book) => {
+          const isLocal = localBooks.find((b) => b.id === book.id);
+          if (isLocal?.local_path) {
+            openLocalBook(isLocal.local_path);
+          } else {
+            syncBook(book);
+          }
+          setDetailsBook(null);
+        }}
+        isDownloading={
+          detailsBook?.book ? syncProgress[detailsBook.book.id]?.status === "downloading" : false
+        }
+      />
+
+      <CoverViewerModal
+        isOpen={!!coverBook}
+        onClose={() => setCoverBook(null)}
+        imageUrl={coverBook?.coverUrl}
+        altText={`Cover of ${coverBook?.book?.title}`}
+      />
 
       <QueueOverlay progress={syncProgress} />
       <Footer />
