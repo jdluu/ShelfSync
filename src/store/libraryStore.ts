@@ -87,14 +87,55 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   selectLibraryFolder: async () => {
     if (!isTauri()) throw new Error("Only available in desktop app");
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: "Select Calibre Library Folder",
-    });
-    if (selected && typeof selected === "string") {
-      await get().setLibraryPath(selected);
+
+    const { useToastStore } = await import("@/store/toastStore");
+    const toast = useToastStore.getState();
+
+    try {
+      const { open, save } = await import("@tauri-apps/plugin-dialog");
+      const { dirname } = await import("@tauri-apps/api/path");
+
+      // Try standard folder picker first
+      let selected: string | string[] | null = null;
+      try {
+        selected = await open({
+          directory: true,
+          multiple: false,
+          title: "Select Calibre Library Folder",
+        });
+      } catch (e) {
+        console.warn("[Library] Standard folder picker failed, trying save hack:", e);
+      }
+
+      // HACK: Mobile fallback for directory selection
+      if (!selected && isMobile()) {
+        toast.addToast("Pick a location by confirming a placeholder filename.", "info");
+        selected = await save({
+          defaultPath: "CALIBRE_LIBRARY_TARGET.txt",
+          title: "Pick Library Location",
+        });
+
+        if (selected && typeof selected === "string") {
+          selected = await dirname(selected);
+        }
+      }
+
+      if (selected && typeof selected === "string") {
+        await get().setLibraryPath(selected);
+        toast.addToast("Library location updated!", "success");
+      }
+    } catch (error) {
+      if (isMobile()) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const defaultPath = await invoke<string>("get_default_storage_path");
+        if (defaultPath) {
+          await get().setLibraryPath(defaultPath);
+          toast.addToast("Using recommended system storage for library.", "info");
+        }
+      } else {
+        toast.addToast("Failed to select library folder.", "error");
+        console.error(error);
+      }
     }
   },
 
