@@ -206,6 +206,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             library::get_books,
             library::set_library_path,
+            library::get_default_storage_path,
             library::start_bulk_sync,
             network::get_connection_info,
             network::discover_hosts,
@@ -213,7 +214,8 @@ pub fn run() {
             crate::commands::local_db::init_local_db,
             crate::commands::local_db::save_local_book,
             crate::commands::local_db::update_local_read_status,
-            crate::commands::local_db::get_local_books
+            crate::commands::local_db::get_local_books,
+            crate::commands::local_db::delete_local_book
         ]);
 
     builder
