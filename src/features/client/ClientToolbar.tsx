@@ -15,9 +15,6 @@ interface ClientToolbarProps {
   setSearchTerm: (term: string) => void;
   sortOption: SortOption;
   setSortOption: (option: SortOption) => void;
-  selectedCount: number;
-  selectAll: () => void;
-  selectNone: () => void;
   bookCount: number;
   showScrollTop: boolean;
   groupBy: GroupByOption;
@@ -41,9 +38,6 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
   setSearchTerm,
   sortOption,
   setSortOption,
-  selectedCount,
-  selectAll,
-  selectNone,
   bookCount,
   showScrollTop,
   groupBy,
@@ -124,29 +118,7 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
         </div>
       </div>
 
-      {selectionMode && (
-        <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2">
-          <span className="text-xs font-bold text-primary px-1">{selectedCount} selected</span>
-          <div className="flex gap-1 ml-auto">
-            <button
-              type="button"
-              className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
-              onClick={selectAll}
-              aria-label="Select all books"
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className="btn btn-[10px] h-7 min-h-0 btn-ghost text-primary hover:bg-primary/20"
-              onClick={selectNone}
-              aria-label="Deselect all books"
-            >
-              None
-            </button>
-          </div>
-        </div>
-      )}
+
 
       <div className="flex items-center gap-2 w-full">
         <div className="flex-1">

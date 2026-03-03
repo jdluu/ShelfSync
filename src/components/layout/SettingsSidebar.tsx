@@ -108,18 +108,21 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               {/* Roles Section */}
               {onChangeRole && (
                 <section>
-                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                  <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
                     Session
                   </h3>
 
                   {/* Offline Storage Section (Client Mode + Desktop only) */}
                   {appMode === "client" && (
-                    <div className="flex flex-col gap-4 p-4 bg-base-200/50 rounded-xl border border-base-300 mb-3">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-grow overflow-hidden mr-2">
-                          <p className="font-bold text-sm">Offline Storage</p>
+                    <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="flex justify-between items-center relative z-10">
+                        <div className="flex-grow overflow-hidden mr-3">
+                          <p className="font-bold text-sm tracking-tight text-base-content/90">
+                            Offline Storage
+                          </p>
                           <p
-                            className="text-[10px] text-base-content/50 truncate"
+                            className="text-[11px] text-base-content/50 truncate font-mono mt-0.5"
                             title={offlineStoragePath || "Default Cache"}
                           >
                             {offlineStoragePath || "Default Cache"}
@@ -129,7 +132,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                           <button
                             type="button"
                             onClick={selectOfflineStorageFolder}
-                            className="btn btn-xs btn-outline border-base-300"
+                            className="btn btn-sm btn-outline border-base-content/10 hover:border-primary shrink-0"
                           >
                             Change
                           </button>
@@ -140,7 +143,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between p-4 bg-base-200/50 rounded-xl border border-base-300 hover:bg-base-200 transition-colors"
+                    className="w-full relative overflow-hidden group flex items-center justify-between p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                     onClick={() => {
                       handleClose();
                       onChangeRole();
@@ -162,33 +165,45 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
               {/* Help Section */}
               <section>
-                <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
                   Support & Help
                 </h3>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="bg-base-100/80 p-2 rounded-2xl border border-base-content/5 shadow-sm space-y-1">
                   <button
                     type="button"
-                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
                     onClick={() => setActiveArticleId("setup_host")}
                   >
-                    <Wifi className="w-4 h-4 text-success" />
-                    <span className="text-sm font-medium">Setting up Host</span>
+                    <div className="p-2 bg-success/10 rounded-lg group-hover:scale-110 transition-transform">
+                      <Wifi className="w-4 h-4 text-success" />
+                    </div>
+                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
+                      Setting up Host
+                    </span>
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
                     onClick={() => setActiveArticleId("select_library")}
                   >
-                    <Library className="w-4 h-4 text-info" />
-                    <span className="text-sm font-medium">Selecting Library</span>
+                    <div className="p-2 bg-info/10 rounded-lg group-hover:scale-110 transition-transform">
+                      <Library className="w-4 h-4 text-info" />
+                    </div>
+                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
+                      Selecting Library
+                    </span>
                   </button>
                   <button
                     type="button"
-                    className="flex items-center gap-3 p-3 text-left hover:bg-base-200 rounded-lg transition-colors group"
+                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
                     onClick={() => setActiveArticleId("not_found")}
                   >
-                    <Settings className="w-4 h-4 text-warning" />
-                    <span className="text-sm font-medium">Troubleshooting</span>
+                    <div className="p-2 bg-warning/10 rounded-lg group-hover:scale-110 transition-transform">
+                      <Settings className="w-4 h-4 text-warning" />
+                    </div>
+                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
+                      Troubleshooting
+                    </span>
                   </button>
                 </div>
               </section>
@@ -196,15 +211,18 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               {/* Permissions Section */}
               {isTauri() && (
                 <section>
-                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                  <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
                     Permissions
                   </h3>
-                  <div className="flex flex-col gap-3 p-4 bg-base-200/50 rounded-xl border border-base-300">
-                    <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-center relative z-10">
                       <div>
-                        <p className="font-bold text-sm">Notifications</p>
-                        <p className="text-[10px] text-base-content/50">
-                          Required for sync progress alerts
+                        <p className="font-bold text-sm text-base-content/90 tracking-tight">
+                          Notifications
+                        </p>
+                        <p className="text-[11px] text-base-content/50 mt-0.5">
+                          Required for sync alerts
                         </p>
                       </div>
                       <button
@@ -223,7 +241,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                             useToastStore.getState().addToast("Permission denied.", "error");
                           }
                         }}
-                        className="btn btn-xs btn-outline border-base-300"
+                        className="btn btn-sm btn-outline border-base-content/10 hover:border-primary shrink-0"
                       >
                         Request
                       </button>

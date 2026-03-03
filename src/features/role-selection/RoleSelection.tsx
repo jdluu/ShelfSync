@@ -23,19 +23,22 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
             <button
               type="button"
               onClick={() => onSelect("host")}
-              className="card bg-base-200/50 border-2 border-base-300 hover:border-primary hover:bg-base-200 transition-all duration-300 shadow-xl group cursor-pointer"
+              className="card bg-base-100 hover:bg-base-200/50 border border-base-content/10 hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-xl group cursor-pointer relative overflow-hidden"
             >
-              <div className="card-body items-center text-center py-10 sm:py-16 gap-4 sm:gap-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-base-300 flex items-center justify-center group-hover:scale-105 sm:group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-300">
-                  <Share2 className="w-10 h-10 sm:w-12 sm:h-12 text-base-content/70 group-hover:text-primary" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="card-body items-center text-center py-10 sm:py-16 gap-4 sm:gap-6 relative z-10">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[2rem] bg-base-200/80 flex items-center justify-center group-hover:scale-[1.08] group-hover:bg-primary/10 transition-all duration-300 ring-1 ring-base-content/5 group-hover:ring-primary/20">
+                  <Share2 className="w-10 h-10 sm:w-12 sm:h-12 text-base-content/60 group-hover:text-primary transition-colors duration-300" />
                 </div>
-                <div className="space-y-2 sm:space-y-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold">Host Mode</h2>
-                  <p className="text-sm sm:text-base text-base-content/70 leading-relaxed max-w-xs mx-auto">
+                <div className="space-y-3 sm:space-y-4">
+                  <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
+                    Host Mode
+                  </h2>
+                  <p className="text-sm sm:text-base text-base-content/60 leading-relaxed max-w-xs mx-auto">
                     Share your library with other devices on your local network.
                   </p>
                 </div>
-                <div className="btn btn-primary mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md group-hover:scale-105">
+                <div className="btn btn-primary mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md shadow-sm group-hover:shadow-md group-active:scale-95">
                   Select Role
                 </div>
               </div>
@@ -45,19 +48,22 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
             <button
               type="button"
               onClick={() => onSelect("client")}
-              className="card bg-base-200/50 border-2 border-base-300 hover:border-success hover:bg-base-200 transition-all duration-300 shadow-xl group cursor-pointer"
+              className="card bg-base-100 hover:bg-base-200/50 border border-base-content/10 hover:border-success/50 transition-all duration-300 shadow-sm hover:shadow-xl group cursor-pointer relative overflow-hidden"
             >
-              <div className="card-body items-center text-center py-10 sm:py-16 gap-4 sm:gap-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-base-300 flex items-center justify-center group-hover:scale-105 sm:group-hover:scale-110 group-hover:bg-success/10 transition-all duration-300">
-                  <Search className="w-10 h-10 sm:w-12 sm:h-12 text-base-content/70 group-hover:text-success" />
+              <div className="absolute inset-0 bg-gradient-to-br from-success/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="card-body items-center text-center py-10 sm:py-16 gap-4 sm:gap-6 relative z-10">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[2rem] bg-base-200/80 flex items-center justify-center group-hover:scale-[1.08] group-hover:bg-success/10 transition-all duration-300 ring-1 ring-base-content/5 group-hover:ring-success/20">
+                  <Search className="w-10 h-10 sm:w-12 sm:h-12 text-base-content/60 group-hover:text-success transition-colors duration-300" />
                 </div>
-                <div className="space-y-2 sm:space-y-4">
-                  <h2 className="text-2xl sm:text-3xl font-bold">Client Mode</h2>
-                  <p className="text-sm sm:text-base text-base-content/70 leading-relaxed max-w-xs mx-auto">
+                <div className="space-y-3 sm:space-y-4">
+                  <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
+                    Client Mode
+                  </h2>
+                  <p className="text-sm sm:text-base text-base-content/60 leading-relaxed max-w-xs mx-auto">
                     Access and sync books from an active ShelfSync host.
                   </p>
                 </div>
-                <div className="btn btn-success mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md group-hover:scale-105">
+                <div className="btn btn-success mt-2 sm:mt-4 px-8 sm:px-12 transition-all btn-sm sm:btn-md shadow-sm group-hover:shadow-md group-active:scale-95 font-medium">
                   Select Role
                 </div>
               </div>

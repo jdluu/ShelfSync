@@ -1,4 +1,4 @@
-import { ArrowUp, BookOpen, Library, Search, WifiOff } from "lucide-react";
+import { ArrowUp, BookOpen, ChevronDown, ChevronUp, Library, Search, WifiOff } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Footer } from "@/components/layout/Footer";
@@ -61,19 +61,32 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     setGroupBy,
     groupedBooks,
     selectGroup,
-    syncGroup,
     offlineStoragePath,
     selectOfflineStorageFolder,
     deleteLocalBook,
     startBulkDelete,
     activeTab,
     setActiveTab,
+    collapsedGroups,
+    toggleGroupCollapse,
   } = useClientDashboard();
 
   const [detailsBook, setDetailsBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
 
   const handleInfoClick = (book: Book, coverUrl?: string) => {
     setDetailsBook({ book, coverUrl });
+  };
+
+  const isGroupSelected = (groupBooks: Book[]) => 
+    groupBooks.length > 0 && groupBooks.every(b => selectedIds.has(b.id));
+
+  // Determine the correct labeling for group selection
+  const getGroupSelectLabel = (isSelected: boolean) => {
+    const prefix = isSelected ? "Deselect" : "Select";
+    if (groupBy === "series") return `${prefix} Series`;
+    if (groupBy === "author") return `${prefix} Author`;
+    if (groupBy === "tag") return `${prefix} Tag`;
+    return `${prefix} Group`;
   };
 
   // Unified book rendering helper
@@ -104,7 +117,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
             onSelect={() => toggleSelection(book.id)}
             onToggleStatus={isLocalTab ? () => handleToggleStatus(book) : undefined}
             syncStatus={!isLocalTab ? syncProgress[book.id] : undefined}
-            actionLabel={isLocalTab ? "Read" : "Sync"}
+            actionLabel={isLocalTab ? "Open File" : "Sync"}
             actionColor={isLocalTab ? "green" : "blue"}
           />
         );
@@ -208,28 +221,38 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
             </div>
           )}
 
-          {/* Tab Switcher */}
-          <div className="flex items-center gap-1 bg-base-200 p-1 rounded-xl mb-6 shadow-sm border border-base-300 w-full xs:w-fit">
-            <button
-              onClick={() => setActiveTab("explore")}
-              className={`flex-1 xs:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-                activeTab === "explore"
-                  ? "bg-primary text-primary-content shadow-md"
-                  : "hover:bg-base-300 text-base-content/60"
-              }`}
-            >
-              Explore
-            </button>
-            <button
-              onClick={() => setActiveTab("library")}
-              className={`flex-1 xs:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
-                activeTab === "library"
-                  ? "bg-primary text-primary-content shadow-md"
-                  : "hover:bg-base-300 text-base-content/60"
-              }`}
-            >
-              My Library
-            </button>
+          {/* iOS-Style Segmented Control */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-base-200/80 backdrop-blur-md p-1.5 rounded-2xl flex items-center relative shadow-inner border border-base-content/5 w-full max-w-sm">
+              <div
+                className="absolute inset-y-1.5 w-[calc(50%-0.375rem)] bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-0"
+                style={{
+                  transform: activeTab === "explore" ? "translateX(0)" : "translateX(100%)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setActiveTab("explore")}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors duration-300 z-10 ${
+                  activeTab === "explore"
+                    ? "text-primary"
+                    : "text-base-content/50 hover:text-base-content/80"
+                }`}
+              >
+                Explore
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("library")}
+                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors duration-300 z-10 ${
+                  activeTab === "library"
+                    ? "text-primary"
+                    : "text-base-content/50 hover:text-base-content/80"
+                }`}
+              >
+                My Library
+              </button>
+            </div>
           </div>
 
           {/* Toolbar - Only show when there is something to filter/sort/group */}
@@ -248,9 +271,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
               setSearchTerm={setSearchTerm}
               sortOption={sortOption}
               setSortOption={setSortOption}
-              selectedCount={selectedIds.size}
-              selectAll={selectAll}
-              selectNone={selectNone}
               bookCount={activeTab === "explore" ? books.length : localBooks.length}
               showScrollTop={showScrollTop}
               groupBy={groupBy}
@@ -302,13 +322,22 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 ) : !connectedHost ? (
                   <Discovery onConnect={connect} />
                 ) : books.length === 0 ? (
-                  <div className="text-center py-20 px-4 bg-base-200/30 rounded-3xl border border-dashed border-base-300">
-                    <BookOpen className="w-16 h-16 mx-auto mb-4 text-base-content/10" />
-                    <h3 className="text-xl font-bold mb-2">No books found</h3>
-                    <p className="text-base-content/50 max-w-xs mx-auto text-sm">
+                  <div className="text-center py-24 px-4 bg-base-100 rounded-[2rem] border border-base-content/10 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="w-20 h-20 rounded-2xl bg-base-200/80 flex items-center justify-center mb-6 ring-1 ring-base-content/5 group-hover:scale-105 transition-transform duration-300">
+                      <BookOpen className="w-10 h-10 text-base-content/30 group-hover:text-primary transition-colors duration-300" />
+                    </div>
+                    <h3 className="text-2xl font-display font-bold mb-3 tracking-tight">
+                      No books found
+                    </h3>
+                    <p className="text-base-content/60 max-w-sm mx-auto text-sm leading-relaxed mb-8">
                       The host doesn't seem to have any books in the selected library folder.
                     </p>
-                    <button type="button" onClick={refresh} className="btn btn-primary mt-6">
+                    <button
+                      type="button"
+                      onClick={refresh}
+                      className="btn btn-primary px-8 shadow-sm hover:shadow-md relative z-10 w-full sm:w-auto"
+                    >
                       Refresh Library
                     </button>
                   </div>
@@ -319,31 +348,42 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                         key={groupName}
                         className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                       >
-                        <div className="flex items-center justify-between mb-6 px-1">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-xl font-bold tracking-tight">{groupName}</h3>
-                            <span className="badge badge-ghost font-mono text-[10px] opacity-50">
+                        <div className="flex items-center justify-between mb-6 px-1 gap-2">
+                          <button
+                            type="button"
+                            className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1 -ml-1"
+                            onClick={() => toggleGroupCollapse(groupName)}
+                            aria-expanded={!collapsedGroups.has(groupName)}
+                            aria-controls={`group-grid-${groupName.replace(/\s+/g, '-')}`}
+                          >
+                            <h3 className="text-xl font-bold tracking-tight truncate">
+                              {groupName}
+                            </h3>
+                            <span className="badge badge-ghost font-mono text-[10px] opacity-50 shrink-0">
                               {groupBooks.length} items
                             </span>
-                          </div>
-                          <div className="flex gap-2">
+                            {collapsedGroups.has(groupName) ? (
+                              <ChevronDown className="w-5 h-5 text-base-content/50 shrink-0" />
+                            ) : (
+                              <ChevronUp className="w-5 h-5 text-base-content/50 shrink-0" />
+                            )}
+                          </button>
+                          <div className="flex gap-2 shrink-0">
                             <button
                               type="button"
                               className="btn btn-xs btn-ghost text-primary"
                               onClick={() => selectGroup(groupBooks)}
                             >
-                              Select All
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-primary btn-outline"
-                              onClick={() => syncGroup(groupBooks)}
-                            >
-                              Sync All
+                              {getGroupSelectLabel(isGroupSelected(groupBooks))}
                             </button>
                           </div>
                         </div>
-                        {renderBookGrid(groupBooks)}
+                        <div
+                          id={`group-grid-${groupName.replace(/\s+/g, '-')}`}
+                          className={`transition-all duration-300 ${collapsedGroups.has(groupName) ? 'hidden' : 'block'}`}
+                        >
+                          {!collapsedGroups.has(groupName) && renderBookGrid(groupBooks)}
+                        </div>
                       </section>
                     ))}
                   </div>
@@ -364,16 +404,21 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 </div>
 
                 {localBooks.length === 0 ? (
-                  <div className="text-center py-24 px-4 bg-base-200/30 rounded-3xl border border-dashed border-base-300">
-                    <Library className="w-16 h-16 mx-auto mb-4 text-primary opacity-20" />
-                    <h3 className="text-xl font-bold mb-2">Device library is empty</h3>
-                    <p className="text-base-content/50 max-w-xs mx-auto text-sm">
+                  <div className="text-center py-24 px-4 bg-base-100 rounded-[2rem] border border-base-content/10 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="w-20 h-20 rounded-2xl bg-base-200/80 flex items-center justify-center mb-6 ring-1 ring-base-content/5 group-hover:scale-105 transition-transform duration-300">
+                      <Library className="w-10 h-10 text-base-content/30 group-hover:text-primary transition-colors duration-300" />
+                    </div>
+                    <h3 className="text-2xl font-display font-bold mb-3 tracking-tight">
+                      Device library is empty
+                    </h3>
+                    <p className="text-base-content/60 max-w-sm mx-auto text-sm leading-relaxed mb-8">
                       Switch to the Explore tab to find and download books from your host.
                     </p>
                     <button
                       type="button"
                       onClick={() => setActiveTab("explore")}
-                      className="btn btn-primary btn-outline mt-8"
+                      className="btn btn-primary btn-outline px-8 shadow-sm hover:shadow-md relative z-10 w-full sm:w-auto"
                     >
                       Browse Books
                     </button>
@@ -385,24 +430,42 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                         key={groupName}
                         className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                       >
-                        <div className="flex items-center justify-between mb-6 px-1">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-xl font-bold tracking-tight">{groupName}</h3>
-                            <span className="badge badge-ghost font-mono text-[10px] opacity-50">
+                        <div className="flex items-center justify-between mb-6 px-1 gap-2">
+                          <button
+                            type="button"
+                            className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1 -ml-1"
+                            onClick={() => toggleGroupCollapse(groupName)}
+                            aria-expanded={!collapsedGroups.has(groupName)}
+                            aria-controls={`local-group-grid-${groupName.replace(/\s+/g, '-')}`}
+                          >
+                            <h3 className="text-xl font-bold tracking-tight truncate">
+                              {groupName}
+                            </h3>
+                            <span className="badge badge-ghost font-mono text-[10px] opacity-50 shrink-0">
                               {groupBooks.length} items
                             </span>
-                          </div>
-                          <div className="flex gap-2">
+                            {collapsedGroups.has(groupName) ? (
+                              <ChevronDown className="w-5 h-5 text-base-content/50 shrink-0" />
+                            ) : (
+                              <ChevronUp className="w-5 h-5 text-base-content/50 shrink-0" />
+                            )}
+                          </button>
+                          <div className="flex gap-2 shrink-0">
                             <button
                               type="button"
                               className="btn btn-xs btn-ghost text-primary"
                               onClick={() => selectGroup(groupBooks)}
                             >
-                              Select All
+                              {getGroupSelectLabel(isGroupSelected(groupBooks))}
                             </button>
                           </div>
                         </div>
-                        {renderBookGrid(groupBooks)}
+                        <div
+                          id={`local-group-grid-${groupName.replace(/\s+/g, '-')}`}
+                          className={`transition-all duration-300 ${collapsedGroups.has(groupName) ? 'hidden' : 'block'}`}
+                        >
+                          {!collapsedGroups.has(groupName) && renderBookGrid(groupBooks)}
+                        </div>
                       </section>
                     ))}
                   </div>
@@ -432,9 +495,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
       {/* Selection overlay */}
       {selectionMode && (
         <SelectionOverlay
-          selectedCount={selectedIds.size}
+          selectedBooks={(activeTab === "explore" ? books : localBooks).filter(b => selectedIds.has(b.id))}
           selectAll={selectAll}
           selectNone={selectNone}
+          onDeselect={toggleSelection}
           onBulkSync={activeTab === "explore" ? startBulkSync : undefined}
           onBulkDelete={activeTab === "library" ? startBulkDelete : undefined}
           variant={activeTab === "explore" ? "sync" : "delete"}
@@ -448,7 +512,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
         coverUrl={detailsBook?.coverUrl}
         actionLabel={
           detailsBook?.book && localBooks.find((b) => b.id === detailsBook.book.id)
-            ? "Read"
+            ? "Open File"
             : "Sync"
         }
         actionColor={

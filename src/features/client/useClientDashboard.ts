@@ -92,7 +92,15 @@ export function useClientDashboard() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [activeTab, setActiveTab] = useState<"explore" | "library">("explore");
   const [groupBy, setGroupBy] = useState<GroupByOption>("series");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const toggleGroupCollapse = (groupName: string) => {
+    const next = new Set(collapsedGroups);
+    if (next.has(groupName)) next.delete(groupName);
+    else next.add(groupName);
+    setCollapsedGroups(next);
+  };
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
@@ -181,16 +189,27 @@ export function useClientDashboard() {
     }
 
     // Sort groups alphabetically, but put Standalone last
+    // Additionally, if grouping by series, sort the books inside each series by index
     const sorted = new Map(
-      [...groups.entries()].sort(([a], [b]) => {
-        if (a === standaloneKey) return 1;
-        if (b === standaloneKey) return -1;
-        return a.localeCompare(b);
-      }),
+      [...groups.entries()]
+        .map(([key, list]) => {
+          if (groupBy === "series" && key !== standaloneKey) {
+            const sortedList = [...list].sort(
+              (a, b) => (a.series_index || 0) - (b.series_index || 0),
+            );
+            return [key, sortedList] as [string, Book[]];
+          }
+          return [key, list] as [string, Book[]];
+        })
+        .sort(([a], [b]) => {
+          if (a === standaloneKey) return 1;
+          if (b === standaloneKey) return -1;
+          return a.localeCompare(b);
+        }),
     );
 
     return sorted;
-  }, [filteredRemoteBooks, groupBy]);
+  }, [groupBy, activeBooks]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -238,21 +257,19 @@ export function useClientDashboard() {
     setSelectedIds(new Set());
   };
 
-  /** Select all books in a given group. */
+  /** Toggle selection of all books in a given group. */
   const selectGroup = (groupBooks: Book[]) => {
     setSelectionMode(true);
     const next = new Set(selectedIds);
-    for (const b of groupBooks) next.add(b.id);
-    setSelectedIds(next);
-  };
+    const allSelected = groupBooks.every(b => next.has(b.id));
 
-  /** Sync all books in a given group. */
-  const syncGroup = async (groupBooks: Book[]) => {
-    if (connectedHost && token) {
-      await syncBooks(groupBooks, connectedHost, token, offlineStoragePath).catch((e) =>
-        console.error("Group sync failed:", e),
-      );
+    if (allSelected) {
+      for (const b of groupBooks) next.delete(b.id);
+      if (next.size === 0) setSelectionMode(false);
+    } else {
+      for (const b of groupBooks) next.add(b.id);
     }
+    setSelectedIds(next);
   };
 
   return {
@@ -301,6 +318,7 @@ export function useClientDashboard() {
     setGroupBy,
     groupedBooks,
     selectGroup,
-    syncGroup,
+    collapsedGroups,
+    toggleGroupCollapse,
   };
 }

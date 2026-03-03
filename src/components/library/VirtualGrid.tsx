@@ -1,6 +1,6 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type React from "react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { useWindowSize } from "@/hooks/useWindowSize";
 
 interface VirtualGridProps<T> {
@@ -24,6 +24,15 @@ export function VirtualGrid<T>({
 }: VirtualGridProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { width } = useWindowSize();
+  const [offsetTop, setOffsetTop] = useState(0);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      // Calculate how far this grid is from the top of the scrolling element (window)
+      // This is crucial for stacked virtualizers.
+      setOffsetTop(scrollRef.current.offsetTop);
+    }
+  }, [items.length]);
 
   // Determine columns based on tailwind breakpoints
   // Grid: Base=2, sm(640)=3, md(768)=4, lg(1024)=6, xl(1280)=8
@@ -48,6 +57,7 @@ export function VirtualGrid<T>({
     count: rowCount,
     estimateSize: () => rowHeight + gap,
     overscan: 3,
+    scrollMargin: offsetTop, // Offset the virtualizer calculations by how far down this container is rendered
   });
 
   if (items.length === 0) {
@@ -76,7 +86,7 @@ export function VirtualGrid<T>({
               left: 0,
               width: "100%",
               height: `${rowHeight}px`,
-              transform: `translateY(${virtualRow.start}px)`,
+              transform: `translateY(${virtualRow.start - offsetTop}px)`,
               display: "grid",
               // Use standard CSS Grid to define the columns dynamically
               gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
