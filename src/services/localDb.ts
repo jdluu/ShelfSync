@@ -33,3 +33,10 @@ export async function updateReadStatus(id: number, status: "unread" | "reading" 
 export async function getLocalBooks(): Promise<Book[]> {
   return (await safeInvoke<Book[]>("get_local_books", {})) ?? [];
 }
+/**
+ * Deletes a book from the local database and removes its file via Rust.
+ * @param id The ID of the book in the local database.
+ */
+export async function deleteBook(id: number) {
+  await safeInvoke<void>("delete_local_book", { id });
+}

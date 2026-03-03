@@ -1,7 +1,7 @@
 use crate::error::{lock_or_err, AppError};
 use crate::models::Book;
 use crate::AppState;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use tauri::State;
 
 /// Opens the local client-side SQLite database.
@@ -29,7 +29,7 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
             id INTEGER PRIMARY KEY,
             title TEXT NOT NULL,
             authors TEXT NOT NULL,
-            remote_id INTEGER,
+            remote_id INTEGER UNIQUE,
             format TEXT,
             local_path TEXT,
             read_status TEXT DEFAULT 'unread'
@@ -63,7 +63,7 @@ pub fn save_local_book(
     let conn = open_client_db(&state)?;
 
     conn.execute(
-        "INSERT INTO books (title, authors, remote_id, format, local_path, read_status) 
+        "INSERT OR REPLACE INTO books (title, authors, remote_id, format, local_path, read_status) 
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![
             book.title,
@@ -116,12 +116,13 @@ pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError
     )?;
 
     let book_iter = stmt.query_map([], |row| {
-        let _remote_id: Option<i64> = row.get(4)?;
+        let remote_id: Option<i64> = row.get(4)?;
         Ok(Book {
             id: row.get(0)?,
             title: row.get(1)?,
             authors: row.get(2)?,
             path: row.get(3)?,
+            remote_id,
             cover_url: None,
             formats: row
                 .get::<_, Option<String>>(5)?
@@ -144,4 +145,36 @@ pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError
     }
 
     Ok(books)
+}
+
+/// Deletes a book from the local database and removes its associated file from disk.
+#[tauri::command]
+pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppError> {
+    let conn = open_client_db(&state)?;
+
+    // 1. Get the local path before deleting from DB
+    let local_path: Option<String> = conn
+        .query_row(
+            "SELECT local_path FROM books WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )
+        .optional()?;
+
+    // 2. Delete from database
+    conn.execute("DELETE FROM books WHERE id = ?1", params![id])?;
+
+    // 3. Delete file from disk if path exists
+    if let Some(path_str) = local_path {
+        let path = std::path::Path::new(&path_str);
+        if path.exists() {
+            std::fs::remove_file(path).map_err(|e| {
+                log::error!("Failed to delete file at {:?}: {}", path, e);
+                AppError::Unknown(format!("Failed to delete file: {}", e))
+            })?;
+            log::info!("Deleted local file at {:?}", path);
+        }
+    }
+
+    Ok(())
 }
