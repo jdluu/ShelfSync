@@ -111,8 +111,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       if (selected && typeof selected === "string") {
         await get().setOfflineStoragePath(selected);
       }
-    } catch (error: any) {
-      if (error?.toString().includes("not implemented on mobile")) {
+    } catch (error) {
+      if (String(error).includes("not implemented on mobile")) {
         // Fallback for mobile: Get default path from Rust
         const { invoke } = await import("@tauri-apps/api/core");
         const defaultPath = await invoke<string>("get_default_storage_path");

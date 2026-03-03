@@ -7,7 +7,10 @@ export interface SyncProgress {
   title: string;
   status: "pending" | "downloading" | "completed" | "error";
   progress: number;
-  total: number;
+  queue_position: number;
+  queue_total: number;
+  path?: string;
+  error?: string;
 }
 
 export interface LibraryContextType {

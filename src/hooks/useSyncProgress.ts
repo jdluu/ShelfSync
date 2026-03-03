@@ -28,7 +28,7 @@ export function useSyncProgress(
   const [syncProgress, setSyncProgress] = useState<Record<number, SyncProgress>>({});
 
   // Track batch state across events without re-subscribing
-  const batchRef = useRef({ completed: 0, failed: 0, total: 0, active: false });
+  const batchRef = useRef({ completed: 0, failed: 0, total: 0, active: false, knownIds: new Set<number>() });
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -47,14 +47,13 @@ export function useSyncProgress(
           batch.failed = 0;
           // total is unknown upfront; we'll infer from max book_id count
           batch.total = 0;
+          batch.knownIds.clear();
         }
 
         // Count unique books in progress to estimate total
         if (batch.active) {
-          const allIds = new Set(
-            Object.values({ ...syncProgress, [prog.book_id]: prog }).map((p) => p.book_id),
-          );
-          batch.total = Math.max(batch.total, allIds.size);
+          batch.knownIds.add(prog.book_id);
+          batch.total = Math.max(batch.total, batch.knownIds.size);
         }
 
         if (prog.status === "downloading") {
@@ -71,7 +70,7 @@ export function useSyncProgress(
             const fullBook = booksRef.current.find((b) => b.id === prog.book_id);
             if (fullBook) {
               const root = offlineStoragePath || (await appDataDir());
-              const path = await join(root, fullBook.path);
+              const path = await join(root, prog.path || fullBook.path);
               await saveLocalBook(fullBook, path);
               const stored = await getLocalBooks();
               onSyncComplete(stored);
@@ -143,7 +142,7 @@ export function useSyncProgress(
     return () => {
       if (unlisten) unlisten();
     };
-  }, [booksRef, offlineStoragePath, onSyncComplete, syncProgress]);
+  }, [booksRef, offlineStoragePath, onSyncComplete]);
 
   return syncProgress;
 }
