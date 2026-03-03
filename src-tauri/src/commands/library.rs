@@ -151,18 +151,19 @@ pub async fn start_bulk_sync(
 
 #[tauri::command]
 pub async fn get_default_storage_path(app: tauri::AppHandle) -> Result<String, AppError> {
-    use tauri::Manager;
+    
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         // On mobile, default to a "ShelfSync" folder in the document directory if possible,
         // otherwise fall back to the app's internal data directory.
         // Note: For "real" external storage access on Android, scoped storage usually applies.
+        use tauri::Manager;
         let path = app
             .path()
             .document_dir()
             .or_else(|_| app.path().app_data_dir())
-            .map_err(|e| AppError::Unknown(e.to_string()))?;
+            .map_err(|e: tauri::Error| AppError::Unknown(e.to_string()))?;
 
         let final_path = path.join("ShelfSync");
         std::fs::create_dir_all(&final_path).ok();
@@ -172,6 +173,7 @@ pub async fn get_default_storage_path(app: tauri::AppHandle) -> Result<String, A
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
+        let _ = app;
         // On desktop, we don't have a single "best" default, but we can suggest one
         // if the user doesn't pick, or just return an empty string to trigger the picker.
         Ok("".to_string())
