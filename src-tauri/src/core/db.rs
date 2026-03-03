@@ -112,6 +112,7 @@ pub async fn get_calibre_metadata(pool: &deadpool_sqlite::Pool) -> Result<Vec<Bo
                     .get::<_, Option<String>>(1)?
                     .unwrap_or_else(|| "Unknown Title".to_string()),
                 path: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                remote_id: None,
                 authors: String::new(),
                 cover_url: None,
                 formats: Vec::new(),
