@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { ToastContainer } from "@/components/ui/ToastContainer";
 import { PinModal } from "@/components/ui/PinModal";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { HostDashboard } from "@/features/host/HostDashboard";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
+import { useUpdater } from "@/hooks/useUpdater";
 import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
 import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
-import { useUpdater } from "@/hooks/useUpdater";
 
 function InitializingView() {
   return (

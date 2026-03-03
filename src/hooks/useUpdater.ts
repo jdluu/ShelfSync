@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
+import { useCallback, useState } from "react";
 import { useToastStore } from "@/store/toastStore";
 
 export function useUpdater() {

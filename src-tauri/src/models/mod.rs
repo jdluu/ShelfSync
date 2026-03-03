@@ -6,6 +6,7 @@ pub struct Book {
     pub title: String,
     pub authors: String, // Comma separated string for simplicity in frontend
     pub path: String,
+    pub remote_id: Option<i64>,
     pub cover_url: Option<String>,
     pub formats: Vec<String>,
     pub series: Option<String>,
