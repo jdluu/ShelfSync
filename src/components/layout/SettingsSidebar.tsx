@@ -268,7 +268,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] text-base-content/50 uppercase">Version</span>
                       <span className="text-[10px] font-mono font-bold text-base-content/70">
-                        1.0.2 (Stable)
+                        1.1.0 (Stable)
                       </span>
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { getLocalBooks, initDB, updateReadStatus } from "@/services/localDb";
 import type { Book, Host } from "@/types/core";
 import type { AppMode } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
-import { isTauri, safeStoreLoad } from "@/utils/tauri";
+import { isMobile, isTauri, safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -101,30 +101,57 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   selectOfflineStorageFolder: async () => {
     if (!isTauri()) throw new Error("Only available in desktop app");
 
+    const { useToastStore } = await import("@/store/toastStore");
+    const toast = useToastStore.getState();
+
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select Offline Storage Folder",
-      });
+      const { open, save } = await import("@tauri-apps/plugin-dialog");
+      const { dirname } = await import("@tauri-apps/api/path");
+
+      // Try the standard folder picker first
+      let selected: string | string[] | null = null;
+      
+      try {
+        selected = await open({
+          directory: true,
+          multiple: false,
+          title: "Select Offline Storage Folder",
+        });
+      } catch (e) {
+        console.warn("[Storage] Standard folder picker failed, trying save hack:", e);
+      }
+
+      // HACK: If open didn't return anything or threw, try the save dialog hack for mobile
+      if (!selected && isMobile()) {
+        toast.addToast("Pick a location by confirming a placeholder filename.", "info");
+
+        selected = await save({
+          defaultPath: "SHELF_SYNC_TARGET.txt",
+          title: "Pick Storage Location",
+        });
+
+        if (selected && typeof selected === "string") {
+          // Strip the dummy filename to get the directory
+          selected = await dirname(selected);
+        }
+      }
+
       if (selected && typeof selected === "string") {
         await get().setOfflineStoragePath(selected);
+        toast.addToast("Storage location updated!", "success");
       }
     } catch (error) {
-      if (String(error).includes("not implemented on mobile")) {
-        // Fallback for mobile: Get default path from Rust
+      if (String(error).includes("not implemented on mobile") || isMobile()) {
+        // Ultimate Fallback: Get default path from Rust
         const { invoke } = await import("@tauri-apps/api/core");
         const defaultPath = await invoke<string>("get_default_storage_path");
         if (defaultPath) {
           await get().setOfflineStoragePath(defaultPath);
-          const { useToastStore } = await import("@/store/toastStore");
-          useToastStore
-            .getState()
-            .addToast("Folder picker not available on mobile. Using default storage.", "info");
+          toast.addToast("Using recommended system storage.", "info");
         }
       } else {
-        throw error;
+        toast.addToast("Failed to select folder.", "error");
+        console.error(error);
       }
     }
   },
