@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-03-02
+
+### Added
+- **Delete from Device**: You can now remove downloaded books from your device to free up space while keeping them in your remote library.
+- **Smart Storage Setup**: The app now proactively helps you set up a download folder on new installs.
+- **Expanded Metadata**: Offline books now show series, tags, and full descriptions, even when you're not connected to your host.
+
+### Changed
+- **Premium Dashboard Redesign**: A fresh, mobile-first look with smoother transitions and intuitive tab-based navigation.
+- **Improved Android Storage**: Better support for selecting and managing your library on Android devices.
+- **Robust Sync Engine**: Faster and more reliable book synchronization with enhanced data integrity.
+
+### Fixed
+- **Android Book Covers**: Fixed an issue where local covers wouldn't show up on Android devices.
+- **App Update Safeguards**: Improved stability by disabling unsupported update checks on mobile platforms.
+- **General Stability**: Resolved various startup issues and improved overall application performance.
+
 ## [1.0.2] - 2026-03-01
 
 ### Fixed
