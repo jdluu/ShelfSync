@@ -1,8 +1,8 @@
 import { create } from "zustand";
+import { useToastStore } from "@/store/toastStore";
 import type { Book, Host } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
-import { useToastStore } from "@/store/toastStore";
 import { isTauri, safeInvoke } from "@/utils/tauri";
 
 interface SyncState {

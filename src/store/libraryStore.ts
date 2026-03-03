@@ -22,6 +22,7 @@ interface LibraryState {
   selectLibraryFolder: () => Promise<void>;
   selectOfflineStorageFolder: () => Promise<void>;
   toggleReadStatus: (book: Book, connectedHost?: Host | null, token?: string) => Promise<void>;
+  deleteLocalBook: (book: Book) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -99,18 +100,37 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   selectOfflineStorageFolder: async () => {
     if (!isTauri()) throw new Error("Only available in desktop app");
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: "Select Offline Storage Folder",
-    });
-    if (selected && typeof selected === "string") {
-      await get().setOfflineStoragePath(selected);
+
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Select Offline Storage Folder",
+      });
+      if (selected && typeof selected === "string") {
+        await get().setOfflineStoragePath(selected);
+      }
+    } catch (error: any) {
+      if (error?.toString().includes("not implemented on mobile")) {
+        // Fallback for mobile: Get default path from Rust
+        const { invoke } = await import("@tauri-apps/api/core");
+        const defaultPath = await invoke<string>("get_default_storage_path");
+        if (defaultPath) {
+          await get().setOfflineStoragePath(defaultPath);
+          const { useToastStore } = await import("@/store/toastStore");
+          useToastStore
+            .getState()
+            .addToast("Folder picker not available on mobile. Using default storage.", "info");
+        }
+      } else {
+        throw error;
+      }
     }
   },
 
   toggleReadStatus: async (book, connectedHost, token) => {
+    // ... (existing implementation)
     const current = book.read_status || "unread";
     let next: "unread" | "reading" | "finished" = "reading";
     if (current === "reading") next = "finished";
@@ -130,6 +150,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
     } catch (_) {
       notifyError("Sync Error", "Failed to update reading status.");
+    }
+  },
+
+  deleteLocalBook: async (book) => {
+    try {
+      const { deleteBook } = await import("@/services/localDb");
+      await deleteBook(book.id);
+      set((state) => ({
+        localBooks: state.localBooks.filter((b) => b.id !== book.id),
+      }));
+      const { useToastStore } = await import("@/store/toastStore");
+      useToastStore.getState().addToast(`"${book.title}" removed from device.`, "success");
+    } catch (_) {
+      notifyError("Delete Error", "Failed to delete book from device.");
     }
   },
 }));

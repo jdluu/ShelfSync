@@ -2,7 +2,7 @@ import { ArrowLeft, FileText, Library, Settings, User, Wifi, X } from "lucide-re
 import type React from "react";
 import { useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
-import { isMobile, isTauri } from "@/utils/tauri";
+import { isTauri } from "@/utils/tauri";
 import { ARTICLES } from "./help/helpArticles";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -125,7 +125,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                             {offlineStoragePath || "Default Cache"}
                           </p>
                         </div>
-                        {isTauri() && !isMobile() && (
+                        {isTauri() && (
                           <button
                             type="button"
                             onClick={selectOfflineStorageFolder}
@@ -193,6 +193,45 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                 </div>
               </section>
 
+              {/* Permissions Section */}
+              {isTauri() && (
+                <section>
+                  <h3 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest mb-3">
+                    Permissions
+                  </h3>
+                  <div className="flex flex-col gap-3 p-4 bg-base-200/50 rounded-xl border border-base-300">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-sm">Notifications</p>
+                        <p className="text-[10px] text-base-content/50">
+                          Required for sync progress alerts
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { requestPermission } = await import(
+                            "@tauri-apps/plugin-notification"
+                          );
+                          const res = await requestPermission();
+                          const { useToastStore } = await import("@/store/toastStore");
+                          if (res === "granted") {
+                            useToastStore
+                              .getState()
+                              .addToast("Notification permission granted!", "success");
+                          } else {
+                            useToastStore.getState().addToast("Permission denied.", "error");
+                          }
+                        }}
+                        className="btn btn-xs btn-outline border-base-300"
+                      >
+                        Request
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* About Section */}
               <section className="pt-4 border-t border-base-300">
                 <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
@@ -211,7 +250,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] text-base-content/50 uppercase">Version</span>
                       <span className="text-[10px] font-mono font-bold text-base-content/70">
-                        1.0.0 (Stable)
+                        1.0.2 (Stable)
                       </span>
                     </div>
                   </div>
