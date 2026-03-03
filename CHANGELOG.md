@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-03-03
+
+### Fixed
+- **Android Folder Selection**: Implemented a reliable workaround for choosing storage and library locations on Android using a "Save As" dialog hack.
+- **UI Consistency**: Updated version displays and finalized theme transitions for the 1.1.1 stable release.
+
 ## [1.1.0] - 2026-03-02
 
 ### Added
