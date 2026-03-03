@@ -4,12 +4,21 @@ import { check } from "@tauri-apps/plugin-updater";
 import { useCallback, useState } from "react";
 import { useToastStore } from "@/store/toastStore";
 
+import { isMobile } from "@/utils/tauri";
+
 export function useUpdater() {
   const [isChecking, setIsChecking] = useState(false);
   const { upsertProgress, finishProgress, addToast } = useToastStore();
 
   const checkForUpdates = useCallback(
     async (manual = false) => {
+      if (isMobile()) {
+        if (manual) {
+          addToast("Updates are managed via the app store on mobile.", "info");
+        }
+        return;
+      }
+
       try {
         setIsChecking(true);
         const update = await check();
