@@ -18,6 +18,7 @@ pub struct SyncProgress {
     pub error: Option<String>,
     pub queue_position: usize,
     pub queue_total: usize,
+    pub path: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -93,22 +94,128 @@ impl SyncManager {
     }
 }
 
+fn sanitize_filename(name: &str) -> String {
+    name.replace(&['<', '>', ':', '\"', '/', '\\', '|', '?', '*'][..], "_")
+        .trim()
+        .to_string()
+}
+
+fn write_metadata_opf(book: &Book, opf_path: &std::path::Path) {
+    let mut opf = String::from("<?xml version='1.0' encoding='utf-8'?>\n");
+    opf.push_str("<package xmlns=\"http://www.idpf.org/2007/opf\" unique-identifier=\"uuid_id\" version=\"2.0\">\n");
+    opf.push_str("  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:opf=\"http://www.idpf.org/2007/opf\">\n");
+    
+    // Process basic metadata escaping XML where necessary
+    let title = book.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    opf.push_str(&format!("    <dc:title>{}</dc:title>\n", title));
+    
+    for author in book.authors.split(',') {
+        let clean_author = author.trim().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <dc:creator opf:role=\"aut\">{}</dc:creator>\n", clean_author));
+    }
+    
+    if let Some(desc) = &book.description {
+        let clean_desc = desc.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <dc:description>{}</dc:description>\n", clean_desc));
+    }
+    
+    if let Some(pub_val) = &book.publisher {
+        let clean_pub = pub_val.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <dc:publisher>{}</dc:publisher>\n", clean_pub));
+    }
+    
+    for tag in &book.tags {
+        let clean_tag = tag.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <dc:subject>{}</dc:subject>\n", clean_tag));
+    }
+    
+    if let Some(lang) = &book.language {
+        let clean_lang = lang.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <dc:language>{}</dc:language>\n", clean_lang));
+    }
+
+    opf.push_str("    <meta name=\"calibre:timestamp\" content=\"\"/>\n");
+    if let Some(series) = &book.series {
+        let clean_series = series.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        opf.push_str(&format!("    <meta name=\"calibre:series\" content=\"{}\"/>\n", clean_series));
+        opf.push_str(&format!("    <meta name=\"calibre:series_index\" content=\"{}\"/>\n", book.series_index));
+    }
+    
+    if let Some(rating) = book.rating {
+        opf.push_str(&format!("    <meta name=\"calibre:rating\" content=\"{}\"/>\n", rating));
+    }
+    
+    opf.push_str("  </metadata>\n");
+    opf.push_str("</package>\n");
+
+    let _ = fs::write(opf_path, opf);
+}
+
 async fn process_task<R: Runtime>(
     app: &AppHandle<R>,
     client: &Client,
     task: &SyncTask,
     queue: &Arc<Mutex<Vec<Book>>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let book = &task.book;
+    let mut book = task.book.clone();
     let url = format!(
         "http://{}:{}/api/download/{}/best",
         task.host_ip, task.host_port, book.id
     );
 
+    // Determine primary author (first author in comma-separated list)
+    let primary_author = book.authors.split(',').next().unwrap_or("Unknown").trim();
+    
+    // Sanitize author and title for filesystem
+    let safe_author = sanitize_filename(primary_author);
+    let safe_title = sanitize_filename(&book.title);
+    
+    // Construct Calibre format: Author/Title/Title - Author.epub
+    let folder_path = std::path::PathBuf::from(&safe_author).join(&safe_title);
+    
+    // Try to get original extension from the host's path to preserve it, fallback to epub
+    let ext = std::path::Path::new(&task.book.path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("epub");
+        
+    let file_name = format!("{} - {}.{}", safe_title, safe_author, ext);
+    let relative_path = folder_path.join(&file_name);
+    
+    // Override the book path with the new local path so the frontend receives it
+    book.path = relative_path.to_string_lossy().to_string();
+
     // Create destination dir
     let dest_path = task.destination_root.join(&book.path);
     if let Some(parent) = dest_path.parent() {
         fs::create_dir_all(parent)?;
+
+        // Try to fetch cover proactively
+        let cover_url = format!(
+            "http://{}:{}/api/cover/{}?token={}",
+            task.host_ip, task.host_port, book.id, task.token
+        );
+        let local_cover_path = parent.join("cover.jpg");
+        match client.get(&cover_url).send().await {
+            Ok(cover_resp) if cover_resp.status().is_success() => {
+                match cover_resp.bytes().await {
+                    Ok(bytes) => {
+                        if let Err(e) = fs::write(&local_cover_path, bytes) {
+                            log::error!("[SYNC] Failed to write cover.jpg for {}: {:?}", book.title, e);
+                        } else {
+                            log::info!("[SYNC] Successfully saved cover.jpg for {}", book.title);
+                        }
+                    }
+                    Err(e) => log::error!("[SYNC] Failed to get cover bytes for {}: {:?}", book.title, e),
+                }
+            }
+            Ok(resp) => log::warn!("[SYNC] Host returned {} for cover of {}", resp.status(), book.title),
+            Err(e) => log::error!("[SYNC] Failed to fetch cover for {}: {:?}", book.title, e),
+        }
+        
+        // Write basic metadata.opf
+        let opf_path = parent.join("metadata.opf");
+        write_metadata_opf(&book, &opf_path);
     }
 
     let response = client
@@ -120,7 +227,7 @@ async fn process_task<R: Runtime>(
     if !response.status().is_success() {
         emit_progress(
             app,
-            book,
+            &book,
             0.0,
             "error",
             Some("Server returned error".to_string()),
@@ -134,7 +241,7 @@ async fn process_task<R: Runtime>(
     let mut stream = response.bytes_stream();
     let mut file = fs::File::create(&dest_path)?;
 
-    emit_progress(app, book, 0.0, "downloading", None, queue);
+    emit_progress(app, &book, 0.0, "downloading", None, queue);
 
     while let Some(item) = stream.next().await {
         let chunk = item?;
@@ -143,11 +250,11 @@ async fn process_task<R: Runtime>(
 
         if total_size > 0 {
             let progress = downloaded as f64 / total_size as f64;
-            emit_progress(app, book, progress, "downloading", None, queue);
+            emit_progress(app, &book, progress, "downloading", None, queue);
         }
     }
 
-    emit_progress(app, book, 1.0, "completed", None, queue);
+    emit_progress(app, &book, 1.0, "completed", None, queue);
     Ok(())
 }
 
@@ -174,6 +281,7 @@ fn emit_progress<R: Runtime>(
             error,
             queue_position: pos,
             queue_total: total,
+            path: Some(book.path.clone()),
         },
     );
 }

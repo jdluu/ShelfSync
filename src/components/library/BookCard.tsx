@@ -1,7 +1,12 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { Book as BookIcon } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Book, Host } from "@/types/core";
+import { isMobile } from "@/utils/tauri";
+
+const IS_DEV = import.meta.env.DEV;
 
 interface BookCardProps {
   book: Book;
@@ -38,11 +43,65 @@ export const BookCard: React.FC<BookCardProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  // Construct cover URL if we have a host
-  const coverUrl = host
-    ? `http://${host.ip}:${host.port}/api/cover/${book.id}${token ? `?token=${token}` : ""}`
-    : undefined;
+  // Prioritize local cover if we are in local variant OR if we have a local path
+  const isLocalImage = variant === "local" || (book.cover_url && !book.cover_url.startsWith("http") && !book.cover_url.startsWith("/api/"));
+
+  const coverUrl = useMemo(() => {
+    // If we have a blob fallback, use it
+    if (blobUrl) return blobUrl;
+
+    if (isLocalImage && book.cover_url) {
+      return convertFileSrc(book.cover_url);
+    }
+    if (host) {
+      return `http://${host.ip}:${host.port}/api/cover/${book.id}${token ? `?token=${token}` : ""}`;
+    }
+    return undefined;
+  }, [book.id, book.cover_url, isLocalImage, host, token, blobUrl]);
+
+  // Mobile Dev Fallback: If convertFileSrc is likely to fail due to PNA, use readFile
+  useEffect(() => {
+    let active = true;
+    if (isLocalImage && book.cover_url && isMobile() && IS_DEV && !blobUrl) {
+      console.log(`[BookCard] Attempting blob fallback for mobile dev: ${book.title}`);
+      readFile(book.cover_url)
+        .then((data) => {
+          if (!active) return;
+          const blob = new Blob([data], { type: "image/jpeg" });
+          const url = URL.createObjectURL(blob);
+          console.log(`[BookCard] Generated blob fallback URL for "${book.title}"`);
+          setBlobUrl(url);
+          setImgError(false); // Reset error state to allow the new fallback image to render
+        })
+        .catch((err) => {
+          if (!active) return;
+          console.error(`[BookCard] Blob fallback failed for "${book.title}":`, err);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [isLocalImage, book.cover_url, book.title, blobUrl]);
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
+
+  const handleImageError = () => {
+    setImgError(true);
+    setImgLoaded(true);
+  };
+
+  const handleImageLoad = () => {
+    setImgLoaded(true);
+  };
 
   const getStatusColor = (status: string | null | undefined) => {
     if (status === "finished") return "badge-success";
@@ -55,12 +114,13 @@ export const BookCard: React.FC<BookCardProps> = ({
   if (compact) {
     return (
       <div
-        className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none relative ${
+        className={`card bg-base-100/80 backdrop-blur-sm border transition-all duration-300 overflow-hidden outline-none relative group ${
           selected
-            ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary"
-            : "border-base-300 hover:shadow-md hover:bg-base-300"
+            ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary"
+            : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
         }`}
       >
+        <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
         {selectable && onSelect && (
           <button
             type="button"
@@ -74,7 +134,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             aria-pressed={selected}
           />
         )}
-        <div className="card-body p-3 flex flex-col items-center text-center gap-2">
+        <div className="card-body p-3 flex flex-col items-center text-center gap-3 relative z-10">
           {selectable && (
             <div className="absolute top-2 right-2 z-20">
               <input
@@ -89,7 +149,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           )}
           <button
             type="button"
-            className="w-full aspect-[2/3] bg-base-300 rounded-md overflow-hidden flex items-center justify-center relative shadow-sm max-w-[120px] mx-auto outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group"
+            className="w-full aspect-[2/3] bg-base-300/50 rounded-xl overflow-hidden flex items-center justify-center relative shadow-sm max-w-[120px] mx-auto outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group/image ring-1 ring-base-content/5"
             onClick={(e) => {
               if (onInfoClick) {
                 e.preventDefault();
@@ -102,42 +162,51 @@ export const BookCard: React.FC<BookCardProps> = ({
             {!imgError && coverUrl ? (
               <>
                 {!imgLoaded && (
-                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300" />
+                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300/50" />
                 )}
                 <img
                   src={coverUrl}
                   alt={`Cover of ${book.title}`}
-                  className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-                  onError={() => {
-                    setImgError(true);
-                    setImgLoaded(true);
-                  }}
-                  onLoad={() => setImgLoaded(true)}
+                  className={`w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
                 />
               </>
             ) : (
-              <BookIcon className="w-8 h-8 text-base-content/50" />
+              <BookIcon className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300" />
             )}
+
+            {/* Overlay Gradient for Image */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
+
             {isDownloading && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1.5 backdrop-blur-sm">
                 <progress
-                  className="progress progress-primary w-full h-1"
+                  className="progress progress-primary w-full h-1.5"
                   value={(syncStatus?.progress || 0) * 100}
                   max="100"
                 />
               </div>
             )}
           </button>
-          <div className="flex flex-col w-full px-1">
+          <div className="flex flex-col w-full px-1 z-10">
             <h3
-              className="text-xs font-bold line-clamp-2 leading-tight min-h-[2.5em]"
+              className="text-xs font-bold line-clamp-2 leading-tight min-h-[2.5em] tracking-tight"
               title={book.title}
             >
               {book.title}
             </h3>
-            <p className="text-[10px] text-base-content/70 truncate" title={book.authors}>
+            <p
+              className="text-[10px] text-base-content/60 truncate font-medium mt-0.5"
+              title={book.authors}
+            >
               {book.authors}
             </p>
+            {book.series && (
+              <p className="text-[9px] font-bold text-accent mt-0.5 truncate" title={`${book.series}${book.series_index ? ` #${book.series_index}` : ""}`}>
+                {book.series}{book.series_index ? ` #${book.series_index}` : ""}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -146,12 +215,13 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   return (
     <div
-      className={`card bg-base-200 border transition-all duration-200 overflow-hidden outline-none relative ${
+      className={`card bg-base-100/80 backdrop-blur-sm border transition-all duration-300 overflow-hidden outline-none relative group ${
         selected
-          ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary ring-offset-2 ring-offset-base-100"
-          : "border-base-300 hover:shadow-md hover:bg-base-300"
+          ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary ring-offset-1 ring-offset-base-100"
+          : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
       }`}
     >
+      <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       {selectable && onSelect && (
         <button
           type="button"
@@ -165,7 +235,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           aria-pressed={selected}
         />
       )}
-      <div className="card-body p-4 relative">
+      <div className="card-body p-4 relative z-10">
         {selectable && (
           <div className="absolute top-2 right-2 z-20">
             <input
@@ -181,7 +251,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div className="flex items-start gap-3 sm:gap-4">
           <button
             type="button"
-            className="w-16 h-24 sm:w-20 sm:h-28 bg-base-300 rounded-md flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group"
+            className="w-16 h-24 sm:w-20 sm:h-28 bg-base-300/50 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group/image ring-1 ring-base-content/5"
             onClick={(e) => {
               if (onInfoClick) {
                 e.preventDefault();
@@ -194,27 +264,30 @@ export const BookCard: React.FC<BookCardProps> = ({
             {!imgError && coverUrl ? (
               <>
                 {!imgLoaded && (
-                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300" />
+                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300/50" />
                 )}
                 <img
                   src={coverUrl}
                   alt={`Cover of ${book.title}`}
-                  className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
+                  className={`w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110 ${
                     imgLoaded ? "opacity-100" : "opacity-0"
                   }`}
-                  onError={() => {
-                    setImgError(true);
-                    setImgLoaded(true);
-                  }}
-                  onLoad={() => setImgLoaded(true)}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
                 />
               </>
             ) : (
-              <BookIcon className="w-8 h-8 text-base-content/50" aria-hidden="true" />
+              <BookIcon
+                className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300"
+                aria-hidden="true"
+              />
             )}
 
+            {/* Overlay Gradient for Image */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
+
             {isDownloading && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1.5 backdrop-blur-sm">
                 <progress
                   className="progress progress-primary w-full h-1.5"
                   value={(syncStatus?.progress || 0) * 100}
@@ -233,8 +306,8 @@ export const BookCard: React.FC<BookCardProps> = ({
             </p>
 
             {book.series && (
-              <p className="text-[10px] sm:text-xs font-bold text-accent -mt-0.5">
-                {book.series} #{book.series_index}
+              <p className="text-[10px] sm:text-xs font-bold text-accent -mt-0.5 max-w-full truncate">
+                {book.series}{book.series_index ? ` #${book.series_index}` : ""}
               </p>
             )}
 
