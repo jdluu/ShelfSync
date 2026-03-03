@@ -4,13 +4,15 @@ interface SelectionOverlayProps {
   selectedCount: number;
   selectAll: () => void;
   selectNone: () => void;
-  onBulkSync: () => void;
+  onBulkSync?: () => void;
+  onBulkDelete?: () => void;
+  variant?: "sync" | "delete";
 }
 
 /**
  * Floating bottom bar shown when books are selected in selection mode.
  *
- * Displays the selection count, select all/none actions, and a bulk sync button
+ * Displays the selection count, select all/none actions, and a bulk action button
  * with a confirmation step.
  */
 export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
@@ -18,6 +20,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   selectAll,
   selectNone,
   onBulkSync,
+  onBulkDelete,
+  variant = "sync",
 }) => {
   if (selectedCount === 0) return null;
 
@@ -49,21 +53,40 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
             </button>
           </div>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary w-full"
-          onClick={() => {
-            if (
-              window.confirm(
-                `Are you sure you want to download ${selectedCount} books to your device?`,
-              )
-            ) {
-              onBulkSync();
-            }
-          }}
-        >
-          Sync Selected to Device
-        </button>
+
+        {variant === "sync" && onBulkSync ? (
+          <button
+            type="button"
+            className="btn btn-primary w-full"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Are you sure you want to download ${selectedCount} books to your device?`,
+                )
+              ) {
+                onBulkSync();
+              }
+            }}
+          >
+            Sync Selected to Device
+          </button>
+        ) : variant === "delete" && onBulkDelete ? (
+          <button
+            type="button"
+            className="btn btn-error w-full"
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Are you sure you want to delete ${selectedCount} books from your device? This will remove the local files.`,
+                )
+              ) {
+                onBulkDelete();
+              }
+            }}
+          >
+            Delete Selected
+          </button>
+        ) : null}
       </div>
     </div>
   );

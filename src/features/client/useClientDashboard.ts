@@ -22,8 +22,15 @@ export type GroupByOption = "none" | "series" | "author" | "tag";
  * - Keyboard shortcuts (Escape to exit selection, Ctrl+A to select all)
  */
 export function useClientDashboard() {
-  const { appMode, offlineStoragePath, localBooks, toggleReadStatus, setLocalBooks } =
-    useLibraryStore();
+  const {
+    appMode,
+    offlineStoragePath,
+    localBooks,
+    toggleReadStatus,
+    setLocalBooks,
+    selectOfflineStorageFolder,
+    deleteLocalBook,
+  } = useLibraryStore();
   const { connectedHost, authTokens, setAuthRequired, setPairingHost, connect, disconnect } =
     useAuthStore();
   const { syncProgress, manualError, clearError, syncBooks } = useSyncStore();
@@ -83,6 +90,7 @@ export function useClientDashboard() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
+  const [activeTab, setActiveTab] = useState<"explore" | "library">("explore");
   const [groupBy, setGroupBy] = useState<GroupByOption>("series");
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -132,6 +140,10 @@ export function useClientDashboard() {
   const filteredRemoteBooks = useMemo(() => filterAndSort(books), [books, filterAndSort]);
   const filteredLocalBooks = useMemo(() => filterAndSort(localBooks), [localBooks, filterAndSort]);
 
+  const activeBooks = useMemo(() => {
+    return activeTab === "explore" ? filteredRemoteBooks : filteredLocalBooks;
+  }, [activeTab, filteredRemoteBooks, filteredLocalBooks]);
+
   /** Group filtered books into a Map<groupName, Book[]> by the selected field. */
   const groupedBooks = useMemo(() => {
     if (groupBy === "none") return null;
@@ -139,7 +151,7 @@ export function useClientDashboard() {
     const groups = new Map<string, Book[]>();
     const standaloneKey = "Standalone";
 
-    for (const book of filteredRemoteBooks) {
+    for (const book of activeBooks) {
       let keys: string[] = [];
 
       if (groupBy === "series") {
@@ -188,13 +200,13 @@ export function useClientDashboard() {
       }
       if (selectionMode && (e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        const allFilteredIds = new Set(filteredRemoteBooks.map((b) => b.id));
+        const allFilteredIds = new Set(activeBooks.map((b) => b.id));
         setSelectedIds(allFilteredIds);
       }
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [selectionMode, filteredRemoteBooks]);
+  }, [selectionMode, activeBooks]);
 
   const toggleSelection = (id: number) => {
     const next = new Set(selectedIds);
@@ -203,7 +215,7 @@ export function useClientDashboard() {
     setSelectedIds(next);
   };
 
-  const selectAll = () => setSelectedIds(new Set(filteredRemoteBooks.map((b) => b.id)));
+  const selectAll = () => setSelectedIds(new Set(activeBooks.map((b) => b.id)));
   const selectNone = () => setSelectedIds(new Set());
 
   const startBulkSync = async () => {
@@ -212,6 +224,15 @@ export function useClientDashboard() {
       await syncBooks(toSync, connectedHost, token, offlineStoragePath).catch((e) =>
         console.error("Batch sync failed:", e),
       );
+    }
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const startBulkDelete = async () => {
+    const toDelete = localBooks.filter((b: Book) => selectedIds.has(b.id));
+    for (const book of toDelete) {
+      await deleteLocalBook(book).catch((e) => console.error("Failed to delete book:", e));
     }
     setSelectionMode(false);
     setSelectedIds(new Set());
@@ -257,6 +278,12 @@ export function useClientDashboard() {
     setSelectedIds,
     viewMode,
     setViewMode,
+    activeTab,
+    setActiveTab: (tab: "explore" | "library") => {
+      setActiveTab(tab);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+    },
     showScrollTop,
     filteredRemoteBooks,
     filteredLocalBooks,
@@ -266,7 +293,10 @@ export function useClientDashboard() {
     selectAll,
     selectNone,
     startBulkSync,
+    startBulkDelete,
     offlineStoragePath,
+    selectOfflineStorageFolder,
+    deleteLocalBook,
     groupBy,
     setGroupBy,
     groupedBooks,

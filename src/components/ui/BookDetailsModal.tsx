@@ -1,4 +1,4 @@
-import { Book as BookIcon, Calendar, FileText, Globe, Star, Building2, Tag, X } from "lucide-react";
+import { Book as BookIcon, Building2, Calendar, FileText, Globe, Star, Tag, X } from "lucide-react";
 import type React from "react";
 import type { Book } from "@/types/core";
 
@@ -10,6 +10,7 @@ interface BookDetailsModalProps {
   actionLabel?: string;
   actionColor?: string;
   onAction?: (book: Book) => void;
+  onDelete?: (book: Book) => void;
   isDownloading?: boolean;
 }
 
@@ -21,6 +22,7 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
   actionLabel,
   actionColor = "primary",
   onAction,
+  onDelete,
   isDownloading,
 }) => {
   if (!isOpen || !book) return null;
@@ -217,23 +219,43 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
         </div>
 
         {/* Sticky Actions */}
-        {onAction && actionLabel && (
-          <div className="sticky bottom-0 w-full p-4 bg-base-100 border-t border-base-content/5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            <button
-              type="button"
-              className={`btn w-full shadow-sm font-bold tracking-wide ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
-              onClick={() => onAction(book)}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  Syncing...
-                </>
-              ) : (
-                actionLabel
-              )}
-            </button>
+        {(onAction || (onDelete && book.local_path)) && (
+          <div className="sticky bottom-0 w-full p-4 bg-base-100 border-t border-base-content/5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col gap-2">
+            {onAction && actionLabel && (
+              <button
+                type="button"
+                className={`btn w-full shadow-sm font-bold tracking-wide ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
+                onClick={() => onAction(book)}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Syncing...
+                  </>
+                ) : (
+                  actionLabel
+                )}
+              </button>
+            )}
+
+            {onDelete && (book.local_path || book.read_status) && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm text-error font-bold flex items-center justify-center gap-2"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Are you sure you want to remove "${book.title}" from this device?`,
+                    )
+                  ) {
+                    onDelete(book);
+                  }
+                }}
+              >
+                Delete from device
+              </button>
+            )}
           </div>
         )}
       </div>

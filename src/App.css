@@ -8,6 +8,14 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
 body {
   min-height: 100vh;
   min-height: 100dvh;
