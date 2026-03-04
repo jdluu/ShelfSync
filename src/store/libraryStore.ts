@@ -4,6 +4,12 @@ import type { Book, Host } from "@/types/core";
 import type { AppMode } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
 import { isMobile, isTauri, safeStoreLoad } from "@/utils/tauri";
+import { useToastStore } from "@/store/toastStore";
+import { httpClient } from "@/services/apiClient";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { dirname } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
+import { deleteBook } from "@/services/localDb";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -88,13 +94,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   selectLibraryFolder: async () => {
     if (!isTauri()) throw new Error("Only available in desktop app");
 
-    const { useToastStore } = await import("@/store/toastStore");
     const toast = useToastStore.getState();
 
     try {
-      const { open, save } = await import("@tauri-apps/plugin-dialog");
-      const { dirname } = await import("@tauri-apps/api/path");
-
       // Try standard folder picker first
       let selected: string | string[] | null = null;
       try {
@@ -126,7 +128,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
     } catch (error) {
       if (isMobile()) {
-        const { invoke } = await import("@tauri-apps/api/core");
         const defaultPath = await invoke<string>("get_default_storage_path");
         if (defaultPath) {
           await get().setLibraryPath(defaultPath);
@@ -142,13 +143,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   selectOfflineStorageFolder: async () => {
     if (!isTauri()) throw new Error("Only available in desktop app");
 
-    const { useToastStore } = await import("@/store/toastStore");
     const toast = useToastStore.getState();
 
     try {
-      const { open, save } = await import("@tauri-apps/plugin-dialog");
-      const { dirname } = await import("@tauri-apps/api/path");
-
       // Try the standard folder picker first
       let selected: string | string[] | null = null;
       
@@ -184,7 +181,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } catch (error) {
       if (String(error).includes("not implemented on mobile") || isMobile()) {
         // Ultimate Fallback: Get default path from Rust
-        const { invoke } = await import("@tauri-apps/api/core");
         const defaultPath = await invoke<string>("get_default_storage_path");
         if (defaultPath) {
           await get().setOfflineStoragePath(defaultPath);
@@ -213,7 +209,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }));
 
       if (connectedHost && token) {
-        const { httpClient } = await import("@/services/apiClient");
         await httpClient.updateProgress(connectedHost, token, book.remote_id || book.id, next);
       }
     } catch (_) {
@@ -223,12 +218,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   deleteLocalBook: async (book) => {
     try {
-      const { deleteBook } = await import("@/services/localDb");
       await deleteBook(book.id);
       set((state) => ({
         localBooks: state.localBooks.filter((b) => b.id !== book.id),
       }));
-      const { useToastStore } = await import("@/store/toastStore");
       useToastStore.getState().addToast(`"${book.title}" removed from device.`, "success");
     } catch (_) {
       notifyError("Delete Error", "Failed to delete book from device.");

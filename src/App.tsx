@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { PinModal } from "@/components/ui/PinModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
-import { ClientDashboard } from "@/features/client/ClientDashboard";
-import { HostDashboard } from "@/features/host/HostDashboard";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
 import { useUpdater } from "@/hooks/useUpdater";
 import { useAppStore } from "@/store/appStore";
 import { useAuthStore } from "@/store/authStore";
 import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
+
+const ClientDashboard = lazy(() =>
+  import("@/features/client/ClientDashboard").then((m) => ({ default: m.ClientDashboard }))
+);
+const HostDashboard = lazy(() =>
+  import("@/features/host/HostDashboard").then((m) => ({ default: m.HostDashboard }))
+);
 
 function InitializingView() {
   return (
@@ -94,10 +99,18 @@ function AppContent() {
   }
 
   if (role === "host") {
-    return <HostDashboard connectionInfo={myConnectionInfo} onChangeRole={handleChangeRole} />;
+    return (
+      <Suspense fallback={<InitializingView />}>
+        <HostDashboard connectionInfo={myConnectionInfo} onChangeRole={handleChangeRole} />
+      </Suspense>
+    );
   }
 
-  return <ClientDashboard onChangeRole={handleChangeRole} />;
+  return (
+    <Suspense fallback={<InitializingView />}>
+      <ClientDashboard onChangeRole={handleChangeRole} />
+    </Suspense>
+  );
 }
 
 function App() {

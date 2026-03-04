@@ -1,4 +1,5 @@
 import { isTauri } from "@/utils/tauri";
+import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 
 /**
  * Displays a native notification to the user for critical errors.
@@ -15,9 +16,6 @@ export async function notifyError(title: string, message: string): Promise<void>
 
   if (isTauri()) {
     try {
-      const { isPermissionGranted, requestPermission, sendNotification } = await import(
-        "@tauri-apps/plugin-notification"
-      );
 
       let granted = await isPermissionGranted();
       if (!granted) {
