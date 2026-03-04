@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2026-03-03
+## [1.1.2] - 2026-03-03
 
 ### Changed
 - **Performance**: Significant improvements to initial application load times and smoother navigation between dashboards.
