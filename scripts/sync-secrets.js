@@ -48,7 +48,7 @@ function syncBinaryFile(secretName, targetPath, secretsPath = '/') {
 
 // 1. Recreate keystore.properties from the /android folder
 console.log('Exporting keystore.properties from /android...');
-const props = run(`infisical export --env=${ENV} --path=/android --format=properties`);
+const props = run(`infisical export --env=${ENV} --path=/android --format=dotenv`);
 if (props) {
     const propsPath = join('src-tauri', 'gen', 'android', 'app', 'keystore.properties');
     const propsDir = dirname(propsPath);
