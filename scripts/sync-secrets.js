@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
  * Works on Windows, WSL, and native Linux (Ubuntu, Arch, etc.)
  */
 
-const ENV = 'production';
+const ENV = 'prod';
 
 function run(cmd) {
     try {
@@ -46,9 +46,9 @@ function syncBinaryFile(secretName, targetPath, secretsPath = '/') {
     }
 }
 
-// 1. Recreate keystore.properties from the root folder
-console.log('Exporting keystore.properties...');
-const props = run(`infisical export --env=${ENV} --path=/ --format=properties`);
+// 1. Recreate keystore.properties from the /android folder
+console.log('Exporting keystore.properties from /android...');
+const props = run(`infisical export --env=${ENV} --path=/android --format=properties`);
 if (props) {
     const propsPath = join('src-tauri', 'gen', 'android', 'app', 'keystore.properties');
     const propsDir = dirname(propsPath);
@@ -57,11 +57,11 @@ if (props) {
     console.log(`[√] Recreated ${propsPath}`);
 }
 
-// 2. Recreate Android Keystore from root
-syncBinaryFile('SHELF_KEYSTORE_BASE64', 'shelfsync-release.jks', '/');
+// 2. Recreate Android Keystore from /android
+syncBinaryFile('SHELF_KEYSTORE_BASE64', 'shelfsync-release.jks', '/android');
 
-// 3. Recreate Tauri Updater Private Key from root
-syncBinaryFile('TAURI_UPDATER_PRIVATE_KEY_BASE64', join('keys', 'updater'), '/');
+// 3. Recreate Tauri Updater Private Key from /tauri
+syncBinaryFile('TAURI_UPDATER_PRIVATE_KEY_BASE64', join('keys', 'updater'), '/tauri');
 
 console.log('-----------------------------');
 console.log('Secret injection complete.');

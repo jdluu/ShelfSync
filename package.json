@@ -12,7 +12,7 @@
     "build:android": "pnpm secrets:fetch && tauri android build --apk",
     "build:android:aab": "pnpm secrets:fetch && tauri android build --aab",
     "android": "tauri android dev",
-    "secrets:sync": "infisical export --env=production --path=/android --format=properties > src-tauri/gen/android/app/keystore.properties",
+    "secrets:sync": "infisical export --env=prod --path=/android --format=properties > src-tauri/gen/android/app/keystore.properties",
     "secrets:fetch": "node scripts/sync-secrets.js",
     "lint": "biome lint .",
     "format": "biome format --write .",
