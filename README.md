@@ -64,16 +64,25 @@ To build and run this project, the following dependencies must be installed on t
 *   **Rust:** The latest stable version of the Rust programming language and Cargo package manager.
 *   **Node.js:** A recent version of Node.js (LTS recommended).
 *   **Package Manager:** pnpm is the preferred package manager for this project, though npm or yarn may also be used.
+*   **Secret Management:** [Infisical CLI](https://infisical.com/docs/cli/overview) is used for managing signing keys and build secrets.
 *   **System Dependencies:** Platform-specific development libraries required by Tauri (e.g., `libwebkit2gtk-4.0-dev` on Linux, Visual Studio C++ Build Tools on Windows).
 
 ## Installation and Development
 
 1.  Clone the repository to your local machine.
-2.  Install frontend dependencies:
+2.  Install the **Infisical CLI** and authenticate:
+    ```bash
+    infisical login
+    ```
+3.  Initialize secrets (required for Android/Production builds):
+    ```bash
+    pnpm secrets:fetch
+    ```
+4.  Install frontend dependencies:
     ```bash
     pnpm install
     ```
-3.  Start the development server. This command will launch the frontend dev server and compile the Rust backend:
+5.  Start the development server. This command will launch the frontend dev server and compile the Rust backend:
     ```bash
     pnpm tauri dev
     ```
