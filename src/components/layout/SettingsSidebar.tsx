@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Library, Settings, User, Wifi, X } from "lucide-react";
+import { ArrowLeft, FileText, Library, Settings, Shield, User, Wifi, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
@@ -203,6 +203,18 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     </div>
                     <span className="text-sm font-medium text-base-content/90 tracking-tight">
                       Troubleshooting
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
+                    onClick={() => setActiveArticleId("permissions")}
+                  >
+                    <div className="p-2 bg-accent/10 rounded-lg group-hover:scale-110 transition-transform">
+                      <Shield className="w-4 h-4 text-accent" />
+                    </div>
+                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
+                      Permissions
                     </span>
                   </button>
                 </div>

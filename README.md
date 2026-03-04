@@ -10,6 +10,52 @@
 
 ShelfSync is a cross-platform desktop and mobile application designed to facilitate the synchronization of e-book libraries between devices on a local network. Built upon the Tauri framework, it leverages a Rust-based backend for performance and system integration, coupled with a React and TypeScript frontend for a responsive user interface. The application specifically targets Calibre libraries, allowing a central host to serve content to client devices for offline reading.
 
+## Prerequisites
+
+To build and run this project, the following dependencies must be installed on the development system:
+
+*   **Rust:** The latest stable version of the Rust programming language and Cargo package manager.
+*   **Node.js:** A recent version of Node.js (LTS recommended).
+*   **Package Manager:** pnpm is the preferred package manager for this project, though npm or yarn may also be used.
+*   **Secret Management:** [Infisical CLI](https://infisical.com/docs/cli/overview) is used for managing signing keys and build secrets.
+*   **System Dependencies:** Platform-specific development libraries required by Tauri (e.g., libwebkit2gtk-4.0-dev on Linux, Visual Studio C++ Build Tools on Windows).
+
+## Installation and Development
+
+1.  Clone the repository to your local machine.
+2.  Install the Infisical CLI and authenticate:
+    ```bash
+    infisical login
+    ```
+3.  Install frontend dependencies:
+    ```bash
+    pnpm install
+    ```
+4.  Initialize secrets (required for Android and Production builds):
+    ```bash
+    pnpm secrets:fetch
+    ```
+5.  Start the development server. This command will launch the frontend dev server and compile the Rust backend:
+    ```bash
+    pnpm tauri dev
+    ```
+
+## Building for Production
+
+To create an optimized release build for the current operating system:
+
+```bash
+pnpm tauri build
+```
+
+To build for Android:
+
+```bash
+pnpm build:android
+```
+
+The desktop build artifacts will be located in the `src-tauri/target/release/bundle` directory. Android APKs will be in `src-tauri/gen/android/app/build/outputs/apk/universal/release`.
+
 ## System Architecture
 
 The application adheres to a modular architecture that separates concerns between the user interface, domain logic, and infrastructure.
@@ -31,20 +77,20 @@ graph TD
 
 ### Backend (Rust)
 The backend is constructed using Rust and the Tauri SDK, organized into distinct layers:
-*   **Core Layer**: Handles domain logic and Calibre SQLite (`metadata.db`) interactions using **Rusqlite**.
-*   **HTTP Layer**: Implements a local REST API using **Axum** and **Tokio**. This layer serves book metadata, covers, and file downloads.
-*   **Command Layer**: Serves as the interface between the frontend and backend (IPC).
-*   **Infrastructure**: Manages background services, including **mdns-sd** (Multicast DNS) for service discovery.
+*   **Core Layer:** Handles domain logic and Calibre SQLite (`metadata.db`) interactions using Rusqlite.
+*   **HTTP Layer:** Implements a local REST API using Axum and Tokio. This layer serves book metadata, covers, and file downloads.
+*   **Command Layer:** Serves as the interface between the frontend and backend (IPC).
+*   **Infrastructure:** Manages background services, including mdns-sd (Multicast DNS) for service discovery.
 
 ### Frontend (React + TypeScript)
 The frontend is built with React and structured around feature modules:
-*   **UI Framework**: Built with **Tailwind CSS**, **DaisyUI**, and **Lucide React** for an accessible and responsive interface featuring skeleton loading sequences.
-*   **Features**: Business logic is encapsulated in feature-specific directories (e.g., `host`, `client`, `discovery`).
-*   **State Management**: Asynchronous state, caching, and data fetching are managed using **TanStack Query** alongside **Zustand** for local UI state.
-*   **Validation**: Strict runtime payload validation across the Tauri IPC boundary using **Zod**.
-*   **Storage**: Local configuration is managed using persistent stores (**Tauri Plugin Store**).
-*   **Database**: Local client-side book tracking and sync status stored in a local SQLite database.
-*   **Testing**: Automated unit testing powered by **Vitest** with centralized Tauri mocked boundaries.
+*   **UI Framework:** Built with Tailwind CSS, DaisyUI, and Lucide React for an accessible and responsive interface featuring skeleton loading sequences.
+*   **Features:** Business logic is encapsulated in feature-specific directories (e.g., host, client, discovery).
+*   **State Management:** Asynchronous state, caching, and data fetching are managed using TanStack Query, while global UI and authentication state is handled by Zustand stores (authStore, libraryStore, syncStore).
+*   **Validation:** Strict runtime payload validation across the Tauri IPC boundary using Zod.
+*   **Storage:** Local configuration is managed using persistent stores (Tauri Plugin Store).
+*   **Database:** Local client-side book tracking and sync status stored in a local SQLite database.
+*   **Testing:** Automated unit testing powered by Vitest with centralized Tauri mocked boundaries.
 
 ## Features
 
@@ -54,48 +100,8 @@ The frontend is built with React and structured around feature modules:
 *   **Grouped Browsing:** Easily navigate large libraries by organizing books by Series, Author, Tag, or Date Added.
 *   **Bulk Synchronization:** Supports downloading multiple books or entire collections simultaneously.
 *   **Offline Storage:** Maintains a local record of synced content for offline access on client devices.
-*   **Secure Device Pairing:** Implements a 4-digit PIN authentication mechanism to prevent unauthorized access.
+*   **Secure Device Pairing:** Implements a PIN authentication mechanism to prevent unauthorized access.
 *   **Disk-based Image Cache:** Server-side resized thumbnails are cached on disk for rapid subsequent loads.
-
-## Prerequisites
-
-To build and run this project, the following dependencies must be installed on the development system:
-
-*   **Rust:** The latest stable version of the Rust programming language and Cargo package manager.
-*   **Node.js:** A recent version of Node.js (LTS recommended).
-*   **Package Manager:** pnpm is the preferred package manager for this project, though npm or yarn may also be used.
-*   **Secret Management:** [Infisical CLI](https://infisical.com/docs/cli/overview) is used for managing signing keys and build secrets.
-*   **System Dependencies:** Platform-specific development libraries required by Tauri (e.g., `libwebkit2gtk-4.0-dev` on Linux, Visual Studio C++ Build Tools on Windows).
-
-## Installation and Development
-
-1.  Clone the repository to your local machine.
-2.  Install the **Infisical CLI** and authenticate:
-    ```bash
-    infisical login
-    ```
-3.  Initialize secrets (required for Android/Production builds):
-    ```bash
-    pnpm secrets:fetch
-    ```
-4.  Install frontend dependencies:
-    ```bash
-    pnpm install
-    ```
-5.  Start the development server. This command will launch the frontend dev server and compile the Rust backend:
-    ```bash
-    pnpm tauri dev
-    ```
-
-## Building for Production
-
-To create an optimized release build for the current operating system:
-
-```bash
-pnpm tauri build
-```
-
-The build artifacts will be located in the `src-tauri/target/release/bundle` directory.
 
 ## Usage Guide
 
@@ -109,4 +115,4 @@ The build artifacts will be located in the `src-tauri/target/release/bundle` dir
 1.  Launch the application and select "Client" from the role selection screen.
 2.  The application will automatically scan the network for available ShelfSync hosts.
 3.  Click on a discovered host to connect, or use the "Manual Connection" option on the Discovery screen.
-4.  Browse the library or Group by Series/Author. Click "Sync" to download books to your **Offline Storage** for reading without an internet connection.
+4.  Browse the library or Group by Series/Author. Click "Sync" to download books to your Offline Storage for reading without an internet connection.

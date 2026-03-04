@@ -9,6 +9,7 @@ ShelfSync is a cross-platform desktop and mobile application designed to facilit
 - [Installation Guide](Installation)
 - [Usage Instructions](Usage)
 - [Troubleshooting](Troubleshooting)
+- [App Permissions](Permissions)
 
 ### Technical Details
 - [System Architecture](System-Architecture)

@@ -199,4 +199,24 @@ export const ARTICLES: Record<string, HelpArticle> = {
       </div>
     ),
   },
+  permissions: {
+    id: "permissions",
+    title: "App Permissions Explained",
+    content: (
+      <div className="space-y-4">
+        <p>ShelfSync requires specific permissions to function correctly across devices.</p>
+        <ul className="list-disc list-inside space-y-2 text-sm text-base-content/70">
+          <li>
+            <strong>Local Network:</strong> Needed to automatically find the host over Wi-Fi (via mDNS) and transfer books without using the internet.
+          </li>
+          <li>
+            <strong>Storage/Files:</strong> The Host needs permission to read your Calibre folder. The Client needs permission to save downloaded books to your device's offline storage.
+          </li>
+          <li>
+            <strong>Notifications:</strong> Used on mobile and desktop to alert you when a large batch of books has finished syncing.
+          </li>
+        </ul>
+      </div>
+    ),
+  },
 };
