@@ -33,7 +33,7 @@ console.log('--- ShelfSync Secret Sync ---');
  * @param {string} secretsPath
  */
 function syncBinaryFile(secretName, targetPath, secretsPath = '/') {
-    const value = run(`infisical get ${secretName} --env=${ENV} --path=${secretsPath} --plain`);
+    const value = run(`infisical secrets get ${secretName} --env=${ENV} --path=${secretsPath} --plain`);
     if (value) {
         const dir = dirname(targetPath);
         if (dir !== '.' && !existsSync(dir)) {
@@ -46,9 +46,9 @@ function syncBinaryFile(secretName, targetPath, secretsPath = '/') {
     }
 }
 
-// 1. Recreate keystore.properties from the /android folder
-console.log('Exporting keystore.properties from /android...');
-const props = run(`infisical export --env=${ENV} --path=/android --format=properties`);
+// 1. Recreate keystore.properties from the root folder
+console.log('Exporting keystore.properties...');
+const props = run(`infisical export --env=${ENV} --path=/ --format=properties`);
 if (props) {
     const propsPath = join('src-tauri', 'gen', 'android', 'app', 'keystore.properties');
     const propsDir = dirname(propsPath);
@@ -57,12 +57,11 @@ if (props) {
     console.log(`[√] Recreated ${propsPath}`);
 }
 
-// 2. Recreate Android Keystore from the /android folder
-syncBinaryFile('SHELF_KEYSTORE_BASE64', 'shelfsync-release.jks', '/android');
+// 2. Recreate Android Keystore from root
+syncBinaryFile('SHELF_KEYSTORE_BASE64', 'shelfsync-release.jks', '/');
 
-// 3. Recreate Tauri Updater Private Key from the /tauri folder
-// Note: Public key is already embedded in tauri.conf.json
-syncBinaryFile('TAURI_UPDATER_PRIVATE_KEY_BASE64', join('keys', 'updater'), '/tauri');
+// 3. Recreate Tauri Updater Private Key from root
+syncBinaryFile('TAURI_UPDATER_PRIVATE_KEY_BASE64', join('keys', 'updater'), '/');
 
 console.log('-----------------------------');
 console.log('Secret injection complete.');
