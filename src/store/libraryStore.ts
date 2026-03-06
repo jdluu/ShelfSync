@@ -1,15 +1,14 @@
+import { invoke } from "@tauri-apps/api/core";
+import { dirname } from "@tauri-apps/api/path";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { create } from "zustand";
-import { getLocalBooks, initDB, updateReadStatus } from "@/services/localDb";
+import { httpClient } from "@/services/apiClient";
+import { deleteBook, getLocalBooks, initDB, updateReadStatus } from "@/services/localDb";
+import { useToastStore } from "@/store/toastStore";
 import type { Book, Host } from "@/types/core";
 import type { AppMode } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
 import { isMobile, isTauri, safeStoreLoad } from "@/utils/tauri";
-import { useToastStore } from "@/store/toastStore";
-import { httpClient } from "@/services/apiClient";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { dirname } from "@tauri-apps/api/path";
-import { invoke } from "@tauri-apps/api/core";
-import { deleteBook } from "@/services/localDb";
 
 const STORE_PATH = "shelfsync_settings.json";
 
@@ -148,7 +147,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       // Try the standard folder picker first
       let selected: string | string[] | null = null;
-      
+
       try {
         selected = await open({
           directory: true,

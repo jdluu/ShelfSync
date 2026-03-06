@@ -28,7 +28,13 @@ export function useSyncProgress(
   const [syncProgress, setSyncProgress] = useState<Record<number, SyncProgress>>({});
 
   // Track batch state across events without re-subscribing
-  const batchRef = useRef({ completed: 0, failed: 0, total: 0, active: false, knownIds: new Set<number>() });
+  const batchRef = useRef({
+    completed: 0,
+    failed: 0,
+    total: 0,
+    active: false,
+    knownIds: new Set<number>(),
+  });
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

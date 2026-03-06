@@ -1,11 +1,11 @@
+import { appDataDir } from "@tauri-apps/api/path";
+import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import { create } from "zustand";
 import { useToastStore } from "@/store/toastStore";
 import type { Book, Host } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
 import { isTauri, safeInvoke } from "@/utils/tauri";
-import { appDataDir } from "@tauri-apps/api/path";
-import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 
 interface SyncState {
   syncProgress: Record<number, SyncProgress>;
@@ -45,9 +45,7 @@ export const useSyncStore = create<SyncState>((set) => ({
         return;
       }
 
-      const destRoot =
-        offlineStoragePath ||
-        (isTauri() ? await appDataDir() : "");
+      const destRoot = offlineStoragePath || (isTauri() ? await appDataDir() : "");
 
       await safeInvoke("start_bulk_sync", {
         books: newBooks,

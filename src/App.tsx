@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { PinModal } from "@/components/ui/PinModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
@@ -9,10 +9,10 @@ import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
 
 const ClientDashboard = lazy(() =>
-  import("@/features/client/ClientDashboard").then((m) => ({ default: m.ClientDashboard }))
+  import("@/features/client/ClientDashboard").then((m) => ({ default: m.ClientDashboard })),
 );
 const HostDashboard = lazy(() =>
-  import("@/features/host/HostDashboard").then((m) => ({ default: m.HostDashboard }))
+  import("@/features/host/HostDashboard").then((m) => ({ default: m.HostDashboard })),
 );
 
 function InitializingView() {

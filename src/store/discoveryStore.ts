@@ -1,8 +1,8 @@
+import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
 import { api } from "@/services/apiClient";
 import type { ConnectionInfo, Host } from "@/types/core";
 import { isTauri, safeStoreLoad } from "@/utils/tauri";
-import { listen } from "@tauri-apps/api/event";
 
 interface DiscoveryState {
   hosts: Host[];

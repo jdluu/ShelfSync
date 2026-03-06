@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, httpClient } from "@/services/apiClient";
 import type { Host } from "@/types/core";
 
@@ -60,21 +60,5 @@ export const useLocalLibrary = (libraryPath: string | null) => {
       return api.library.getBooks(libraryPath);
     },
     enabled: !!libraryPath,
-  });
-};
-
-/**
- * Verifies the PIN with the host to authenticate a new client.
- *
- * @summary Provides a React Query mutation to submit a PIN and receive a long-lived auth token.
- * @returns {UseMutationResult<string, Error, { host: Host; pin: string }>} A mutation handle to execute the PIN check.
- * @throws {Error} Resolves to an error state if the PIN is invalid or the host rejects the connection.
- * @sideEffects Sends a POST request to the target host and may mutate UI state upon completion.
- */
-export const useCheckPin = () => {
-  return useMutation({
-    mutationFn: async ({ host, pin }: { host: Host; pin: string }) => {
-      return httpClient.checkPin(host, pin);
-    },
   });
 };
