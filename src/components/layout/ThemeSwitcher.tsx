@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
  * Updates the `data-theme` attribute on `<html>` and the `theme-color` meta tag
  * for mobile status bar integration.
  */
-export const applyTheme = (t: "light" | "dark" | "system") => {
+const applyTheme = (t: "light" | "dark" | "system") => {
   let effectiveTheme: "light" | "dark";
   if (t === "system") {
     effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
