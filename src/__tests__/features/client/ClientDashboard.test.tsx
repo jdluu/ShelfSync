@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { useDiscovery } from "@/contexts/DiscoveryContext";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { useHostManifest } from "@/hooks/useLibraryQuery";
 import { useAuthStore } from "@/store/authStore";
@@ -18,10 +17,6 @@ vi.mock("@/features/discovery/Discovery", () => ({
       Connect Host
     </button>
   ),
-}));
-
-vi.mock("@/contexts/DiscoveryContext", () => ({
-  useDiscovery: vi.fn(),
 }));
 
 vi.mock("@/store/authStore", () => ({
@@ -48,15 +43,6 @@ describe("ClientDashboard Integration", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
-    vi.mocked(useDiscovery).mockReturnValue({
-      scan: vi.fn(),
-      hosts: [],
-      knownHosts: [],
-      scanning: false,
-      myConnectionInfo: null,
-      refreshConnectionInfo: vi.fn(),
-    });
-
     (useAuthStore as unknown as Mock).mockReturnValue({
       connectedHost: null,
       authTokens: {},
