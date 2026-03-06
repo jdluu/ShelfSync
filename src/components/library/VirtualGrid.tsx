@@ -1,11 +1,11 @@
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type React from "react";
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWindowSize } from "@/hooks/useWindowSize";
 
 interface VirtualGridProps<T> {
   items: T[];
-  renderItem: (item: T, index: number) => React.ReactNode;
+  itemComponent: React.ComponentType<{ item: T; index: number }>;
   viewMode: "grid" | "list";
   keyExtractor: (item: T) => React.Key;
   gridRowHeight?: number;
@@ -13,9 +13,27 @@ interface VirtualGridProps<T> {
   gap?: number;
 }
 
+interface VirtualGridItemProps<T> {
+  item: T;
+  index: number;
+  ItemComponent: React.ComponentType<{ item: T; index: number }>;
+  keyExtractor: (item: T) => React.Key;
+}
+
+const VirtualGridItem = <T,>({
+  item,
+  index,
+  ItemComponent,
+  keyExtractor,
+}: VirtualGridItemProps<T>) => (
+  <div key={keyExtractor(item)} style={{ width: "100%" }}>
+    <ItemComponent item={item} index={index} />
+  </div>
+);
+
 export function VirtualGrid<T>({
   items,
-  renderItem,
+  itemComponent: ItemComponent,
   viewMode,
   keyExtractor,
   gridRowHeight = 260, // approximate height of a grid book card
@@ -94,9 +112,13 @@ export function VirtualGrid<T>({
             }}
           >
             {rowItems.map((item, colIndex) => (
-              <div key={keyExtractor(item)} style={{ width: "100%" }}>
-                {renderItem(item, startIndex + colIndex)}
-              </div>
+              <VirtualGridItem
+                key={keyExtractor(item)}
+                item={item}
+                index={startIndex + colIndex}
+                ItemComponent={ItemComponent}
+                keyExtractor={keyExtractor}
+              />
             ))}
           </div>
         );

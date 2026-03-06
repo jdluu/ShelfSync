@@ -30,7 +30,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const selectedCount = selectedBooks.length;
-  
+
   // Sort books alphabetically for the summary list
   const sortedBooks = [...selectedBooks].sort((a, b) => a.title.localeCompare(b.title));
 
@@ -51,7 +51,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
             aria-expanded={isExpanded}
             aria-controls="selected-books-list"
           >
-            {selectedCount} selected {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {selectedCount} selected{" "}
+            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </button>
           <div className="flex gap-2">
             <button
@@ -74,13 +75,16 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         </div>
 
         {isExpanded && (
-          <div 
+          <div
             id="selected-books-list"
             className="max-h-40 overflow-y-auto bg-base-200/50 rounded-lg p-2 text-sm border border-base-content/5"
           >
             <ul className="space-y-1">
               {sortedBooks.map((book) => (
-                <li key={book.id} className="flex items-center justify-between gap-2 group p-1 hover:bg-base-100 rounded-md transition-colors">
+                <li
+                  key={book.id}
+                  className="flex items-center justify-between gap-2 group p-1 hover:bg-base-100 rounded-md transition-colors"
+                >
                   <span className="truncate select-none text-base-content/80 group-hover:text-base-content">
                     {book.title}
                   </span>

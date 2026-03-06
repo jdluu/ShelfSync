@@ -118,8 +118,6 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
         </div>
       </div>
 
-
-
       <div className="flex items-center gap-2 w-full">
         <div className="flex-1">
           <SearchBar value={searchTerm} onChange={setSearchTerm} />

@@ -1,13 +1,13 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { Book as BookIcon } from "lucide-react";
 import type React from "react";
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Book, Host } from "@/types/core";
 import { isMobile } from "@/utils/tauri";
+import { BookCover } from "./BookCover";
+import { BookMetadata } from "./BookMetadata";
 
 const IS_DEV = import.meta.env.DEV;
-
 interface BookCardProps {
   book: Book;
   host?: Host | null;
@@ -46,7 +46,9 @@ export const BookCard: React.FC<BookCardProps> = ({
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   // Prioritize local cover if we are in local variant OR if we have a local path
-  const isLocalImage = variant === "local" || (book.cover_url && !book.cover_url.startsWith("http") && !book.cover_url.startsWith("/api/"));
+  const isLocalImage =
+    variant === "local" ||
+    (book.cover_url && !book.cover_url.startsWith("http") && !book.cover_url.startsWith("/api/"));
 
   const coverUrl = useMemo(() => {
     // If we have a blob fallback, use it
@@ -147,67 +149,19 @@ export const BookCard: React.FC<BookCardProps> = ({
               />
             </div>
           )}
-          <button
-            type="button"
-            className="w-full aspect-[2/3] bg-base-300/50 rounded-xl overflow-hidden flex items-center justify-center relative shadow-sm max-w-[120px] mx-auto outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group/image ring-1 ring-base-content/5"
-            onClick={(e) => {
-              if (onInfoClick) {
-                e.preventDefault();
-                e.stopPropagation();
-                onInfoClick(book, coverUrl);
-              }
-            }}
-            aria-label={`View details for ${book.title}`}
-          >
-            {!imgError && coverUrl ? (
-              <>
-                {!imgLoaded && (
-                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300/50" />
-                )}
-                <img
-                  src={coverUrl}
-                  alt={`Cover of ${book.title}`}
-                  className={`w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-                  onError={handleImageError}
-                  onLoad={handleImageLoad}
-                />
-              </>
-            ) : (
-              <BookIcon className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300" />
-            )}
-
-            {/* Overlay Gradient for Image */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
-
-            {isDownloading && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1.5 backdrop-blur-sm">
-                <progress
-                  className="progress progress-primary w-full h-1.5"
-                  value={(syncStatus?.progress || 0) * 100}
-                  max="100"
-                />
-              </div>
-            )}
-          </button>
-          <div className="flex flex-col w-full px-1 z-10">
-            <h3
-              className="text-xs font-bold line-clamp-2 leading-tight min-h-[2.5em] tracking-tight"
-              title={book.title}
-            >
-              {book.title}
-            </h3>
-            <p
-              className="text-[10px] text-base-content/60 truncate font-medium mt-0.5"
-              title={book.authors}
-            >
-              {book.authors}
-            </p>
-            {book.series && (
-              <p className="text-[9px] font-bold text-accent mt-0.5 truncate" title={`${book.series}${book.series_index ? ` #${book.series_index}` : ""}`}>
-                {book.series}{book.series_index ? ` #${book.series_index}` : ""}
-              </p>
-            )}
-          </div>
+          <BookCover
+            book={book}
+            coverUrl={coverUrl}
+            imgError={imgError}
+            imgLoaded={imgLoaded}
+            isDownloading={isDownloading}
+            syncProgress={syncStatus?.progress}
+            handleImageError={handleImageError}
+            handleImageLoad={handleImageLoad}
+            onInfoClick={onInfoClick}
+            compact={true}
+          />
+          <BookMetadata book={book} compact={true} />
         </div>
       </div>
     );
@@ -249,80 +203,21 @@ export const BookCard: React.FC<BookCardProps> = ({
           </div>
         )}
         <div className="flex items-start gap-3 sm:gap-4">
-          <button
-            type="button"
-            className="w-16 h-24 sm:w-20 sm:h-28 bg-base-300/50 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center relative shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer group/image ring-1 ring-base-content/5"
-            onClick={(e) => {
-              if (onInfoClick) {
-                e.preventDefault();
-                e.stopPropagation();
-                onInfoClick(book, coverUrl);
-              }
-            }}
-            aria-label={`View details for ${book.title}`}
-          >
-            {!imgError && coverUrl ? (
-              <>
-                {!imgLoaded && (
-                  <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300/50" />
-                )}
-                <img
-                  src={coverUrl}
-                  alt={`Cover of ${book.title}`}
-                  className={`w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110 ${
-                    imgLoaded ? "opacity-100" : "opacity-0"
-                  }`}
-                  onError={handleImageError}
-                  onLoad={handleImageLoad}
-                />
-              </>
-            ) : (
-              <BookIcon
-                className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300"
-                aria-hidden="true"
-              />
-            )}
-
-            {/* Overlay Gradient for Image */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
-
-            {isDownloading && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1.5 backdrop-blur-sm">
-                <progress
-                  className="progress progress-primary w-full h-1.5"
-                  value={(syncStatus?.progress || 0) * 100}
-                  max="100"
-                ></progress>
-              </div>
-            )}
-          </button>
+          <BookCover
+            book={book}
+            coverUrl={coverUrl}
+            imgError={imgError}
+            imgLoaded={imgLoaded}
+            isDownloading={isDownloading}
+            syncProgress={syncStatus?.progress}
+            handleImageError={handleImageError}
+            handleImageLoad={handleImageLoad}
+            onInfoClick={onInfoClick}
+            compact={false}
+          />
 
           <div className="flex flex-col gap-1 flex-1 overflow-hidden mt-1 pr-10">
-            <h3 className="text-sm font-bold truncate w-full" title={book.title}>
-              {book.title}
-            </h3>
-            <p className="text-sm text-base-content/70 truncate w-full" title={book.authors}>
-              {book.authors}
-            </p>
-
-            {book.series && (
-              <p className="text-[10px] sm:text-xs font-bold text-accent -mt-0.5 max-w-full truncate">
-                {book.series}{book.series_index ? ` #${book.series_index}` : ""}
-              </p>
-            )}
-
-            {book.tags && book.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {book.tags.slice(0, 3).map((tag) => (
-                  <div key={tag} className="badge badge-xs badge-ghost text-[9px]">
-                    {tag}
-                  </div>
-                ))}
-                {book.tags.length > 3 && (
-                  <span className="text-[10px] text-base-content/50">+{book.tags.length - 3}</span>
-                )}
-              </div>
-            )}
+            <BookMetadata book={book} compact={false} />
 
             {variant === "host-view" && (
               <p className="text-[10px] sm:text-xs text-base-content/50 font-mono break-all line-clamp-2">
@@ -352,7 +247,7 @@ export const BookCard: React.FC<BookCardProps> = ({
 
             {variant === "remote" && book.formats && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {book.formats.map((fmt) => (
+                {book.formats.map((fmt: string) => (
                   <div key={fmt} className="badge badge-xs badge-outline badge-info">
                     {fmt.toUpperCase()}
                   </div>

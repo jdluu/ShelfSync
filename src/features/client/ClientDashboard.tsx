@@ -1,16 +1,23 @@
-import { ArrowUp, BookOpen, ChevronDown, ChevronUp, Library, Search, WifiOff } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
-import { BookCard } from "@/components/library/BookCard";
-import { VirtualGrid } from "@/components/library/VirtualGrid";
+
 import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
-import { SkeletonCard } from "@/components/ui/Skeleton";
+// removed SkeletonCard import
 import { Discovery } from "@/features/discovery/Discovery";
 import type { Book } from "@/types/core";
+import { ClientBookGrid } from "./ClientBookGrid";
+import { ClientEmptyState } from "./ClientEmptyState";
+import { ClientErrorBanner } from "./ClientErrorBanner";
+import { ClientGroupedGrid } from "./ClientGroupedGrid";
+import { ClientHeader } from "./ClientHeader";
+import { ClientNoBooksFound } from "./ClientNoBooksFound";
+import { ClientSkeletonGrid } from "./ClientSkeletonGrid";
+import { ClientTabs } from "./ClientTabs";
 import { ClientToolbar } from "./ClientToolbar";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { useClientDashboard } from "./useClientDashboard";
@@ -77,8 +84,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     setDetailsBook({ book, coverUrl });
   };
 
-  const isGroupSelected = (groupBooks: Book[]) => 
-    groupBooks.length > 0 && groupBooks.every(b => selectedIds.has(b.id));
+  const isGroupSelected = (groupBooks: Book[]) =>
+    groupBooks.length > 0 && groupBooks.every((b) => selectedIds.has(b.id));
 
   // Determine the correct labeling for group selection
   const getGroupSelectLabel = (isSelected: boolean) => {
@@ -89,42 +96,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     return `${prefix} Group`;
   };
 
-  // Unified book rendering helper
-  const renderBookGrid = (booksToRender: Book[]) => (
-    <VirtualGrid
-      items={booksToRender}
-      viewMode={viewMode}
-      keyExtractor={(book) => book.id}
-      renderItem={(book) => {
-        const isLocalTab = activeTab === "library";
-        return (
-          <BookCard
-            book={book}
-            host={isLocalTab ? undefined : connectedHost}
-            token={isLocalTab ? undefined : token || undefined}
-            variant={isLocalTab ? "local" : "remote"}
-            compact={viewMode === "grid"}
-            onAction={() => {
-              if (isLocalTab && book.local_path) {
-                openLocalBook(book.local_path);
-              } else if (!isLocalTab) {
-                syncBook(book);
-              }
-            }}
-            onInfoClick={handleInfoClick}
-            selected={selectedIds.has(book.id)}
-            selectable={selectionMode}
-            onSelect={() => toggleSelection(book.id)}
-            onToggleStatus={isLocalTab ? () => handleToggleStatus(book) : undefined}
-            syncStatus={!isLocalTab ? syncProgress[book.id] : undefined}
-            actionLabel={isLocalTab ? "Open File" : "Sync"}
-            actionColor={isLocalTab ? "green" : "blue"}
-          />
-        );
-      }}
-    />
-  );
-
   return (
     <>
       <SkipLink />
@@ -132,128 +103,17 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
 
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
         <div className="container mx-auto max-w-7xl">
-          {/* Storage Path Prompt - Only show when relevant */}
-          {!offlineStoragePath && (activeTab === "library" || connectedHost) && (
-            <div className="mb-4 p-4 bg-warning/10 border border-warning/20 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
-                  <Search className="w-5 h-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-base-content">Set Download Location</p>
-                  <p className="text-xs text-base-content/60">
-                    Choose where to save your books before syncing.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={selectOfflineStorageFolder}
-                className="btn btn-warning btn-sm w-full sm:w-auto"
-              >
-                Select Folder
-              </button>
-            </div>
-          )}
+          <ClientHeader
+            activeTab={activeTab}
+            connectedHost={connectedHost}
+            error={error || null}
+            offlineStoragePath={offlineStoragePath}
+            selectOfflineStorageFolder={selectOfflineStorageFolder}
+            disconnect={disconnect}
+            clearError={clearError}
+          />
 
-          {/* Connection banner */}
-          {connectedHost && (
-            <div className="mb-4 p-3 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="badge badge-success badge-xs gap-1 py-2 font-bold px-2">
-                  <div className="w-1 h-1 rounded-full bg-white animate-pulse" />
-                  Live Sync
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-xs font-bold text-base-content/90 leading-none">
-                    {connectedHost.hostname}
-                  </p>
-                  <p className="text-[10px] font-mono opacity-50">
-                    {connectedHost.ip}:{connectedHost.port}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-primary uppercase tracking-wider opacity-70">
-                  Connected
-                </div>
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  className="btn btn-xs btn-ghost border border-base-300 gap-1"
-                  aria-label="Disconnect from host"
-                >
-                  <WifiOff className="w-3 h-3" />
-                  <span>Exit</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Error banner */}
-          {error && (
-            <div role="alert" className="alert alert-error mb-6 flex justify-between items-start">
-              <div className="flex gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{error}</span>
-              </div>
-              <button
-                type="button"
-                onClick={clearError}
-                className="btn btn-ghost btn-xs btn-circle"
-                aria-label="Dismiss error"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* iOS-Style Segmented Control */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-base-200/80 backdrop-blur-md p-1.5 rounded-2xl flex items-center relative shadow-inner border border-base-content/5 w-full max-w-sm">
-              <div
-                className="absolute inset-y-1.5 w-[calc(50%-0.375rem)] bg-base-100 rounded-xl shadow-sm border border-base-content/5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-0"
-                style={{
-                  transform: activeTab === "explore" ? "translateX(0)" : "translateX(100%)",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setActiveTab("explore")}
-                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors duration-300 z-10 ${
-                  activeTab === "explore"
-                    ? "text-primary"
-                    : "text-base-content/50 hover:text-base-content/80"
-                }`}
-              >
-                Explore
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("library")}
-                className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-colors duration-300 z-10 ${
-                  activeTab === "library"
-                    ? "text-primary"
-                    : "text-base-content/50 hover:text-base-content/80"
-                }`}
-              >
-                My Library
-              </button>
-            </div>
-          </div>
+          <ClientTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
           {/* Toolbar - Only show when there is something to filter/sort/group */}
           {((activeTab === "explore" && connectedHost) ||
@@ -281,115 +141,52 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
           <div className="mt-8">
             {activeTab === "explore" ? (
               <div className="flex flex-col gap-4">
-                {error && (
-                  <div
-                    role="alert"
-                    className="alert alert-error mb-6 flex justify-between items-start"
-                  >
-                    <div className="flex gap-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="stroke-current shrink-0 h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{error}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={clearError}
-                      className="btn btn-ghost btn-xs btn-circle"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
+                {error && <ClientErrorBanner error={error} clearError={clearError} />}
 
                 {loading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <SkeletonCard key={`skeleton-card-${i.toString()}`} />
-                    ))}
-                  </div>
+                  <ClientSkeletonGrid />
                 ) : !connectedHost ? (
                   <Discovery onConnect={connect} />
                 ) : books.length === 0 ? (
-                  <div className="text-center py-24 px-4 bg-base-100 rounded-[2rem] border border-base-content/10 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="w-20 h-20 rounded-2xl bg-base-200/80 flex items-center justify-center mb-6 ring-1 ring-base-content/5 group-hover:scale-105 transition-transform duration-300">
-                      <BookOpen className="w-10 h-10 text-base-content/30 group-hover:text-primary transition-colors duration-300" />
-                    </div>
-                    <h3 className="text-2xl font-display font-bold mb-3 tracking-tight">
-                      No books found
-                    </h3>
-                    <p className="text-base-content/60 max-w-sm mx-auto text-sm leading-relaxed mb-8">
-                      The host doesn't seem to have any books in the selected library folder.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={refresh}
-                      className="btn btn-primary px-8 shadow-sm hover:shadow-md relative z-10 w-full sm:w-auto"
-                    >
-                      Refresh Library
-                    </button>
-                  </div>
+                  <ClientNoBooksFound refresh={refresh} />
                 ) : groupedBooks ? (
-                  <div className="space-y-12">
-                    {[...groupedBooks.entries()].map(([groupName, groupBooks]) => (
-                      <section
-                        key={groupName}
-                        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-                      >
-                        <div className="flex items-center justify-between mb-6 px-1 gap-2">
-                          <button
-                            type="button"
-                            className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1 -ml-1"
-                            onClick={() => toggleGroupCollapse(groupName)}
-                            aria-expanded={!collapsedGroups.has(groupName)}
-                            aria-controls={`group-grid-${groupName.replace(/\s+/g, '-')}`}
-                          >
-                            <h3 className="text-xl font-bold tracking-tight truncate">
-                              {groupName}
-                            </h3>
-                            <span className="badge badge-ghost font-mono text-[10px] opacity-50 shrink-0">
-                              {groupBooks.length} items
-                            </span>
-                            {collapsedGroups.has(groupName) ? (
-                              <ChevronDown className="w-5 h-5 text-base-content/50 shrink-0" />
-                            ) : (
-                              <ChevronUp className="w-5 h-5 text-base-content/50 shrink-0" />
-                            )}
-                          </button>
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-ghost text-primary"
-                              onClick={() => selectGroup(groupBooks)}
-                            >
-                              {getGroupSelectLabel(isGroupSelected(groupBooks))}
-                            </button>
-                          </div>
-                        </div>
-                        <div
-                          id={`group-grid-${groupName.replace(/\s+/g, '-')}`}
-                          className={`transition-all duration-300 ${collapsedGroups.has(groupName) ? 'hidden' : 'block'}`}
-                        >
-                          {!collapsedGroups.has(groupName) && renderBookGrid(groupBooks)}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
+                  <ClientGroupedGrid
+                    groupedBooks={groupedBooks}
+                    collapsedGroups={collapsedGroups}
+                    toggleGroupCollapse={toggleGroupCollapse}
+                    selectGroup={selectGroup}
+                    getGroupSelectLabel={getGroupSelectLabel}
+                    isGroupSelected={isGroupSelected}
+                    viewMode={viewMode}
+                    activeTab={activeTab}
+                    connectedHost={connectedHost}
+                    token={token}
+                    selectedIds={selectedIds}
+                    selectionMode={selectionMode}
+                    syncProgress={syncProgress}
+                    openLocalBook={openLocalBook}
+                    syncBook={syncBook}
+                    toggleSelection={toggleSelection}
+                    handleToggleStatus={handleToggleStatus}
+                    handleInfoClick={handleInfoClick}
+                  />
                 ) : (
                   <div className="animate-in fade-in duration-500">
-                    {renderBookGrid(filteredRemoteBooks)}
+                    <ClientBookGrid
+                      books={filteredRemoteBooks}
+                      viewMode={viewMode}
+                      activeTab={activeTab}
+                      connectedHost={connectedHost}
+                      token={token}
+                      selectedIds={selectedIds}
+                      selectionMode={selectionMode}
+                      syncProgress={syncProgress}
+                      openLocalBook={openLocalBook}
+                      syncBook={syncBook}
+                      toggleSelection={toggleSelection}
+                      handleToggleStatus={handleToggleStatus}
+                      handleInfoClick={handleInfoClick}
+                    />
                   </div>
                 )}
               </div>
@@ -404,74 +201,45 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                 </div>
 
                 {localBooks.length === 0 ? (
-                  <div className="text-center py-24 px-4 bg-base-100 rounded-[2rem] border border-base-content/10 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="w-20 h-20 rounded-2xl bg-base-200/80 flex items-center justify-center mb-6 ring-1 ring-base-content/5 group-hover:scale-105 transition-transform duration-300">
-                      <Library className="w-10 h-10 text-base-content/30 group-hover:text-primary transition-colors duration-300" />
-                    </div>
-                    <h3 className="text-2xl font-display font-bold mb-3 tracking-tight">
-                      Device library is empty
-                    </h3>
-                    <p className="text-base-content/60 max-w-sm mx-auto text-sm leading-relaxed mb-8">
-                      Switch to the Explore tab to find and download books from your host.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("explore")}
-                      className="btn btn-primary btn-outline px-8 shadow-sm hover:shadow-md relative z-10 w-full sm:w-auto"
-                    >
-                      Browse Books
-                    </button>
-                  </div>
+                  <ClientEmptyState setActiveTab={setActiveTab} />
                 ) : groupedBooks ? (
-                  <div className="space-y-12">
-                    {[...groupedBooks.entries()].map(([groupName, groupBooks]) => (
-                      <section
-                        key={groupName}
-                        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-                      >
-                        <div className="flex items-center justify-between mb-6 px-1 gap-2">
-                          <button
-                            type="button"
-                            className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity text-left outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-1 -ml-1"
-                            onClick={() => toggleGroupCollapse(groupName)}
-                            aria-expanded={!collapsedGroups.has(groupName)}
-                            aria-controls={`local-group-grid-${groupName.replace(/\s+/g, '-')}`}
-                          >
-                            <h3 className="text-xl font-bold tracking-tight truncate">
-                              {groupName}
-                            </h3>
-                            <span className="badge badge-ghost font-mono text-[10px] opacity-50 shrink-0">
-                              {groupBooks.length} items
-                            </span>
-                            {collapsedGroups.has(groupName) ? (
-                              <ChevronDown className="w-5 h-5 text-base-content/50 shrink-0" />
-                            ) : (
-                              <ChevronUp className="w-5 h-5 text-base-content/50 shrink-0" />
-                            )}
-                          </button>
-                          <div className="flex gap-2 shrink-0">
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-ghost text-primary"
-                              onClick={() => selectGroup(groupBooks)}
-                            >
-                              {getGroupSelectLabel(isGroupSelected(groupBooks))}
-                            </button>
-                          </div>
-                        </div>
-                        <div
-                          id={`local-group-grid-${groupName.replace(/\s+/g, '-')}`}
-                          className={`transition-all duration-300 ${collapsedGroups.has(groupName) ? 'hidden' : 'block'}`}
-                        >
-                          {!collapsedGroups.has(groupName) && renderBookGrid(groupBooks)}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
+                  <ClientGroupedGrid
+                    groupedBooks={groupedBooks}
+                    collapsedGroups={collapsedGroups}
+                    toggleGroupCollapse={toggleGroupCollapse}
+                    selectGroup={selectGroup}
+                    getGroupSelectLabel={getGroupSelectLabel}
+                    isGroupSelected={isGroupSelected}
+                    viewMode={viewMode}
+                    activeTab={activeTab}
+                    connectedHost={connectedHost}
+                    token={token}
+                    selectedIds={selectedIds}
+                    selectionMode={selectionMode}
+                    syncProgress={syncProgress}
+                    openLocalBook={openLocalBook}
+                    syncBook={syncBook}
+                    toggleSelection={toggleSelection}
+                    handleToggleStatus={handleToggleStatus}
+                    handleInfoClick={handleInfoClick}
+                  />
                 ) : (
                   <div className="animate-in fade-in duration-500">
-                    {renderBookGrid(filteredLocalBooks)}
+                    <ClientBookGrid
+                      books={filteredLocalBooks}
+                      viewMode={viewMode}
+                      activeTab={activeTab}
+                      connectedHost={connectedHost}
+                      token={token}
+                      selectedIds={selectedIds}
+                      selectionMode={selectionMode}
+                      syncProgress={syncProgress}
+                      openLocalBook={openLocalBook}
+                      syncBook={syncBook}
+                      toggleSelection={toggleSelection}
+                      handleToggleStatus={handleToggleStatus}
+                      handleInfoClick={handleInfoClick}
+                    />
                   </div>
                 )}
               </section>
@@ -495,7 +263,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
       {/* Selection overlay */}
       {selectionMode && (
         <SelectionOverlay
-          selectedBooks={(activeTab === "explore" ? books : localBooks).filter(b => selectedIds.has(b.id))}
+          selectedBooks={(activeTab === "explore" ? books : localBooks).filter((b) =>
+            selectedIds.has(b.id),
+          )}
           selectAll={selectAll}
           selectNone={selectNone}
           onDeselect={toggleSelection}

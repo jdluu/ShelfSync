@@ -1,6 +1,6 @@
-import { Book as BookIcon, Building2, Calendar, FileText, Globe, Star, Tag, X } from "lucide-react";
-import type React from "react";
+import { Book as BookIcon, Building2, Calendar, FileText, Globe, Tag, X } from "lucide-react";
 import type { Book } from "@/types/core";
+import { StarRating } from "./StarRating";
 
 interface BookDetailsModalProps {
   isOpen: boolean;
@@ -32,21 +32,6 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
     if (status === "finished") return "badge-success";
     if (status === "reading") return "badge-info";
     return "badge-ghost";
-  };
-
-  /** Render star rating (Calibre stores 0-10, we display 0-5). */
-  const renderStars = (rating: number) => {
-    const stars = Math.round(rating / 2);
-    return (
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={`star-${i.toString()}`}
-            className={`w-3.5 h-3.5 ${i < stars ? "text-warning fill-warning" : "text-base-content/20"}`}
-          />
-        ))}
-      </div>
-    );
   };
 
   return (
@@ -103,7 +88,9 @@ export const BookDetailsModal: React.FC<BookDetailsModalProps> = ({
 
             {/* Rating */}
             {book.rating != null && book.rating > 0 && (
-              <div className="mt-2">{renderStars(book.rating)}</div>
+              <div className="mt-2">
+                <StarRating rating={book.rating} />
+              </div>
             )}
 
             {/* Description */}

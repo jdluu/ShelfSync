@@ -1,3 +1,4 @@
+import { openPath } from "@tauri-apps/plugin-opener";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SortOption } from "@/components/ui/SortMenu";
 import { useHostManifest } from "@/hooks/useLibraryQuery";
@@ -7,7 +8,6 @@ import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { isTauri } from "@/utils/tauri";
-import { openPath } from "@tauri-apps/plugin-opener";
 
 export type GroupByOption = "none" | "series" | "author" | "tag";
 
@@ -261,7 +261,7 @@ export function useClientDashboard() {
   const selectGroup = (groupBooks: Book[]) => {
     setSelectionMode(true);
     const next = new Set(selectedIds);
-    const allSelected = groupBooks.every(b => next.has(b.id));
+    const allSelected = groupBooks.every((b) => next.has(b.id));
 
     if (allSelected) {
       for (const b of groupBooks) next.delete(b.id);
