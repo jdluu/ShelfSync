@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-03-05
+
+### Changed
+- **Performance & Stability**: Upgraded internal state management and completely reworked screen rendering for the Client Dashboard. Navigating your library should now feel noticeably smoother and consume fewer system resources.
+- **Code Health**: Resolved underlying architectural and linting issues identified by code quality tools to ensure a more resilient and maintainable app.
+- **Settings & Config**: Refined component structures and internal security configurations to guarantee reliable connections and offline features.
+
 ## [1.1.2] - 2026-03-03
 
 ### Changed
