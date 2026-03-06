@@ -7,6 +7,7 @@ import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { isTauri } from "@/utils/tauri";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 export type GroupByOption = "none" | "series" | "author" | "tag";
 
@@ -68,7 +69,6 @@ export function useClientDashboard() {
 
   const openLocalBook = async (path: string) => {
     if (isTauri()) {
-      const { openPath } = await import("@tauri-apps/plugin-opener");
       await openPath(path);
     } else {
       console.warn("Opening book path in browser (not supported):", path);

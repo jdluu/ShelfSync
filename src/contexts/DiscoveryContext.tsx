@@ -10,6 +10,7 @@ import { api } from "@/services/apiClient";
 import type { ConnectionInfo, Host } from "@/types/core";
 import type { DiscoveryContextType } from "@/types/discovery";
 import { isTauri, safeStoreLoad } from "@/utils/tauri";
+import { listen } from "@tauri-apps/api/event";
 
 const DiscoveryContext = createContext<DiscoveryContextType | undefined>(undefined);
 
@@ -86,13 +87,11 @@ export const DiscoveryProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     let unlisten: (() => void) | undefined;
     if (isTauri()) {
-      import("@tauri-apps/api/event").then(({ listen }) => {
-        listen<Host[]>("discovery-update", (event) => {
-          setActiveHosts(event.payload);
-          updateKnownHosts(event.payload);
-        }).then((u) => {
-          unlisten = u;
-        });
+      listen<Host[]>("discovery-update", (event) => {
+        setActiveHosts(event.payload);
+        updateKnownHosts(event.payload);
+      }).then((u) => {
+        unlisten = u;
       });
     }
 

@@ -2,7 +2,9 @@ import { ArrowLeft, FileText, Library, Settings, Shield, User, Wifi, X } from "l
 import type React from "react";
 import { useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useToastStore } from "@/store/toastStore";
 import { isTauri } from "@/utils/tauri";
+import { requestPermission } from "@tauri-apps/plugin-notification";
 import { ARTICLES } from "./help/helpArticles";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
@@ -240,11 +242,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                       <button
                         type="button"
                         onClick={async () => {
-                          const { requestPermission } = await import(
-                            "@tauri-apps/plugin-notification"
-                          );
                           const res = await requestPermission();
-                          const { useToastStore } = await import("@/store/toastStore");
+                          
                           if (res === "granted") {
                             useToastStore
                               .getState()

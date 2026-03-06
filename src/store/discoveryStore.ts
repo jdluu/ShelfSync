@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { api } from "@/services/apiClient";
 import type { ConnectionInfo, Host } from "@/types/core";
 import { isTauri, safeStoreLoad } from "@/utils/tauri";
+import { listen } from "@tauri-apps/api/event";
 
 interface DiscoveryState {
   hosts: Host[];
@@ -100,13 +101,11 @@ export const useDiscoveryStore = create<DiscoveryState & DiscoveryActions>((set,
 
     let unlisten: (() => void) | undefined;
     if (isTauri()) {
-      import("@tauri-apps/api/event").then(({ listen }) => {
-        listen<Host[]>("discovery-update", (event) => {
-          set({ hosts: event.payload });
-          get().updateKnownHosts(event.payload);
-        }).then((u) => {
-          unlisten = u;
-        });
+      listen<Host[]>("discovery-update", (event) => {
+        set({ hosts: event.payload });
+        get().updateKnownHosts(event.payload);
+      }).then((u) => {
+        unlisten = u;
       });
     }
 

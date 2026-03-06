@@ -1,3 +1,6 @@
+import { invoke } from "@tauri-apps/api/core";
+import { load } from "@tauri-apps/plugin-store";
+
 /**
  * Utility to detect if the application is running within a Tauri webview.
  */
@@ -25,7 +28,6 @@ export async function safeInvoke<T>(
   defaultValue?: T,
 ): Promise<T> {
   if (isTauri()) {
-    const { invoke } = await import("@tauri-apps/api/core");
     return invoke<T>(command, args);
   }
 
@@ -51,7 +53,6 @@ interface Store {
 
 export async function safeStoreLoad(path: string): Promise<Store> {
   if (isTauri()) {
-    const { load } = await import("@tauri-apps/plugin-store");
     return load(path) as unknown as Store;
   }
 
