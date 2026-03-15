@@ -25,16 +25,42 @@ pub async fn check_pin(
     State(state): State<SharedState>,
     Json(payload): Json<PinRequest>,
 ) -> impl IntoResponse {
-    let pin = match state.pin.lock() {
-        Ok(p) => p,
+    let mut rate_limit = match state.failed_pin_attempts.lock() {
+        Ok(guard) => guard,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
-    let valid = payload.pin == *pin;
-    info!(
-        "PIN check: result={}",
-        if valid { "accepted" } else { "rejected" }
-    );
+
+    let now = std::time::Instant::now();
+    
+    // Reset failed attempts if older than 5 minutes
+    if now.duration_since(rate_limit.1) > std::time::Duration::from_secs(300) {
+        rate_limit.0 = 0;
+    }
+
+    if rate_limit.0 >= 5 {
+        error!("PIN brute-force attempt blocked.");
+        return (StatusCode::TOO_MANY_REQUESTS, "Too many failed attempts. Try again later.").into_response();
+    }
+    
+    // We only hold the rate_limit lock, so we must be careful with lock ordering,
+    // but the pin lock is acquired cleanly here since it's just a leaf lock.
+    let pin = match state.pin.lock() {
+        Ok(p) => p.clone(),
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+    };
+
+    let valid = payload.pin == pin;
+    
     if valid {
+        // Reset rate limit on success
+        rate_limit.0 = 0;
+        rate_limit.1 = now;
+        
+        // We can drop the rate limit lock early to avoid deadlocks 
+        // with authorized_tokens lock, though unlikely.
+        drop(rate_limit);
+        
+        info!("PIN check: result=accepted");
         let token = uuid::Uuid::new_v4().to_string();
         if let Ok(mut tokens) = state.authorized_tokens.lock() {
             tokens.insert(token.clone());
@@ -44,7 +70,9 @@ pub async fn check_pin(
         info!("PIN accepted. Issued new token.");
         (StatusCode::OK, Json(AuthResponse { token })).into_response()
     } else {
-        error!("PIN rejected.");
+        rate_limit.0 += 1;
+        rate_limit.1 = now;
+        error!("PIN check: result=rejected");
         (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
     }
 }

@@ -23,6 +23,46 @@ pub async fn get_manifest(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
+    let library_path_opt = {
+        let guard = match state.library_path.lock() {
+            Ok(g) => g,
+            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+        };
+        guard.clone()
+    };
+
+    if let Some(library_path) = library_path_opt {
+        let db_path = FilePath::new(&library_path).join("metadata.db");
+        if let Ok(metadata) = tokio::fs::metadata(&db_path).await {
+            if let Ok(mtime) = metadata.modified() {
+                let mut needs_refresh = false;
+                if let Ok(mut last_mtime_guard) = state.last_metadata_mtime.lock() {
+                    if last_mtime_guard.is_none() || last_mtime_guard.unwrap() < mtime {
+                        *last_mtime_guard = Some(mtime);
+                        needs_refresh = true;
+                    }
+                }
+
+                if needs_refresh {
+                    log::info!("Detected metadata.db change. Reloading books...");
+                    let pool_opt = {
+                        let pool_guard = state.db_pool.read().await;
+                        pool_guard.clone()
+                    };
+                    if let Some(pool) = pool_opt {
+                        if let Ok(new_books) = crate::core::db::get_calibre_metadata(&pool).await {
+                            if let Ok(mut books_guard) = state.books.lock() {
+                                *books_guard = new_books;
+                            }
+                        } else {
+                            log::error!("Failed to reload Calibre metadata.");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let books = match state.books.lock() {
         Ok(b) => b,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
@@ -69,7 +109,13 @@ pub async fn download_book(
         }
     };
 
-    let book_dir = FilePath::new(&library_path).join(&book.path);
+    // Sanitize path to prevent directory traversal
+    let safe_book_path: std::path::PathBuf = FilePath::new(&book.path)
+        .components()
+        .filter(|c| matches!(c, std::path::Component::Normal(_)))
+        .collect();
+
+    let book_dir = FilePath::new(&library_path).join(safe_book_path);
 
     let (file_path, found_format) = match find_book_file(&book_dir, &format).await {
         Some(res) => res,

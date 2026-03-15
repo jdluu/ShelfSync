@@ -57,9 +57,7 @@ impl SyncManager {
                 // Remove from active queue
                 match active_queue_clone.lock() {
                     Ok(mut queue) => {
-                        if !queue.is_empty() {
-                            queue.remove(0);
-                        }
+                        queue.retain(|b| b.id != task.book.id);
                     }
                     Err(e) => log::warn!("Could not update sync queue: {}", e),
                 }
@@ -100,43 +98,58 @@ fn sanitize_filename(name: &str) -> String {
         .to_string()
 }
 
+fn escape_xml(s: &str) -> String {
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '&' => escaped.push_str("&amp;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&apos;"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 fn write_metadata_opf(book: &Book, opf_path: &std::path::Path) {
     let mut opf = String::from("<?xml version='1.0' encoding='utf-8'?>\n");
     opf.push_str("<package xmlns=\"http://www.idpf.org/2007/opf\" unique-identifier=\"uuid_id\" version=\"2.0\">\n");
     opf.push_str("  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:opf=\"http://www.idpf.org/2007/opf\">\n");
     
     // Process basic metadata escaping XML where necessary
-    let title = book.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    let title = escape_xml(&book.title);
     opf.push_str(&format!("    <dc:title>{}</dc:title>\n", title));
     
     for author in book.authors.split(',') {
-        let clean_author = author.trim().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_author = escape_xml(author.trim());
         opf.push_str(&format!("    <dc:creator opf:role=\"aut\">{}</dc:creator>\n", clean_author));
     }
     
     if let Some(desc) = &book.description {
-        let clean_desc = desc.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_desc = escape_xml(desc);
         opf.push_str(&format!("    <dc:description>{}</dc:description>\n", clean_desc));
     }
     
     if let Some(pub_val) = &book.publisher {
-        let clean_pub = pub_val.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_pub = escape_xml(pub_val);
         opf.push_str(&format!("    <dc:publisher>{}</dc:publisher>\n", clean_pub));
     }
     
     for tag in &book.tags {
-        let clean_tag = tag.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_tag = escape_xml(tag);
         opf.push_str(&format!("    <dc:subject>{}</dc:subject>\n", clean_tag));
     }
     
     if let Some(lang) = &book.language {
-        let clean_lang = lang.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_lang = escape_xml(lang);
         opf.push_str(&format!("    <dc:language>{}</dc:language>\n", clean_lang));
     }
 
     opf.push_str("    <meta name=\"calibre:timestamp\" content=\"\"/>\n");
     if let Some(series) = &book.series {
-        let clean_series = series.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        let clean_series = escape_xml(series);
         opf.push_str(&format!("    <meta name=\"calibre:series\" content=\"{}\"/>\n", clean_series));
         opf.push_str(&format!("    <meta name=\"calibre:series_index\" content=\"{}\"/>\n", book.series_index));
     }
@@ -218,44 +231,87 @@ async fn process_task<R: Runtime>(
         write_metadata_opf(&book, &opf_path);
     }
 
-    let response = client
-        .get(url)
-        .header("Authorization", format!("Bearer {}", task.token))
-        .send()
-        .await?;
+    let max_retries = 3;
+    let mut attempt = 0;
+    
+    loop {
+        attempt += 1;
+        
+        let response_res = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", task.token))
+            .send()
+            .await;
+            
+        match response_res {
+            Ok(response) if response.status().is_success() => {
+                let total_size = response.content_length().unwrap_or(0);
+                let mut downloaded: u64 = 0;
+                let mut stream = response.bytes_stream();
+                
+                // Create or truncate file before downloading
+                let mut file = match fs::File::create(&dest_path) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        emit_progress(app, &book, 0.0, "error", Some("File creation failed".to_string()), queue);
+                        return Err(e.into());
+                    }
+                };
 
-    if !response.status().is_success() {
-        emit_progress(
-            app,
-            &book,
-            0.0,
-            "error",
-            Some("Server returned error".to_string()),
-            queue,
-        );
-        return Err("Download failed".into());
-    }
+                emit_progress(app, &book, 0.0, "downloading", None, queue);
 
-    let total_size = response.content_length().unwrap_or(0);
-    let mut downloaded: u64 = 0;
-    let mut stream = response.bytes_stream();
-    let mut file = fs::File::create(&dest_path)?;
+                let mut download_success = true;
+                while let Some(item) = stream.next().await {
+                    match item {
+                        Ok(chunk) => {
+                            if let Err(e) = std::io::copy(&mut &*chunk, &mut file) {
+                                log::error!("Disk write error: {}", e);
+                                download_success = false;
+                                break;
+                            }
+                            downloaded += chunk.len() as u64;
 
-    emit_progress(app, &book, 0.0, "downloading", None, queue);
-
-    while let Some(item) = stream.next().await {
-        let chunk = item?;
-        std::io::copy(&mut &*chunk, &mut file)?;
-        downloaded += chunk.len() as u64;
-
-        if total_size > 0 {
-            let progress = downloaded as f64 / total_size as f64;
-            emit_progress(app, &book, progress, "downloading", None, queue);
+                            if total_size > 0 {
+                                let progress = downloaded as f64 / total_size as f64;
+                                emit_progress(app, &book, progress, "downloading", None, queue);
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!("Network error during stream on attempt {}: {}", attempt, e);
+                            download_success = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if download_success {
+                    emit_progress(app, &book, 1.0, "completed", None, queue);
+                    return Ok(());
+                }
+            }
+            Ok(response) => {
+                log::warn!("Server returned {} on attempt {}", response.status(), attempt);
+            }
+            Err(e) => {
+                log::warn!("Request failed on attempt {}: {}", attempt, e);
+            }
         }
+        
+        if attempt >= max_retries {
+            emit_progress(
+                app,
+                &book,
+                0.0,
+                "error",
+                Some("Download failed after retries".to_string()),
+                queue,
+            );
+            return Err("Download failed".into());
+        }
+        
+        // Wait before retrying (exponential backoff)
+        tokio::time::sleep(std::time::Duration::from_secs(2_u64.pow(attempt as u32))).await;
     }
-
-    emit_progress(app, &book, 1.0, "completed", None, queue);
-    Ok(())
 }
 
 fn emit_progress<R: Runtime>(

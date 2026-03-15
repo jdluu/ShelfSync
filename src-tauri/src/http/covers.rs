@@ -66,8 +66,14 @@ pub async fn get_cover(
         }
     };
 
+    // Sanitize path to prevent directory traversal
+    let safe_book_path: std::path::PathBuf = FilePath::new(&book.path)
+        .components()
+        .filter(|c| matches!(c, std::path::Component::Normal(_)))
+        .collect();
+
     let cover_path = FilePath::new(&library_path)
-        .join(&book.path)
+        .join(safe_book_path)
         .join("cover.jpg");
 
     if !cover_path.exists() {
@@ -87,7 +93,7 @@ pub async fn get_cover(
         }
     };
 
-    match get_cached_or_resized_cover(&app_data_dir, &cover_path, book_id).await {
+    match get_cached_or_resized_cover(&app_data_dir, &cover_path, book_id, &state).await {
         Ok(bytes) => Response::builder()
             .header(header::CONTENT_TYPE, "image/jpeg")
             .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
@@ -110,6 +116,7 @@ pub async fn get_cover(
 /// * `app_data_dir` - The application data directory where cache is stored.
 /// * `cover_path` - The absolute path to the source cover image.
 /// * `book_id` - The unique ID of the book, used for cache filenames.
+/// * `state` - The shared application state for concurrency control.
 ///
 /// # Returns
 ///
@@ -118,26 +125,43 @@ async fn get_cached_or_resized_cover(
     app_data_dir: &std::path::Path,
     cover_path: &std::path::Path,
     book_id: i64,
+    state: &SharedState,
 ) -> Result<Vec<u8>, String> {
     let cache_dir = app_data_dir.join("cache").join("covers");
     let cache_file_path = cache_dir.join(format!("{}.jpg", book_id));
 
-    if cache_file_path.exists() {
-        if let Ok(bytes) = tokio::fs::read(&cache_file_path).await {
-            return Ok(bytes);
+    loop {
+        if cache_file_path.exists() {
+            if let Ok(bytes) = tokio::fs::read(&cache_file_path).await {
+                return Ok(bytes);
+            }
         }
+
+        let mut active = state.active_cover_resizes.lock().await;
+        if active.contains(&book_id) {
+            drop(active);
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            continue;
+        }
+
+        active.insert(book_id);
+        break;
     }
 
     let cover_path_owned = cover_path.to_path_buf();
     let cache_dir_owned = cache_dir.clone();
     let cache_file_path_owned = cache_file_path.clone();
 
-    tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || {
         std::fs::create_dir_all(&cache_dir_owned).map_err(|_| "Failed to create cache dir")?;
         resize_and_save_cover(&cover_path_owned, &cache_file_path_owned)
     })
-    .await
-    .map_err(|e| e.to_string())?
+    .await;
+    
+    // Always remove from active resizes, even on panic
+    state.active_cover_resizes.lock().await.remove(&book_id);
+
+    result.map_err(|e| e.to_string())?
 }
 
 /// Resizes a cover image to 300×450 and saves the JPEG to the destination path.
