@@ -1,6 +1,6 @@
 [package]
 name = "shelfsync"
-version = "1.1.3"
+version = "1.2.0"
 description = "Secure cross-device library synchronization"
 authors = ["jdluu"]
 edition = "2021"
@@ -24,31 +24,31 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 axum = "0.8.8"
-tokio = { version = "1.49.0", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 tower-http = { version = "0.6.8", features = ["cors"] }
-mdns-sd = "0.17.1"
-local-ip-address = "0.6.9"
-network-interface = "2.0.0"
+mdns-sd = "0.18.2"
+local-ip-address = "0.6.10"
+network-interface = "2.0.5"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
-uuid = { version = "1.19.0", features = ["v4", "fast-rng"] }
+uuid = { version = "1.22.0", features = ["v4", "fast-rng"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 hostname = "0.4.2"
-image = "0.25.9"
+image = "0.25.10"
 log = "0.4.29"
-env_logger = "0.11.8"
-thiserror = "2.0.17"
-rand = "0.9.2"
-zip = "2.2.3"
-reqwest = { version = "0.12", default-features = false, features = ["stream", "json", "rustls-tls-webpki-roots"] }
+env_logger = "0.11.9"
+thiserror = "2.0.18"
+rand = "0.10.0"
+zip = "8.2.0"
+reqwest = { version = "0.13.2", default-features = false, features = ["stream", "json", "rustls"] }
 rustls = { version = "0.23", features = ["ring"] }
 tauri-plugin-notification = "2"
 tauri-plugin-http = "2"
 futures-util = "0.3"
-rusqlite = { version = "0.31.0", features = ["bundled"] }
+rusqlite = { version = "0.38.0", features = ["bundled"] }
 tauri-plugin-updater = "2.10.0"
-deadpool-sqlite = "0.8.1"
+deadpool-sqlite = "0.13.0"
 tauri-plugin-process = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
@@ -56,8 +56,8 @@ tauri-plugin-process = "2"
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 
 [dev-dependencies]
-axum-test = "18.6.0"
-tempfile = "3.24.0"
+axum-test = "19.1.1"
+tempfile = "3.27.0"
 
 [profile.release]
 codegen-units = 1
