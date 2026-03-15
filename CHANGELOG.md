@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-15
+
+### Added
+- **Smart Connection Persistence**: The app now accurately remembers the correct network port even if it changes between sessions, making discovery more reliable.
+- **Enhanced Sync Reliability**: Implemented automatic retries for book downloads. If your Wi-Fi drops momentarily, the app will now pause and try again instead of failing the sync.
+- **Auto-Refreshing Library**: The host now automatically detects changes to your Calibre library. If you add a book in Calibre, it will show up on your other devices without needing a restart.
+
+### Changed
+- **Major Performance Boost**: Optimized how the app reads and stores book information. Browsing and syncing large libraries is now significantly faster and more battery-efficient on mobile devices.
+- **Improved Space Management**: When you remove a book from your device, the app now proactively cleans up all associated files, including covers and hidden metadata, to keep your storage organized.
+- **Faster Image Loading**: Improved how book covers are processed and cached, reducing wait times and data usage when scrolling through your library.
+
+### Fixed
+- **Security Hardening**: Added protection against unauthorized access attempts on your local network and strengthened how the app handles file paths to ensure your data stays safe.
+- **Data Integrity**: Fixed a rare issue where syncing multiple batches of books at once could show incorrect progress or miss books.
+- **Modern Infrastructure**: Fully updated all underlying system libraries to the latest stable versions for better long-term stability and compatibility.
+
 ## [1.1.3] - 2026-03-05
 
 ### Changed
