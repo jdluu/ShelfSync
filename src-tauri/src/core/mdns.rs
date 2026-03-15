@@ -54,13 +54,19 @@ pub fn spawn_mdns_task(
                             .next()
                             .map(|a| a.to_string())
                             .unwrap_or_default();
-                        let hostname = info.get_fullname().to_string();
+                        let fullname = info.get_fullname().to_string();
 
-                        if !hosts.iter().any(|h| h.ip == ip) {
+                        if let Some(existing) = hosts.iter_mut().find(|h| h.hostname == fullname) {
+                            if existing.ip != ip || existing.port != info.get_port() {
+                                existing.ip = ip;
+                                existing.port = info.get_port();
+                                updated = true;
+                            }
+                        } else if !hosts.iter().any(|h| h.ip == ip) {
                             hosts.push(ConnectionInfo {
                                 ip,
                                 port: info.get_port(),
-                                hostname,
+                                hostname: fullname,
                                 pin: None,
                             });
                             updated = true;
@@ -80,11 +86,13 @@ pub fn spawn_mdns_task(
             }
 
             if updated {
-                let hosts = match discovery.hosts.lock() {
+                // Debounce a bit or just emit. Let's just emit for now, but use a clone 
+                // of the data to avoid holding the lock too long during serialization.
+                let hosts_to_emit = match discovery.hosts.lock() {
                     Ok(h) => h.clone(),
                     Err(_) => continue,
                 };
-                if let Err(e) = handle.emit("discovery-update", hosts) {
+                if let Err(e) = handle.emit("discovery-update", hosts_to_emit) {
                     error!("Failed to emit discovery update: {}", e);
                 }
             }

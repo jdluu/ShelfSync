@@ -7,9 +7,12 @@ use tauri::State;
 
 #[tauri::command]
 pub fn get_connection_info(state: State<'_, AppState>) -> Result<ConnectionInfo, AppError> {
+    let port = *lock_or_err(&state.server.bound_port)?;
+    let ip = crate::core::network::get_lan_ip().to_string();
+    
     Ok(ConnectionInfo {
-        ip: crate::core::network::get_lan_ip().to_string(),
-        port: 8080,
+        ip,
+        port,
         hostname: hostname::get()
             .map(|h| h.to_string_lossy().to_string())
             .unwrap_or("Unknown".to_string()),
