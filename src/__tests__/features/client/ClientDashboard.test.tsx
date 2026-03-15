@@ -6,6 +6,33 @@ import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 
+// Mock localStorage and matchMedia for ThemeSwitcher
+beforeEach(() => {
+  Object.defineProperty(window, "localStorage", {
+    value: {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+    writable: true,
+  });
+
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(), // deprecated
+      removeListener: vi.fn(), // deprecated
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+});
+
 // Mock child components to isolate behavior
 vi.mock("@/features/discovery/Discovery", () => ({
   Discovery: ({ onConnect }: { onConnect: (host: unknown) => void }) => (
@@ -78,7 +105,7 @@ describe("ClientDashboard Integration", () => {
   it("shows discovery view when no host is connected", () => {
     render(<ClientDashboard onChangeRole={vi.fn()} />);
     expect(screen.getByTestId("mock-discover")).toBeDefined();
-    expect(screen.getByText("Not Connected")).toBeDefined();
+    expect(screen.getByText("Client Dashboard")).toBeDefined();
   });
 
   it("calls connect when discovery view triggers connect", () => {

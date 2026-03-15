@@ -44,13 +44,12 @@ describe("BookCard", () => {
     expect(handleAction).toHaveBeenCalledWith(mockBook);
   });
 
-  it("toggles selectable state via keyboard", () => {
+  it("toggles selectable state via click", () => {
     const handleSelect = vi.fn();
     render(<BookCard book={mockBook} variant="local" selectable={true} onSelect={handleSelect} />);
 
-    const card = screen.getByRole("button");
-    card.focus();
-    fireEvent.keyDown(card, { key: "Enter" });
+    const selectButton = screen.getByLabelText(`Select ${mockBook.title}`);
+    fireEvent.click(selectButton);
 
     expect(handleSelect).toHaveBeenCalled();
   });

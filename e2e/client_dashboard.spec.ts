@@ -12,8 +12,10 @@ test.describe("Client Dashboard", () => {
   });
 
   test("should show empty state if disconnected", async ({ page }) => {
-    await expect(page.getByText("Not Connected")).toBeVisible();
-    await expect(page.getByText("Connect to a host to browse and sync books.")).toBeVisible();
+    await expect(page.getByText("Discover Hosts")).toBeVisible();
+    await expect(
+      page.getByText("Check if the ShelfSync Host is running on the same network."),
+    ).toBeVisible();
   });
 
   test("should allow navigating back to role selection", async ({ page }) => {

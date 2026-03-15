@@ -255,7 +255,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               </div>
             )}
 
-            {variant === "local" && onAction && actionLabel && (
+            {(variant === "local" || variant === "remote") && onAction && actionLabel && (
               <button
                 type="button"
                 className={`btn btn-xs mt-2 w-full relative z-20 ${actionColor === "green" ? "btn-success text-white" : "btn-primary"}`}
