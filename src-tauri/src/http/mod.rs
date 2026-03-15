@@ -23,6 +23,18 @@ pub struct ServerState {
     pub authorized_tokens: Mutex<std::collections::HashSet<String>>,
     /// Directory for storing application data (cache, settings, etc.).
     pub app_data_dir: Mutex<Option<std::path::PathBuf>>,
+    /// Rate limiting for PIN brute force attempts: (failed_count, last_attempt_time)
+    pub failed_pin_attempts: Mutex<(u32, std::time::Instant)>,
+    /// Set of book IDs currently being resized to prevent cache stampedes.
+    pub active_cover_resizes: tokio::sync::Mutex<std::collections::HashSet<i64>>,
+    /// Long-lived connection to the progress tracking database.
+    pub progress_db: Mutex<Option<rusqlite::Connection>>,
+    /// Last modification time of the metadata.db file.
+    pub last_metadata_mtime: Mutex<Option<std::time::SystemTime>>,
+    /// The actual port the server is bound to.
+    pub bound_port: Mutex<u16>,
+    /// Whether the application is currently broadcasting its presence.
+    pub is_hosting: Mutex<bool>,
 }
 
 pub type SharedState = Arc<ServerState>;

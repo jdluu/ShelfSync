@@ -158,6 +158,12 @@ mod tests {
                 set
             }),
             app_data_dir: Mutex::new(Some(dir.to_path_buf())),
+            failed_pin_attempts: Mutex::new((0, std::time::Instant::now())),
+            active_cover_resizes: tokio::sync::Mutex::new(std::collections::HashSet::new()),
+            progress_db: Mutex::new(None),
+            last_metadata_mtime: Mutex::new(None),
+            bound_port: Mutex::new(8080),
+            is_hosting: Mutex::new(false),
         })
     }
 
@@ -185,7 +191,7 @@ mod tests {
             .route("/api/manifest", get(books::get_manifest))
             .with_state(state);
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
         let response = server
             .get("/api/manifest")
             .add_header(header::AUTHORIZATION, "Bearer test-token")
@@ -211,7 +217,7 @@ mod tests {
             )
             .with_state(state);
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
         let response = server
             .get("/api/download/1/epub")
             .add_header(header::AUTHORIZATION, "Bearer test-token")
@@ -238,7 +244,7 @@ mod tests {
             .route("/api/cover/{book_id}", get(covers::get_cover))
             .with_state(state);
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
         let response = server
             .get("/api/cover/1")
             .add_header(header::AUTHORIZATION, "Bearer test-token")
@@ -259,7 +265,7 @@ mod tests {
             .route("/api/check-pin", axum::routing::post(auth::check_pin))
             .with_state(state);
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let payload = PinRequest {
             pin: "1234".to_string(),
@@ -305,7 +311,7 @@ mod tests {
             )
             .with_state(state);
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let payload = crate::http::progress::ProgressUpdate {
             book_id: 1,

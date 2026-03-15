@@ -50,7 +50,7 @@ export function VirtualGrid<T>({
       // This is crucial for stacked virtualizers.
       setOffsetTop(scrollRef.current.offsetTop);
     }
-  }, [items.length]);
+  }, []);
 
   // Determine columns based on tailwind breakpoints
   // Grid: Base=2, sm(640)=3, md(768)=4, lg(1024)=6, xl(1280)=8

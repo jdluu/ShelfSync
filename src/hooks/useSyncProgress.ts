@@ -46,20 +46,17 @@ export function useSyncProgress(
 
         const batch = batchRef.current;
 
-        // Detect batch start: first "downloading" event after idle
-        if (prog.status === "downloading" && !batch.active) {
-          batch.active = true;
-          batch.completed = 0;
-          batch.failed = 0;
-          // total is unknown upfront; we'll infer from max book_id count
-          batch.total = 0;
-          batch.knownIds.clear();
-        }
-
-        // Count unique books in progress to estimate total
-        if (batch.active) {
+        // Detect batch start or continuation
+        if (prog.status === "downloading" && !batch.knownIds.has(prog.book_id)) {
+          if (!batch.active) {
+            batch.active = true;
+            batch.completed = 0;
+            batch.failed = 0;
+            batch.total = 0;
+            batch.knownIds.clear();
+          }
           batch.knownIds.add(prog.book_id);
-          batch.total = Math.max(batch.total, batch.knownIds.size);
+          batch.total = batch.knownIds.size;
         }
 
         if (prog.status === "downloading") {
@@ -78,8 +75,6 @@ export function useSyncProgress(
               const root = offlineStoragePath || (await appDataDir());
               const path = await join(root, prog.path || fullBook.path);
               await saveLocalBook(fullBook, path);
-              const stored = await getLocalBooks();
-              onSyncComplete(stored);
             }
           } catch (e) {
             console.error("Error finalizing sync payload:", e);
@@ -92,6 +87,14 @@ export function useSyncProgress(
 
           // Check if batch is done
           if (batch.completed + batch.failed >= batch.total && batch.total > 0) {
+            // Batch complete, update local store once
+            try {
+              const stored = await getLocalBooks();
+              onSyncComplete(stored);
+            } catch (e) {
+              console.error("Failed to refresh local books after batch sync:", e);
+            }
+
             const count = batch.completed;
             useToastStore
               .getState()

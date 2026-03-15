@@ -87,6 +87,11 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
         [],
     );
 
+    // Create indexes for performance
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_authors ON books(authors)", [])?;
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)", [])?;
+
     Ok(())
 }
 
@@ -251,20 +256,31 @@ pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppE
         )
         .optional()?;
 
-    // 2. Delete from database
-    conn.execute("DELETE FROM books WHERE id = ?1", params![id])?;
-
-    // 3. Delete file from disk if path exists
+    // 2. Delete file and parent directory from disk if path exists
     if let Some(path_str) = local_path {
         let path = std::path::Path::new(&path_str);
         if path.exists() {
-            std::fs::remove_file(path).map_err(|e| {
+            if let Err(e) = std::fs::remove_file(path) {
                 log::error!("Failed to delete file at {:?}: {}", path, e);
-                AppError::Unknown(format!("Failed to delete file: {}", e))
-            })?;
-            log::info!("Deleted local file at {:?}", path);
+            } else {
+                log::info!("Deleted local file at {:?}", path);
+            }
+        }
+        
+        // Try to delete sibling files (cover.jpg, metadata.opf) and the parent directory
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_file(parent.join("cover.jpg"));
+            let _ = std::fs::remove_file(parent.join("metadata.opf"));
+            if let Err(e) = std::fs::remove_dir(parent) {
+                log::debug!("Could not remove parent directory {:?} (might not be empty): {}", parent, e);
+            } else {
+                log::info!("Deleted parent directory {:?}", parent);
+            }
         }
     }
+
+    // 3. Delete from database
+    conn.execute("DELETE FROM books WHERE id = ?1", params![id])?;
 
     Ok(())
 }

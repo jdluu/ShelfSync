@@ -9,7 +9,7 @@ pub struct ProgressRecord {
     pub last_updated: i64, // Unix timestamp
 }
 
-pub fn init_progress_db(app_data_dir: &Path) -> Result<(), AppError> {
+pub fn init_progress_db(app_data_dir: &Path) -> Result<Connection, AppError> {
     let db_path = app_data_dir.join("progress.db");
     let conn = Connection::open(db_path)?;
 
@@ -22,12 +22,10 @@ pub fn init_progress_db(app_data_dir: &Path) -> Result<(), AppError> {
         [],
     )?;
 
-    Ok(())
+    Ok(conn)
 }
 
-pub fn update_progress(app_data_dir: &Path, book_id: i64, status: &str) -> Result<(), AppError> {
-    let db_path = app_data_dir.join("progress.db");
-    let conn = Connection::open(db_path)?;
+pub fn update_progress(conn: &Connection, book_id: i64, status: &str) -> Result<(), AppError> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -46,13 +44,7 @@ pub fn update_progress(app_data_dir: &Path, book_id: i64, status: &str) -> Resul
     Ok(())
 }
 
-pub fn get_all_progress(app_data_dir: &Path) -> Result<Vec<ProgressRecord>, AppError> {
-    let db_path = app_data_dir.join("progress.db");
-    if !db_path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let conn = Connection::open(db_path)?;
+pub fn get_all_progress(conn: &Connection) -> Result<Vec<ProgressRecord>, AppError> {
     let mut stmt = conn.prepare("SELECT book_id, status, last_updated FROM progress")?;
 
     let records = stmt

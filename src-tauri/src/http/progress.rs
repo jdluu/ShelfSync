@@ -25,26 +25,40 @@ pub async fn get_progress(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    let app_data_dir = {
-        let guard = match state.app_data_dir.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
-            }
+    let mut lock = state.progress_db.lock().unwrap();
+    if let Some(conn) = lock.as_ref() {
+        match crate::core::progress::get_all_progress(conn) {
+            Ok(records) => Json(records).into_response(),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("DB Error: {}", e),
+            )
+                .into_response(),
         }
-    };
-
-    match crate::core::progress::get_all_progress(&app_data_dir) {
-        Ok(records) => Json(records).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("DB Error: {}", e),
-        )
-            .into_response(),
+    } else {
+        // Fallback or uninitialized error
+        let app_data_dir = {
+            let guard = match state.app_data_dir.lock() {
+                Ok(g) => g,
+                Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+            };
+            guard.clone()
+        };
+        if let Some(dir) = app_data_dir {
+            match crate::core::progress::init_progress_db(&dir) {
+                Ok(conn) => {
+                    let res = crate::core::progress::get_all_progress(&conn);
+                    *lock = Some(conn);
+                    match res {
+                        Ok(records) => Json(records).into_response(),
+                        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
+                    }
+                }
+                Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to init db").into_response(),
+            }
+        } else {
+            (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
+        }
     }
 }
 
@@ -61,25 +75,38 @@ pub async fn update_progress(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    let app_data_dir = {
-        let guard = match state.app_data_dir.lock() {
-            Ok(g) => g,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
-        };
-        match &*guard {
-            Some(p) => p.clone(),
-            None => {
-                return (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
-            }
+    let mut lock = state.progress_db.lock().unwrap();
+    if let Some(conn) = lock.as_ref() {
+        match crate::core::progress::update_progress(conn, payload.book_id, &payload.status) {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("DB Error: {}", e),
+            )
+                .into_response(),
         }
-    };
-
-    match crate::core::progress::update_progress(&app_data_dir, payload.book_id, &payload.status) {
-        Ok(_) => StatusCode::OK.into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("DB Error: {}", e),
-        )
-            .into_response(),
+    } else {
+        let app_data_dir = {
+            let guard = match state.app_data_dir.lock() {
+                Ok(g) => g,
+                Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
+            };
+            guard.clone()
+        };
+        if let Some(dir) = app_data_dir {
+            match crate::core::progress::init_progress_db(&dir) {
+                Ok(conn) => {
+                    let res = crate::core::progress::update_progress(&conn, payload.book_id, &payload.status);
+                    *lock = Some(conn);
+                    match res {
+                        Ok(_) => StatusCode::OK.into_response(),
+                        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
+                    }
+                }
+                Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to init db").into_response(),
+            }
+        } else {
+            (StatusCode::SERVICE_UNAVAILABLE, "App data dir not set").into_response()
+        }
     }
 }

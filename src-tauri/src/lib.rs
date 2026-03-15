@@ -10,7 +10,6 @@ use crate::{
     models::ConnectionInfo,
 };
 use log::{error, info};
-use rand::Rng;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
@@ -57,6 +56,12 @@ pub fn run() {
                 pin: Mutex::new("0000".to_string()), // Temporary, updated in setup
                 authorized_tokens: Mutex::new(std::collections::HashSet::new()),
                 app_data_dir: Mutex::new(None),
+                failed_pin_attempts: Mutex::new((0, std::time::Instant::now())),
+                active_cover_resizes: tokio::sync::Mutex::new(std::collections::HashSet::new()),
+                progress_db: Mutex::new(None),
+                last_metadata_mtime: Mutex::new(None),
+                bound_port: Mutex::new(8080),
+                is_hosting: Mutex::new(false),
             }),
             discovery: discovery_state,
             sync_manager: Mutex::new(None),
@@ -79,8 +84,7 @@ pub fn run() {
                 info!("Loaded PIN from persistence");
                 trimmed
             } else {
-                let mut rng = rand::rng();
-                let pin: u32 = rng.random_range(1000..10000);
+                let pin: u32 = rand::random_range(1000..10000);
                 let p = pin.to_string();
                 info!("Generated new PIN");
                 std::fs::write(&pin_path, &p).ok();
@@ -167,8 +171,13 @@ pub fn run() {
             });
 
             // 3. Init progress DB
-            if let Err(e) = crate::core::progress::init_progress_db(&app_data_dir) {
-                error!("Failed to init progress DB: {}", e);
+            match crate::core::progress::init_progress_db(&app_data_dir) {
+                Ok(conn) => {
+                    if let Ok(mut lock) = app_state.server.progress_db.lock() {
+                        *lock = Some(conn);
+                    }
+                }
+                Err(e) => error!("Failed to init progress DB: {}", e),
             }
 
             // 4. Init Sync Manager
@@ -191,7 +200,12 @@ pub fn run() {
             });
 
             let bound_port = match rx.recv() {
-                Ok(Ok(port)) => port,
+                Ok(Ok(port)) => {
+                    if let Ok(mut lock) = app_state.server.bound_port.lock() {
+                        *lock = port;
+                    }
+                    port
+                }
                 _ => {
                     error!("Failed to start server completely. Defaulting to 8080 for mDNS.");
                     8080
