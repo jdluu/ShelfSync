@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-03-22
+### Added
+- **Interactive Connection Feedback**: Added "Connecting..." states and real-time notifications for manual IP connections.
+- **Host Readiness Validation**: The client now verifies if the host has a library properly configured before confirming a connection.
+- **Discovery Troubleshooting**: Integrated a comprehensive troubleshooting guide within the Discovery UI.
+- **Host-Side Pairing Alerts**: The host machine now displays a system notification when a new device successfully pairs.
+- **Visual Discovery Status**: Added an animated status indicator to the Host Dashboard.
+
+### Fixed
+- **Virtual Adapter Interference**: Optimized network discovery to ignore virtual interfaces (WSL, Docker, VPNs).
+- **Manual IP Reliability**: Resolved cases where manual IP entries would silently fail.
+
 ## [1.3.0] - 2026-03-22
     
 ### Added
