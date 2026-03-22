@@ -74,7 +74,7 @@ export const httpClient = {
   /**
    * Pings the host to verify connectivity.
    */
-  async ping(host: Host): Promise<{ hostname: string }> {
+  async ping(host: Host): Promise<{ hostname: string; is_library_configured: boolean }> {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
 

@@ -1,8 +1,9 @@
-import { ChevronRight, Globe, Plus, RefreshCw, Search, WifiOff } from "lucide-react";
+import { ChevronRight, Globe, Info, Plus, RefreshCw, Search, WifiOff, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import { useAuthStore } from "@/store/authStore";
 import { useDiscoveryStore } from "@/store/discoveryStore";
 
 interface Host {
@@ -44,6 +45,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   const { isConnecting, testConnection } = useAuthStore();
   const [manualIp, setManualIp] = useState("");
   const [manualPort, setManualPort] = useState("8080");
+  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
 
   const handleManualConnect = async () => {
     if (manualIp) {
@@ -173,8 +175,63 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
               )}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowTroubleshooting(true)}
+            className="btn btn-link btn-xs text-base-content/50 no-underline p-0 h-auto min-h-0 self-start mt-1"
+          >
+            <Info className="w-3 h-3" />
+            Not seeing your host?
+          </button>
         </div>
       </div>
+
+      {showTroubleshooting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-base-100 rounded-3xl border border-base-300 shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Info className="text-info" />
+                Discovery Troubleshooting
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTroubleshooting(false)}
+                className="btn btn-ghost btn-circle btn-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-5 text-sm">
+              <section>
+                <h4 className="font-bold mb-2">1. Windows/Linux Firewall</h4>
+                <p className="text-base-content/70">
+                  Ensure <strong>UDP Port 5353</strong> (mDNS) is allowed for inbound traffic on the host machine. On Windows, use "Advanced Security" to check "Inbound Rules".
+                </p>
+              </section>
+              <section>
+                <h4 className="font-bold mb-2">2. Network Profile</h4>
+                <p className="text-base-content/70">
+                  Discovery often fails on <strong>"Public"</strong> networks. Set your Wi-Fi network to <strong>"Private"</strong> or <strong>"Home"</strong> in OS settings.
+                </p>
+              </section>
+              <section>
+                <h4 className="font-bold mb-2">3. Virtual Adapters</h4>
+                <p className="text-base-content/70">
+                  WSL, Docker, or VPN interfaces can sometimes interfere. Try disabling them if discovery remains persistent.
+                </p>
+              </section>
+              <button
+                type="button"
+                onClick={() => setShowTroubleshooting(false)}
+                className="btn btn-primary w-full rounded-xl mt-2"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

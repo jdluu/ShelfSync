@@ -30,7 +30,43 @@ export async function notifyError(title: string, message: string): Promise<void>
         sendNotification({ title, body: message });
       }
     } catch {
-      // Notification plugin unavailable, console.error already logged above
+      // Notification plugin unavailable
+    }
+  }
+}
+
+/**
+ * Displays a native notification to the user for successful operations.
+ */
+export async function notifySuccess(title: string, message: string): Promise<void> {
+  console.info(`[${title}] ${message}`);
+
+  if (isTauri()) {
+    try {
+      const granted = await isPermissionGranted();
+      if (granted) {
+        sendNotification({ title, body: message });
+      }
+    } catch {
+      // Notification plugin unavailable
+    }
+  }
+}
+
+/**
+ * Displays a native notification for general information.
+ */
+export async function notifyInfo(title: string, message: string): Promise<void> {
+  console.log(`[${title}] ${message}`);
+
+  if (isTauri()) {
+    try {
+      const granted = await isPermissionGranted();
+      if (granted) {
+        sendNotification({ title, body: message });
+      }
+    } catch {
+      // Notification plugin unavailable
     }
   }
 }
