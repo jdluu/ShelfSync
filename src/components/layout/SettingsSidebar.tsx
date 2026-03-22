@@ -1,12 +1,16 @@
 import { requestPermission } from "@tauri-apps/plugin-notification";
 import { ArrowLeft, FileText, Library, Settings, Shield, User, Wifi, X } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useToastStore } from "@/store/toastStore";
 import { isTauri } from "@/utils/tauri";
 import { ARTICLES } from "./help/helpArticles";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { SettingsSection } from "./settings/SettingsSection";
+import { HelpCategory } from "./settings/HelpCategory";
+import { SystemInfo } from "./settings/SystemInfo";
+import { HelpArticleView } from "./settings/HelpArticleView";
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -17,12 +21,6 @@ interface SettingsSidebarProps {
 
 /**
  * Full-height sidebar panel for application settings, help articles, and system info.
- *
- * Slides in from the right edge. Contains:
- * - Theme switcher (via `ThemeSwitcher`)
- * - Session management (offline storage, role switching)
- * - Support & Help (article browser)
- * - System information (host IP, version)
  */
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
@@ -30,7 +28,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onChangeRole,
   hostIp,
 }) => {
-  const { appMode, offlineStoragePath, selectOfflineStorageFolder } = useLibraryStore();
+  const { appMode, offlineStoragePath, selectOfflineStorageFolder, eInkMode, setEInkMode } =
+    useLibraryStore();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -38,7 +37,10 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
     setTimeout(() => setActiveArticleId(null), 300);
   };
 
-  const activeArticle = activeArticleId ? ARTICLES[activeArticleId] : null;
+  const activeArticle = useMemo(
+    () => (activeArticleId ? ARTICLES[activeArticleId] : null),
+    [activeArticleId],
+  );
 
   return (
     <>
@@ -89,32 +91,44 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
         {/* Content */}
         <div className="flex-grow overflow-y-auto p-4 sm:p-6">
           {activeArticle ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <h3 className="text-lg font-bold text-primary">{activeArticle.title}</h3>
-              <div className="text-sm text-base-content/90 leading-relaxed">
-                {activeArticle.content}
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveArticleId(null)}
-                className="btn btn-ghost btn-sm w-full gap-2 mt-4"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Settings
-              </button>
-            </div>
+            <HelpArticleView
+              title={activeArticle.title}
+              content={activeArticle.content}
+              onBack={() => setActiveArticleId(null)}
+            />
           ) : (
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
               <ThemeSwitcher />
 
-              {/* Roles Section */}
-              {onChangeRole && (
-                <section>
-                  <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
-                    Session
-                  </h3>
+              <SettingsSection title="Display">
+                <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <div className="flex-grow overflow-hidden mr-3">
+                      <p className="font-bold text-sm tracking-tight text-base-content/90">
+                        E-Ink Optimization
+                      </p>
+                      <p className="text-[11px] text-base-content/50 mt-0.5">
+                        High contrast, disables animations
+                      </p>
+                    </div>
+                    <label className="swap shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={eInkMode}
+                        onChange={(e) => setEInkMode(e.target.checked)}
+                      />
+                      <div className="swap-on btn btn-sm btn-active shrink-0 px-4">On</div>
+                      <div className="swap-off btn btn-sm btn-outline border-base-content/10 hover:border-primary shrink-0 px-4">
+                        Off
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </SettingsSection>
 
-                  {/* Offline Storage Section (Client Mode + Desktop only) */}
+              {onChangeRole && (
+                <SettingsSection title="Session">
                   {appMode === "client" && (
                     <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -162,72 +176,44 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                     </div>
                     <ArrowLeft className="w-4 h-4 rotate-180 opacity-30" />
                   </button>
-                </section>
+                </SettingsSection>
               )}
 
-              {/* Help Section */}
-              <section>
-                <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
-                  Support & Help
-                </h3>
+              <SettingsSection title="Support & Help">
                 <div className="bg-base-100/80 p-2 rounded-2xl border border-base-content/5 shadow-sm space-y-1">
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
+                  <HelpCategory
+                    icon={Wifi}
+                    label="Setting up Host"
                     onClick={() => setActiveArticleId("setup_host")}
-                  >
-                    <div className="p-2 bg-success/10 rounded-lg group-hover:scale-110 transition-transform">
-                      <Wifi className="w-4 h-4 text-success" />
-                    </div>
-                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
-                      Setting up Host
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
+                    colorClass="text-success"
+                    bgClass="bg-success/10"
+                  />
+                  <HelpCategory
+                    icon={Library}
+                    label="Selecting Library"
                     onClick={() => setActiveArticleId("select_library")}
-                  >
-                    <div className="p-2 bg-info/10 rounded-lg group-hover:scale-110 transition-transform">
-                      <Library className="w-4 h-4 text-info" />
-                    </div>
-                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
-                      Selecting Library
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
+                    colorClass="text-info"
+                    bgClass="bg-info/10"
+                  />
+                  <HelpCategory
+                    icon={Settings}
+                    label="Troubleshooting"
                     onClick={() => setActiveArticleId("not_found")}
-                  >
-                    <div className="p-2 bg-warning/10 rounded-lg group-hover:scale-110 transition-transform">
-                      <Settings className="w-4 h-4 text-warning" />
-                    </div>
-                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
-                      Troubleshooting
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 p-3 lg:p-4 text-left hover:bg-base-200/50 rounded-xl transition-colors group"
+                    colorClass="text-warning"
+                    bgClass="bg-warning/10"
+                  />
+                  <HelpCategory
+                    icon={Shield}
+                    label="Permissions"
                     onClick={() => setActiveArticleId("permissions")}
-                  >
-                    <div className="p-2 bg-accent/10 rounded-lg group-hover:scale-110 transition-transform">
-                      <Shield className="w-4 h-4 text-accent" />
-                    </div>
-                    <span className="text-sm font-medium text-base-content/90 tracking-tight">
-                      Permissions
-                    </span>
-                  </button>
+                    colorClass="text-accent"
+                    bgClass="bg-accent/10"
+                  />
                 </div>
-              </section>
+              </SettingsSection>
 
-              {/* Permissions Section */}
               {isTauri() && (
-                <section>
-                  <h3 className="text-[10px] font-display font-bold text-base-content/50 uppercase tracking-widest mx-2 mb-3">
-                    Permissions
-                  </h3>
+                <SettingsSection title="Permissions">
                   <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm group hover:shadow-md transition-all duration-300 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-center relative z-10">
@@ -243,7 +229,6 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                         type="button"
                         onClick={async () => {
                           const res = await requestPermission();
-
                           if (res === "granted") {
                             useToastStore
                               .getState()
@@ -258,32 +243,11 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                       </button>
                     </div>
                   </div>
-                </section>
+                </SettingsSection>
               )}
 
-              {/* About Section */}
               <section className="pt-4 border-t border-base-300">
-                <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
-                  <h4 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest">
-                    System Information
-                  </h4>
-                  <div className="space-y-1">
-                    {hostIp && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] text-base-content/50 uppercase">Host IP</span>
-                        <span className="text-[10px] font-mono font-bold text-base-content/70">
-                          {hostIp}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-base-content/50 uppercase">Version</span>
-                      <span className="text-[10px] font-mono font-bold text-base-content/70">
-                        1.1.0 (Stable)
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <SystemInfo hostIp={hostIp} />
               </section>
             </div>
           )}
@@ -291,7 +255,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
         {/* Footer */}
         <div
-          className="p-4 border-t border-base-300 bg-base-200/40"
+          className="p-4 border-t border-t-base-300 bg-base-200/40"
           style={{ paddingBottom: "calc(var(--safe-area-bottom, 0px) + 1.5rem)" }}
         >
           <a
