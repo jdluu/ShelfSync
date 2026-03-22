@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PinModal } from "@/components/ui/PinModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
@@ -115,10 +116,10 @@ function AppContent() {
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <AppContent />
       <ToastContainer />
-    </>
+    </ErrorBoundary>
   );
 }
 

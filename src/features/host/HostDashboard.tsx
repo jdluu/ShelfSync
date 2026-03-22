@@ -1,6 +1,10 @@
 import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
 import type React from "react";
-import QRCode from "react-qr-code";
+import QRCodeDefault from "react-qr-code";
+
+// ESM / CJS interop for React-QR-Code
+const QRCode = (QRCodeDefault as any)?.default ?? QRCodeDefault;
+
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
