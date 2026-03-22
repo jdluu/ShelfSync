@@ -29,6 +29,7 @@ tower-http = { version = "0.6.8", features = ["cors"] }
 mdns-sd = "0.18.2"
 local-ip-address = "0.6.10"
 network-interface = "2.0.5"
+jni = "0.21.1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
@@ -50,6 +51,9 @@ rusqlite = { version = "0.38.0", features = ["bundled"] }
 tauri-plugin-updater = "2.10.0"
 deadpool-sqlite = "0.13.0"
 tauri-plugin-process = "2"
+btleplug = "0.11"
+tantivy = "0.22"
+epub = "2.1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 

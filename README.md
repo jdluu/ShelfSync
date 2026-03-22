@@ -20,6 +20,18 @@ To build and run this project, the following dependencies must be installed on t
 *   **Secret Management:** [Infisical CLI](https://infisical.com/docs/cli/overview) is used for managing signing keys and build secrets.
 *   **System Dependencies:** Platform-specific development libraries required by Tauri (e.g., libwebkit2gtk-4.0-dev on Linux, Visual Studio C++ Build Tools on Windows).
 
+## Network & Firewall Requirements
+
+For cross-device synchronization to work, ensure the following ports are open on your host machine's firewall:
+
+*   **TCP 8080:** Main API and file transfer (Axum server).
+*   **UDP 5353:** mDNS discovery (Multicast DNS).
+
+### OS Specific Notes
+*   **Windows**: You may need to manually allow `shelfsync.exe` through Windows Defender Firewall for both Private and Public networks.
+*   **Linux**: If using `ufw`, run `sudo ufw allow 8080/tcp` and `sudo ufw allow 5353/udp`.
+*   **Android**: Automatic discovery requires the **Multicast Lock** (handled automatically by the app). To keep the host active in the background, the app will start a **Foreground Service** with a persistent notification.
+
 ## Installation and Development
 
 1.  Clone the repository to your local machine.
