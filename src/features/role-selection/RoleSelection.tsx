@@ -3,6 +3,7 @@ import type React from "react";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 interface RoleSelectionProps {
   onSelect: (role: "host" | "client") => void;
@@ -12,6 +13,13 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
   return (
     <div className="min-h-screen flex flex-col bg-base-100 font-sans selection:bg-primary/30">
       <SkipLink />
+
+      <div className="flex justify-center pt-12 sm:pt-16">
+        <div className="flex flex-col items-center gap-4">
+          <BrandLogo size="xl" className="shadow-2xl rounded-3xl" />
+          <h1 className="text-4xl font-display font-black tracking-tighter">ShelfSync</h1>
+        </div>
+      </div>
 
       <Header title="Choose Your Role" />
 

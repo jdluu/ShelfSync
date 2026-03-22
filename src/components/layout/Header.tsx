@@ -1,6 +1,7 @@
-import { Library, Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { SettingsSidebar } from "./SettingsSidebar";
 
 interface HeaderProps {
@@ -20,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
       >
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
-            <Library className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
+            <BrandLogo size="md" className="shrink-0" />
             <span className="text-xl sm:text-2xl font-bold tracking-tight hidden xs:block">
               ShelfSync
             </span>
