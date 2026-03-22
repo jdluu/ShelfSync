@@ -1,5 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { type MotionValue, m, useScroll, useTransform } from "framer-motion";
+import { type MotionValue, m, useScroll, useTransform } from "motion/react";
 import type React from "react";
 import { useRef } from "react";
 import type { Book, Host } from "@/types/core";

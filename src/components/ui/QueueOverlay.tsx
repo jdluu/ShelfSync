@@ -1,4 +1,4 @@
-import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
+import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import { AlertCircle, CheckCircle, Download } from "lucide-react";
 import type React from "react";
 

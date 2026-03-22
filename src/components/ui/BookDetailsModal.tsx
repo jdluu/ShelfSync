@@ -1,6 +1,6 @@
 import { FastAverageColor } from "fast-average-color";
 import { Book as BookIcon, Building2, Calendar, FileText, Globe, Tag, X } from "lucide-react";
-import { AnimatePresence, m } from "framer-motion";
+import { AnimatePresence, m } from "motion/react";
 import { useEffect, useState } from "react";
 import type { Book } from "@/types/core";
 import { StarRating } from "./StarRating";

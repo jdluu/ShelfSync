@@ -1,4 +1,4 @@
-import { MotionConfig, LazyMotion, domAnimation } from "framer-motion";
+import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PinModal } from "@/components/ui/PinModal";

@@ -1,5 +1,5 @@
 import { Book as BookIcon } from "lucide-react";
-import { m } from "framer-motion";
+import { m } from "motion/react";
 import type React from "react";
 import type { Book } from "@/types/core";
 
