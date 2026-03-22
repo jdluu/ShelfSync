@@ -14,6 +14,7 @@ pub async fn run(
     app_handle: tauri::AppHandle,
 ) -> Result<u16, String> {
     let app = Router::new()
+        .route("/api/status", get(auth::get_status))
         .route("/api/manifest", get(books::get_manifest))
         .route("/api/cover/{book_id}", get(covers::get_cover))
         .route(
@@ -26,7 +27,11 @@ pub async fn run(
             get(progress::get_progress).post(progress::update_progress),
         )
         .layer(CorsLayer::permissive())
-        .with_state(state);
+        .with_state(state.clone());
+
+    if let Ok(mut handle_lock) = state.app_handle.lock() {
+        *handle_lock = Some(app_handle.clone());
+    }
 
     // Try preferred port first, fall back to 0 (random) if in use
     let val_preferred = format!("0.0.0.0:{}", preferred_port);

@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use log::{error, info};
+use tauri_plugin_notification::NotificationExt;
 
 use super::SharedState;
 
@@ -15,6 +16,11 @@ pub struct PinRequest {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct AuthResponse {
     pub token: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct StatusResponse {
+    pub hostname: String,
 }
 
 /// Handler for `POST /api/check-pin`.
@@ -67,6 +73,18 @@ pub async fn check_pin(
         } else {
             return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response();
         }
+
+        // Host-side notification
+        if let Ok(handle_lock) = state.app_handle.lock() {
+            if let Some(handle) = handle_lock.as_ref() {
+                let _ = handle.notification()
+                    .builder()
+                    .title("Device Paired")
+                    .body("A new client has successfully connected to your library.")
+                    .show();
+            }
+        }
+
         info!("PIN accepted. Issued new token.");
         (StatusCode::OK, Json(AuthResponse { token })).into_response()
     } else {
@@ -75,6 +93,17 @@ pub async fn check_pin(
         error!("PIN check: result=rejected");
         (StatusCode::UNAUTHORIZED, "Invalid PIN").into_response()
     }
+}
+
+/// Handler for `GET /api/status`.
+///
+/// Returns the host's hostname to verify connectivity.
+pub async fn get_status(State(state): State<SharedState>) -> impl IntoResponse {
+    let hostname = hostname::get()
+        .map(|h| h.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "Unknown".to_string());
+
+    Json(StatusResponse { hostname })
 }
 
 /// Validates the `Authorization` header against the set of authorized tokens.

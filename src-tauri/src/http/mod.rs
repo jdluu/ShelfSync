@@ -35,6 +35,8 @@ pub struct ServerState {
     pub bound_port: Mutex<u16>,
     /// Whether the application is currently broadcasting its presence.
     pub is_hosting: Mutex<bool>,
+    /// Handle to the Tauri application for system-level notifications.
+    pub app_handle: Mutex<Option<tauri::AppHandle>>,
 }
 
 pub type SharedState = Arc<ServerState>;
