@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-03-22
+    
+### Added
+- **Intelligent Background Sync**: Android devices now feature a persistent sync engine. Your books will continue to download and sync even when the app is minimized or the screen is off.
+- **Full-Text Library Search**: Rapidly find books by searching through their entire text content, in addition to titles and authors.
+- **E-Ink Display Optimization**: Introduced a specialized high-contrast mode for E-Ink devices, featuring reduced animations and sharpened typography for a superior reading experience.
+- **3D Interactive Gallery**: A new immersive way to browse your featured collections with a responsive 3D cover flow view.
+- **Smart Device Discovery**: Enhanced Bluetooth-assisted discovery as a secondary fallback to ensure your devices find each other instantly on any network.
+
+### Changed
+- **Polished Visual Identity**: Refreshed the entire application with the official ShelfSync branding and high-fidelity icons across the desktop tray, taskbar, and mobile UI.
+- **Streamlined Settings**: Redesigned the settings and help panels into a clearer, modular layout for easier navigation.
+- **Superior Animation Performance**: Optimized all visual transitions to be smoother and more battery-efficient, especially on mobile hardware.
+
+### Fixed
+- **Rock-Solid Connectivity**: Resolved edge cases where devices could lose connection during long synchronization sessions.
+- **Universal Icon Consistency**: Fixed an issue where generic icons would appear in certain system menus or when the app was minimized.
+
 ## [1.2.0] - 2026-03-15
 
 ### Added

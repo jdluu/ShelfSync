@@ -78,9 +78,10 @@ graph TD
     Frontend -- "Tauri Commands (IPC)" --> Backend["Backend (Rust / Core)"]
     
     subgraph "Backend Services"
-        Backend --> Discovery[mDNS Discovery]
+        Backend --> Discovery[mDNS + BLE Discovery]
         Backend --> HTTPServer[Axum HTTP Server]
         Backend --> DB[("SQLite + Calibre DB")]
+        Backend --> Search["Search (Tantivy)"]
     end
     
     HTTPServer -- "Serve Files / API" --> Peer[Peer Device]
@@ -108,8 +109,11 @@ The frontend is built with React and structured around feature modules:
 
 *   **Dual-Role Operation:** The application can function as either a Host or a Client, configurable at runtime.
 *   **Calibre Integration:** Directly parses standard Calibre library databases to retrieve book metadata, authors, series, and file paths.
-*   **Automated Discovery:** Utilizes mDNS to automatically detect ShelfSync hosts on the local network.
+*   **Automated Discovery:** Utilizes mDNS and BLE to automatically detect ShelfSync hosts on the local network.
+*   **Full-Text Search:** High-performance library indexing and search powered by `tantivy`.
+*   **E-Ink Optimization:** Specialized UI mode with sharp typography and reduced animations for e-readers.
 *   **Grouped Browsing:** Easily navigate large libraries by organizing books by Series, Author, Tag, or Date Added.
+*   **3D Cover Flow:** Immersive interactive gallery for featured collections.
 *   **Bulk Synchronization:** Supports downloading multiple books or entire collections simultaneously.
 *   **Offline Storage:** Maintains a local record of synced content for offline access on client devices.
 *   **Secure Device Pairing:** Implements a PIN authentication mechanism to prevent unauthorized access.
