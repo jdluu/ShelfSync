@@ -54,8 +54,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     notifyInfo("Connecting...", `Attempting to reach host at ${host.ip}:${host.port}`);
 
     try {
-      const { hostname } = await httpClient.ping(host);
+      const { hostname, is_library_configured } = await httpClient.ping(host);
       set({ isConnecting: false });
+
+      if (!is_library_configured) {
+        notifyError(
+          "Host Not Ready",
+          `Connected to ${hostname}, but no library is configured on that device yet.`,
+        );
+        return false;
+      }
+
       notifySuccess("Connected!", `Successfully reached ${hostname}`);
       return true;
     } catch (e) {

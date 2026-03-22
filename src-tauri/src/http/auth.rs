@@ -21,6 +21,7 @@ pub struct AuthResponse {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct StatusResponse {
     pub hostname: String,
+    pub is_library_configured: bool,
 }
 
 /// Handler for `POST /api/check-pin`.
@@ -103,7 +104,12 @@ pub async fn get_status(State(state): State<SharedState>) -> impl IntoResponse {
         .map(|h| h.to_string_lossy().to_string())
         .unwrap_or_else(|_| "Unknown".to_string());
 
-    Json(StatusResponse { hostname })
+    let is_library_configured = state.library_path.lock().map(|lp| lp.is_some()).unwrap_or(false);
+
+    Json(StatusResponse {
+        hostname,
+        is_library_configured,
+    })
 }
 
 /// Validates the `Authorization` header against the set of authorized tokens.
