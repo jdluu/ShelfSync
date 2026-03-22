@@ -63,6 +63,7 @@ pub fn run() {
                 last_metadata_mtime: Mutex::new(None),
                 bound_port: Mutex::new(8080),
                 is_hosting: Mutex::new(false),
+                app_handle: Mutex::new(None),
             }),
             discovery: discovery_state,
             sync_manager: Mutex::new(None),
@@ -87,6 +88,11 @@ pub fn run() {
                 }
             } else {
                 error!("Failed to initialize Tantivy Search Engine");
+            }
+
+            // Init App Handle in state
+            if let Ok(mut lock) = app_state.server.app_handle.lock() {
+                *lock = Some(handle.clone());
             }
 
             // 1. PIN Management (Persistence)
