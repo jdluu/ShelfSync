@@ -41,16 +41,22 @@ interface DiscoveryProps {
 
 export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   const { hosts, scanning, scan, knownHosts } = useDiscoveryStore();
+  const { isConnecting, testConnection } = useAuthStore();
   const [manualIp, setManualIp] = useState("");
   const [manualPort, setManualPort] = useState("8080");
 
-  const handleManualConnect = () => {
+  const handleManualConnect = async () => {
     if (manualIp) {
-      onConnect({
+      const host = {
         ip: manualIp,
         port: parseInt(manualPort, 10),
         hostname: "Manual Connection",
-      });
+      };
+
+      const success = await testConnection(host);
+      if (success) {
+        onConnect(host);
+      }
     }
   };
 
@@ -157,10 +163,14 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
             <button
               type="button"
               onClick={handleManualConnect}
-              disabled={!manualIp}
+              disabled={!manualIp || isConnecting}
               className="btn btn-success text-white"
             >
-              Connect
+              {isConnecting ? (
+                <span className="loading loading-spinner loading-xs"></span>
+              ) : (
+                "Connect"
+              )}
             </button>
           </div>
         </div>

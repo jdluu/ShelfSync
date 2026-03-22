@@ -72,6 +72,26 @@ export const api = {
  */
 export const httpClient = {
   /**
+   * Pings the host to verify connectivity.
+   */
+  async ping(host: Host): Promise<{ hostname: string }> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+    try {
+      const response = await fetch(`http://${host.ip}:${host.port}/api/status`, {
+        signal: controller.signal,
+      });
+      clearTimeout(id);
+      if (!response.ok) throw new Error("Connection failed");
+      return response.json();
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  },
+
+  /**
    * Retrieves the host's book manifest.
    *
    * @summary Fetches the complete list of books available on the remote host.

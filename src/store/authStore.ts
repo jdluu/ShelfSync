@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { httpClient } from "@/services/apiClient";
 import type { Host } from "@/types/core";
-import { notifyError } from "@/utils/notifications";
+import { notifyError, notifyInfo, notifySuccess } from "@/utils/notifications";
 import { safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
@@ -11,6 +11,7 @@ interface AuthState {
   authTokens: Record<string, string>;
   pairingHost: Host | null;
   authRequired: boolean;
+  isConnecting: boolean;
 
   setConnectedHost: (host: Host | null) => void;
   setAuthTokens: (tokens: Record<string, string>) => void;
@@ -19,6 +20,7 @@ interface AuthState {
 
   pair: (pin: string) => Promise<void>;
   connect: (host: Host) => void;
+  testConnection: (host: Host) => Promise<boolean>;
   disconnect: () => void;
   loadTokens: () => Promise<void>;
   saveTokens: (tokens: Record<string, string>) => Promise<void>;
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   authTokens: {},
   pairingHost: null,
   authRequired: false,
+  isConnecting: false,
 
   setConnectedHost: (host) => set({ connectedHost: host }),
   setAuthTokens: (tokens) => set({ authTokens: tokens }),
@@ -45,6 +48,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   connect: (host) => set({ connectedHost: host }),
+
+  testConnection: async (host) => {
+    set({ isConnecting: true });
+    notifyInfo("Connecting...", `Attempting to reach host at ${host.ip}:${host.port}`);
+
+    try {
+      const { hostname } = await httpClient.ping(host);
+      set({ isConnecting: false });
+      notifySuccess("Connected!", `Successfully reached ${hostname}`);
+      return true;
+    } catch (e) {
+      set({ isConnecting: false });
+      notifyError(
+        "Connection Failed",
+        `Unable to reach host at ${host.ip}:${host.port}. Make sure the host is running and firewalls are open.`,
+      );
+      return false;
+    }
+  },
+
   disconnect: () => set({ connectedHost: null, authRequired: false, pairingHost: null }),
 
   loadTokens: async () => {
