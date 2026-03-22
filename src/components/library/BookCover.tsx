@@ -1,4 +1,5 @@
 import { Book as BookIcon } from "lucide-react";
+import { m } from "framer-motion";
 import type React from "react";
 import type { Book } from "@/types/core";
 
@@ -49,7 +50,8 @@ export const BookCover: React.FC<BookCoverProps> = ({
           {!imgLoaded && (
             <div className="skeleton w-full h-full absolute inset-0 rounded-none bg-base-300/50" />
           )}
-          <img
+          <m.img
+            layoutId={`book-cover-${book.id}`}
             src={coverUrl}
             alt={`Cover of ${book.title}`}
             className={`w-full h-full object-cover transition-transform duration-500 group-hover/image:scale-110 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
@@ -58,10 +60,15 @@ export const BookCover: React.FC<BookCoverProps> = ({
           />
         </>
       ) : (
-        <BookIcon
-          className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300"
-          aria-hidden="true"
-        />
+        <m.div
+          layoutId={`book-cover-${book.id}`}
+          className="w-full h-full flex items-center justify-center"
+        >
+          <BookIcon
+            className="w-8 h-8 text-base-content/30 group-hover/image:scale-110 group-hover/image:text-primary transition-all duration-300"
+            aria-hidden="true"
+          />
+        </m.div>
       )}
 
       {/* Overlay Gradient for Image */}

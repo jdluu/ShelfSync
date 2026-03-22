@@ -1,3 +1,4 @@
+import { MotionConfig, LazyMotion, domAnimation } from "framer-motion";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PinModal } from "@/components/ui/PinModal";
@@ -115,10 +116,15 @@ function AppContent() {
 }
 
 function App() {
+  const eInkMode = useLibraryStore((state) => state.eInkMode);
   return (
     <ErrorBoundary>
-      <AppContent />
-      <ToastContainer />
+      <LazyMotion features={domAnimation}>
+        <MotionConfig reducedMotion={eInkMode ? "always" : "user"}>
+          <AppContent />
+          <ToastContainer />
+        </MotionConfig>
+      </LazyMotion>
     </ErrorBoundary>
   );
 }
