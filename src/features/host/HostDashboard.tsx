@@ -90,7 +90,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Network className="w-5 h-5 text-primary" />
                 </div>
-                <h2 className="text-xl font-display font-bold tracking-tight">Connectivity</h2>
+                <div className="flex flex-col gap-0.5">
+                  <h2 className="text-xl font-display font-bold tracking-tight">Connectivity</h2>
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative flex h-2 w-2">
+                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                       <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+                    </div>
+                    <span className="text-[10px] font-bold text-success uppercase tracking-widest">Discovery Active</span>
+                  </div>
+                </div>
               </div>
 
               <div className="card-body p-5 sm:p-8 flex flex-col gap-6 h-full relative z-10">

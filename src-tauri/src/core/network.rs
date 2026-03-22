@@ -2,59 +2,55 @@ use log::info;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 pub fn get_lan_ip() -> std::net::IpAddr {
-    // Try to find a non-loopback, non-virtual IP.
     if let Ok(interfaces) = NetworkInterface::show() {
-        info!("Detected network interfaces:");
-        for iface in &interfaces {
-            for addr in &iface.addr {
-                info!("  - Interface {}: {:?}", iface.name, addr.ip());
-            }
-        }
+        info!("Analyzing network interfaces for discovery...");
+        
+        // Skip common virtual/VPN interface patterns
+        let virtual_prefixes = ["vEthernet", "docker", "vbox", "vmnet", "wsl", "tailscale", "zerotier", "utun", "tun", "tap"];
+        
+        let mut candidates = Vec::new();
 
-        // Preferred order: Ethernet/Wi-Fi (usually start with 192.168, 10, or 172.16-31)
         for iface in &interfaces {
+            let name_lower = iface.name.to_lowercase();
+            let is_virtual = virtual_prefixes.iter().any(|p| name_lower.contains(p));
+            
             for addr in &iface.addr {
-                let ip = addr.ip();
-                if let std::net::IpAddr::V4(ipv4) = ip {
-                    if ipv4.is_loopback() {
+                if let std::net::IpAddr::V4(ipv4) = addr.ip() {
+                    if ipv4.is_loopback() || ipv4.is_link_local() {
                         continue;
                     }
 
-                    let octets = ipv4.octets();
-                    // 192.168.x.x
-                    if octets[0] == 192 && octets[1] == 168 {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
+                    if is_virtual {
+                        info!("  - Skipping virtual interface {}: {}", iface.name, ipv4);
+                        continue;
                     }
-                    // 10.x.x.x
-                    if octets[0] == 10 {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
-                    }
-                    // 172.16.x.x - 172.31.x.x
-                    if octets[0] == 172 && (16..=31).contains(&octets[1]) {
-                        info!("Selected best LAN IP: {}", ip);
-                        return ip;
-                    }
+
+                    info!("  - Found candidate interface {}: {}", iface.name, ipv4);
+                    candidates.push(ipv4);
                 }
             }
         }
 
-        // Fallback to any non-loopback V4
-        for iface in &interfaces {
-            for addr in &iface.addr {
-                let ip = addr.ip();
-                if let std::net::IpAddr::V4(ipv4) = ip {
-                    if !ipv4.is_loopback() {
-                        info!("Falling back to non-loopback IP: {}", ip);
-                        return ip;
-                    }
-                }
-            }
+        // Tiered selection:
+        // 1. Standard home subnets (192.168.x.x)
+        // 2. Class A/B private subnets (10.x.x.x, 172.16.x.x)
+        // 3. Any other non-virtual V4
+        
+        candidates.sort_by_key(|ip| {
+            let octets = ip.octets();
+            if octets[0] == 192 && octets[1] == 168 { return 1; }
+            if octets[0] == 10 { return 2; }
+            if octets[0] == 172 && (16..=31).contains(&octets[1]) { return 3; }
+            4
+        });
+
+        if let Some(best) = candidates.first() {
+            info!("Selected best LAN IP: {}", best);
+            return std::net::IpAddr::V4(*best);
         }
     }
 
     let fallback = local_ip_address::local_ip().unwrap_or_else(|_| "127.0.0.1".parse().unwrap());
-    info!("Ultimate IP fallback: {}", fallback);
+    info!("Ultimate discovery IP fallback: {}", fallback);
     fallback
 }
