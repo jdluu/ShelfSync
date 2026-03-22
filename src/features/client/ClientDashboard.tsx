@@ -6,8 +6,8 @@ import { Header } from "@/components/layout/Header";
 import { SkipLink } from "@/components/layout/SkipLink";
 
 import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
+import { CoverFlow } from "@/components/ui/CoverFlow";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
-// removed SkeletonCard import
 import { Discovery } from "@/features/discovery/Discovery";
 import type { Book } from "@/types/core";
 import { ClientBookGrid } from "./ClientBookGrid";
@@ -171,7 +171,21 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                     handleInfoClick={handleInfoClick}
                   />
                 ) : (
-                  <div className="animate-in fade-in duration-500">
+                  <div className="animate-in fade-in duration-500 flex flex-col gap-8">
+                    {viewMode === "grid" && !searchTerm && !sortOption.includes("title") && (
+                      <div className="hidden sm:block w-full">
+                        <CoverFlow
+                          books={filteredRemoteBooks.slice(0, 10)}
+                          title="Featured Books"
+                          host={connectedHost}
+                          token={token}
+                          onInfoClick={handleInfoClick}
+                        />
+                        <h3 className="text-xl font-bold tracking-tight text-base-content mb-4 px-1">
+                          All Books
+                        </h3>
+                      </div>
+                    )}
                     <ClientBookGrid
                       books={filteredRemoteBooks}
                       viewMode={viewMode}

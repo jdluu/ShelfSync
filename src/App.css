@@ -51,6 +51,38 @@ body {
   }
 }
 
+/* E-Ink Optimization Mode overrides */
+html.e-ink *,
+html.e-ink *::before,
+html.e-ink *::after {
+  transition: none;
+  animation: none;
+}
+
+html.e-ink {
+  --color-base-100: #ffffff;
+  --color-base-200: #ffffff;
+  --color-base-300: #e0e0e0;
+  --color-base-content: #000000;
+  --color-primary: #000000;
+  --color-primary-content: #ffffff;
+  --color-neutral: #000000;
+  --color-neutral-content: #ffffff;
+  --color-success: #000000;
+  --color-info: #000000;
+  --color-warning: #000000;
+  --color-error: #000000;
+}
+
+html.e-ink .shadow,
+html.e-ink .shadow-md,
+html.e-ink .shadow-lg,
+html.e-ink .shadow-xl,
+html.e-ink .shadow-2xl {
+  box-shadow: none;
+  border: 1px solid #000000;
+}
+
 @plugin "daisyui/theme" {
   name: "light";
   default: true;

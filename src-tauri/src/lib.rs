@@ -22,6 +22,7 @@ pub struct AppState {
     pub server: http::SharedState,
     pub discovery: Arc<DiscoveryState>,
     pub sync_manager: Mutex<Option<crate::core::sync::SyncManager>>,
+    pub search_engine: Mutex<Option<crate::core::search::SearchEngine>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -65,6 +66,7 @@ pub fn run() {
             }),
             discovery: discovery_state,
             sync_manager: Mutex::new(None),
+            search_engine: Mutex::new(None),
         })
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -75,6 +77,17 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to get app_data_dir");
             std::fs::create_dir_all(&app_data_dir).ok();
+
+            // Init Search Engine
+            let search_dir = app_data_dir.join("tantivy_index");
+            let app_state = app.state::<AppState>();
+            if let Ok(search_engine) = crate::core::search::SearchEngine::new(search_dir) {
+                if let Ok(mut lock) = app_state.search_engine.lock() {
+                    *lock = Some(search_engine);
+                }
+            } else {
+                error!("Failed to initialize Tantivy Search Engine");
+            }
 
             // 1. PIN Management (Persistence)
             let pin_path = app_data_dir.join("pin.txt");
@@ -92,7 +105,6 @@ pub fn run() {
             };
             info!("Server PIN initialized.");
 
-            let app_state = app.state::<AppState>();
             {
                 match app_state.server.pin.lock() {
                     Ok(mut pin) => *pin = pin_str,
@@ -222,9 +234,12 @@ pub fn run() {
             library::set_library_path,
             library::get_default_storage_path,
             library::start_bulk_sync,
+            library::search_contents,
             network::get_connection_info,
             network::discover_hosts,
             network::refresh_discovery,
+            network::set_hosting_mode,
+            network::set_auto_sync,
             crate::commands::local_db::init_local_db,
             crate::commands::local_db::save_local_book,
             crate::commands::local_db::update_local_read_status,

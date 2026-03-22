@@ -17,11 +17,13 @@ interface LibraryState {
   libraryPath: string;
   offlineStoragePath: string;
   localBooks: Book[];
+  eInkMode: boolean;
 
   setAppMode: (mode: AppMode) => Promise<void>;
   setLibraryPath: (path: string) => Promise<void>;
   setOfflineStoragePath: (path: string) => Promise<void>;
   setLocalBooks: (books: Book[]) => void;
+  setEInkMode: (enabled: boolean) => Promise<void>;
 
   loadSettings: () => Promise<void>;
   selectLibraryFolder: () => Promise<void>;
@@ -35,9 +37,32 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   libraryPath: "",
   offlineStoragePath: "",
   localBooks: [],
+  eInkMode: false,
+
+  setEInkMode: async (enabled) => {
+    set({ eInkMode: enabled });
+    if (enabled) {
+      document.documentElement.classList.add("e-ink");
+    } else {
+      document.documentElement.classList.remove("e-ink");
+    }
+    try {
+      const store = await safeStoreLoad(STORE_PATH);
+      await store.set("e_ink_mode", enabled);
+      await store.save();
+    } catch (_) {}
+  },
 
   setAppMode: async (mode) => {
     set({ appMode: mode });
+    if (isTauri()) {
+      try {
+        await invoke("set_hosting_mode", { enabled: mode === "host" });
+        await invoke("set_auto_sync", { enabled: mode === "client" });
+      } catch (e) {
+        console.error("Failed to set app mode configurations:", e);
+      }
+    }
     if (mode === "client") {
       try {
         await initDB();
@@ -77,14 +102,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       await initDB();
       const store = await safeStoreLoad(STORE_PATH);
-      const [libPath, offPath] = await Promise.all([
+      const [libPath, offPath, eInk] = await Promise.all([
         store.get<string>("library_path"),
         store.get<string>("offline_storage_path"),
+        store.get<boolean>("e_ink_mode"),
       ]);
       set({
         libraryPath: libPath || "",
         offlineStoragePath: offPath || "",
+        eInkMode: !!eInk,
       });
+      if (eInk) {
+        document.documentElement.classList.add("e-ink");
+      }
     } catch (_) {
       notifyError("Settings Error", "Failed to load library settings.");
     }
@@ -96,7 +126,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const toast = useToastStore.getState();
 
     try {
-      // Try standard folder picker first
       let selected: string | string[] | null = null;
       try {
         selected = await open({
@@ -108,7 +137,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         console.warn("[Library] Standard folder picker failed, trying save hack:", e);
       }
 
-      // HACK: Mobile fallback for directory selection
       if (!selected && isMobile()) {
         toast.addToast("Pick a location by confirming a placeholder filename.", "info");
         selected = await save({
@@ -145,7 +173,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const toast = useToastStore.getState();
 
     try {
-      // Try the standard folder picker first
       let selected: string | string[] | null = null;
 
       try {
@@ -158,7 +185,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         console.warn("[Storage] Standard folder picker failed, trying save hack:", e);
       }
 
-      // HACK: If open didn't return anything or threw, try the save dialog hack for mobile
       if (!selected && isMobile()) {
         toast.addToast("Pick a location by confirming a placeholder filename.", "info");
 
@@ -168,7 +194,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         });
 
         if (selected && typeof selected === "string") {
-          // Strip the dummy filename to get the directory
           selected = await dirname(selected);
         }
       }
@@ -179,7 +204,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
     } catch (error) {
       if (String(error).includes("not implemented on mobile") || isMobile()) {
-        // Ultimate Fallback: Get default path from Rust
         const defaultPath = await invoke<string>("get_default_storage_path");
         if (defaultPath) {
           await get().setOfflineStoragePath(defaultPath);
@@ -193,7 +217,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   toggleReadStatus: async (book, connectedHost, token) => {
-    // ... (existing implementation)
     const current = book.read_status || "unread";
     let next: "unread" | "reading" | "finished" = "reading";
     if (current === "reading") next = "finished";

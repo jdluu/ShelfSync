@@ -46,7 +46,6 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
         [],
     )?;
 
-    // Migration
     let mut stmt = conn.prepare("PRAGMA table_info(books)")?;
     let columns: Vec<String> = stmt
         .query_map([], |row| row.get(1))?
@@ -59,7 +58,6 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
         )?;
     }
 
-    // Migration for metadata columns
     let new_columns = vec![
         ("cover_local_path", "TEXT"),
         ("series", "TEXT"),
@@ -81,13 +79,11 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
         }
     }
 
-    // Cleanup duplicates caused by missing constraints or listener leaks
     let _ = conn.execute(
         "DELETE FROM books WHERE id NOT IN (SELECT MAX(id) FROM books GROUP BY remote_id) AND remote_id IS NOT NULL",
         [],
     );
 
-    // Create indexes for performance
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_authors ON books(authors)", [])?;
     conn.execute("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)", [])?;
@@ -104,7 +100,6 @@ pub fn save_local_book(
 ) -> Result<(), AppError> {
     let conn = open_client_db(&state)?;
 
-    // Check if the remote_id already exists in the local database
     let exists: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM books WHERE remote_id = ?1",
@@ -115,7 +110,6 @@ pub fn save_local_book(
 
     let tags_str = book.tags.join(",");
     
-    // Automatically resolve the local cover_path if it was downloaded alongside the EPUB
     let mut cover_path = book.cover_url.clone();
     let local_path_buf = std::path::Path::new(&local_path);
     if let Some(parent) = local_path_buf.parent() {
@@ -130,7 +124,6 @@ pub fn save_local_book(
     }
 
     if exists > 0 {
-        // Update the existing record without replacing the read_status
         conn.execute(
             "UPDATE books SET title = ?1, authors = ?2, format = ?3, local_path = ?4, 
              cover_local_path = ?5, series = ?6, series_index = ?7, tags = ?8, 
@@ -144,7 +137,6 @@ pub fn save_local_book(
             ],
         )?;
     } else {
-        // Insert a new record
         conn.execute(
             "INSERT INTO books (title, authors, remote_id, format, local_path, read_status, 
                 cover_local_path, series, series_index, tags, publisher, description, rating, language, published_date) 
@@ -155,6 +147,21 @@ pub fn save_local_book(
                 book.publisher, book.description, book.rating, book.language, book.published_date
             ],
         )?;
+    }
+
+    let book_id_str = book.id.to_string();
+    let title_str = book.title.clone();
+    let path_clone = local_path.clone();
+    
+    if let Ok(lock) = state.search_engine.lock() {
+        if let Some(engine) = lock.as_ref() {
+            let search_engine = engine.clone();
+            std::thread::spawn(move || {
+                if let Err(e) = search_engine.index_epub_content(&book_id_str, &title_str, std::path::Path::new(&path_clone)) {
+                    log::error!("Failed to index epub for search: {}", e);
+                }
+            });
+        }
     }
 
     Ok(())
@@ -247,7 +254,6 @@ pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError
 pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppError> {
     let conn = open_client_db(&state)?;
 
-    // 1. Get the local path before deleting from DB
     let local_path: Option<String> = conn
         .query_row(
             "SELECT local_path FROM books WHERE id = ?1",
@@ -256,7 +262,6 @@ pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppE
         )
         .optional()?;
 
-    // 2. Delete file and parent directory from disk if path exists
     if let Some(path_str) = local_path {
         let path = std::path::Path::new(&path_str);
         if path.exists() {
@@ -267,7 +272,6 @@ pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppE
             }
         }
         
-        // Try to delete sibling files (cover.jpg, metadata.opf) and the parent directory
         if let Some(parent) = path.parent() {
             let _ = std::fs::remove_file(parent.join("cover.jpg"));
             let _ = std::fs::remove_file(parent.join("metadata.opf"));
@@ -279,7 +283,6 @@ pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppE
         }
     }
 
-    // 3. Delete from database
     conn.execute("DELETE FROM books WHERE id = ?1", params![id])?;
 
     Ok(())

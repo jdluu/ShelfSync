@@ -3,7 +3,7 @@ import type React from "react";
 import QRCodeDefault from "react-qr-code";
 
 // ESM / CJS interop for React-QR-Code
-const QRCode = (QRCodeDefault as any)?.default ?? QRCodeDefault;
+const QRCode = (QRCodeDefault as { default?: typeof QRCodeDefault })?.default ?? QRCodeDefault;
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";

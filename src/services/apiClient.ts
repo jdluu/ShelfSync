@@ -122,17 +122,26 @@ export const httpClient = {
   },
 
   /**
-   * Fetches the user's reading progress for all known books.
+   * Fetches the user's reading progress for all known books, optionally filtered by timestamp for Delta Sync.
    *
    * @summary Retrieves tracked reading states (e.g., unread, reading, finished) from the host.
    * @param {Host} host - The target host connection details.
    * @param {string} token - The active bearer token for authorization.
+   * @param {number} [since] - Optional Unix timestamp to fetch only progress updated since then.
    * @returns {Promise<{ book_id: number; status: string }[]>} A promise resolving to an array of progress tracking objects.
    * @throws {Error} "Failed to fetch progress" if the network request fails or returns non-OK status.
    * @sideEffects Performs an external HTTP GET request.
    */
-  async getProgress(host: Host, token: string): Promise<{ book_id: number; status: string }[]> {
-    const response = await fetch(`http://${host.ip}:${host.port}/api/progress`, {
+  async getProgress(
+    host: Host,
+    token: string,
+    since?: number,
+  ): Promise<{ book_id: number; status: string }[]> {
+    const url = since
+      ? `http://${host.ip}:${host.port}/api/progress?since=${since}`
+      : `http://${host.ip}:${host.port}/api/progress`;
+
+    const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error("Failed to fetch progress");

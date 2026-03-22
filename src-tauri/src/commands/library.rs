@@ -179,3 +179,16 @@ pub async fn get_default_storage_path(app: tauri::AppHandle) -> Result<String, A
         Ok("".to_string())
     }
 }
+
+#[tauri::command]
+pub fn search_contents(
+    query: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::core::search::SearchResult>, AppError> {
+    if let Ok(lock) = state.search_engine.lock() {
+        if let Some(engine) = lock.as_ref() {
+            return engine.search(&query, 20).map_err(|e| AppError::Unknown(e));
+        }
+    }
+    Err(AppError::Unknown("Search engine not initialized".to_string()))
+}

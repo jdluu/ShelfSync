@@ -10,6 +10,9 @@ pub fn spawn_mdns_task(
     port: u16,
 ) {
     tauri::async_runtime::spawn(async move {
+        #[cfg(target_os = "android")]
+        crate::core::android::set_multicast_lock(&handle, true);
+
         let mdns = match mdns_sd::ServiceDaemon::new() {
             Ok(d) => d,
             Err(e) => {

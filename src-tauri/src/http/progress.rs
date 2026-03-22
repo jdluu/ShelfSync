@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{State, Query},
     http::{header, StatusCode},
     response::{IntoResponse, Json},
 };
@@ -13,12 +13,18 @@ pub struct ProgressUpdate {
     pub status: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct ProgressQuery {
+    pub since: Option<i64>,
+}
+
 /// Handler for `GET /api/progress`.
 ///
 /// Returns current reading progress for all books.
 /// Requires `Authorization: Bearer <token>` header.
 pub async fn get_progress(
     header_map: header::HeaderMap,
+    Query(query): Query<ProgressQuery>,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
     if !is_authorized(&header_map, &state) {
@@ -27,7 +33,7 @@ pub async fn get_progress(
 
     let mut lock = state.progress_db.lock().unwrap();
     if let Some(conn) = lock.as_ref() {
-        match crate::core::progress::get_all_progress(conn) {
+        match crate::core::progress::get_progress(conn, query.since) {
             Ok(records) => Json(records).into_response(),
             Err(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -36,7 +42,6 @@ pub async fn get_progress(
                 .into_response(),
         }
     } else {
-        // Fallback or uninitialized error
         let app_data_dir = {
             let guard = match state.app_data_dir.lock() {
                 Ok(g) => g,
@@ -47,7 +52,7 @@ pub async fn get_progress(
         if let Some(dir) = app_data_dir {
             match crate::core::progress::init_progress_db(&dir) {
                 Ok(conn) => {
-                    let res = crate::core::progress::get_all_progress(&conn);
+                    let res = crate::core::progress::get_progress(&conn, query.since);
                     *lock = Some(conn);
                     match res {
                         Ok(records) => Json(records).into_response(),

@@ -5,8 +5,10 @@ use std::path::Path;
 #[derive(serde::Serialize)]
 pub struct ProgressRecord {
     pub book_id: i64,
-    pub status: String,    // 'unread', 'reading', 'finished'
-    pub last_updated: i64, // Unix timestamp
+    /// Status of the book: 'unread', 'reading', or 'finished'
+    pub status: String,
+    /// Unix timestamp of the last progress update
+    pub last_updated: i64,
 }
 
 pub fn init_progress_db(app_data_dir: &Path) -> Result<Connection, AppError> {
@@ -44,18 +46,32 @@ pub fn update_progress(conn: &Connection, book_id: i64, status: &str) -> Result<
     Ok(())
 }
 
-pub fn get_all_progress(conn: &Connection) -> Result<Vec<ProgressRecord>, AppError> {
-    let mut stmt = conn.prepare("SELECT book_id, status, last_updated FROM progress")?;
-
-    let records = stmt
-        .query_map([], |row| {
-            Ok(ProgressRecord {
-                book_id: row.get(0)?,
-                status: row.get(1)?,
-                last_updated: row.get(2)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
+pub fn get_progress(conn: &Connection, since: Option<i64>) -> Result<Vec<ProgressRecord>, AppError> {
+    let mut stmt;
+    let records = match since {
+        Some(ts) => {
+            stmt = conn.prepare("SELECT book_id, status, last_updated FROM progress WHERE last_updated >= ?1")?;
+            stmt.query_map([ts], |row| {
+                Ok(ProgressRecord {
+                    book_id: row.get(0)?,
+                    status: row.get(1)?,
+                    last_updated: row.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+        }
+        None => {
+            stmt = conn.prepare("SELECT book_id, status, last_updated FROM progress")?;
+            stmt.query_map([], |row| {
+                Ok(ProgressRecord {
+                    book_id: row.get(0)?,
+                    status: row.get(1)?,
+                    last_updated: row.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+        }
+    };
 
     Ok(records)
 }
