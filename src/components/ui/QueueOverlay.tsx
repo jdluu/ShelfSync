@@ -1,5 +1,5 @@
-import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import { AlertCircle, CheckCircle, Download } from "lucide-react";
+import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import type React from "react";
 
 interface SyncItem {
@@ -32,7 +32,7 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
 
   return (
     <output
-      className="fixed bottom-6 right-6 z-50 w-80 max-h-[400px] bg-base-100 rounded-xl shadow-2xl border border-base-300 flex flex-col overflow-hidden backdrop-blur-md"
+      className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-[2000] w-full sm:w-80 max-h-[400px] bg-base-100/95 sm:bg-base-100 rounded-t-2xl sm:rounded-xl shadow-[0_-8px_30px_rgb(0,0,0,0.12)] sm:shadow-2xl border border-base-300 flex flex-col overflow-hidden backdrop-blur-md"
       aria-live="polite"
       aria-label="Sync progress"
     >

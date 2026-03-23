@@ -1,11 +1,14 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import { create } from "zustand";
+import { useLibraryStore } from "@/store/libraryStore";
 import { useToastStore } from "@/store/toastStore";
 import type { Book, Host } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
 import { isTauri, safeInvoke } from "@/utils/tauri";
+
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
 interface SyncState {
   syncProgress: Record<number, SyncProgress>;
@@ -42,6 +45,42 @@ export const useSyncStore = create<SyncState>((set) => ({
 
       if (newBooks.length === 0) {
         useToastStore.getState().addToast("Already syncing — please wait.", "info");
+        return;
+      }
+
+      if (MOCK_MODE) {
+        // Mock progress iteration
+        const count = newBooks.length;
+        useToastStore.getState().addToast(`Syncing ${count} book${count !== 1 ? "s" : ""}…`, "info");
+        
+        for (const book of newBooks) {
+          // Add to queue
+          useSyncStore.getState().setSyncProgress({
+            ...useSyncStore.getState().syncProgress,
+            [book.id]: { book_id: book.id, title: book.title, status: "downloading", progress: 0, queue_position: 1, queue_total: 1 },
+          });
+          
+          // Fake download frames
+          for (let p = 10; p <= 100; p += 30) {
+            await new Promise(resolve => setTimeout(resolve, 400));
+            useSyncStore.getState().setSyncProgress({
+              ...useSyncStore.getState().syncProgress,
+              [book.id]: { book_id: book.id, title: book.title, status: "downloading", progress: p / 100, queue_position: 1, queue_total: 1 },
+            });
+          }
+          
+          // Complete
+          useSyncStore.getState().setSyncProgress({
+            ...useSyncStore.getState().syncProgress,
+            [book.id]: { book_id: book.id, title: book.title, status: "completed", progress: 1, queue_position: 1, queue_total: 1 },
+          });
+          
+          // Add to local storage
+          const localBooks = useLibraryStore.getState().localBooks;
+          if (!localBooks.find((b: Book) => b.id === book.id)) {
+            useLibraryStore.getState().setLocalBooks([...localBooks, { ...book, local_path: `/mock/path/${book.id}.epub` }]);
+          }
+        }
         return;
       }
 

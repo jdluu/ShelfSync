@@ -102,7 +102,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
       <Header title="Client Dashboard" onChangeRole={onChangeRole} />
 
       <main id="main-content" className="flex-grow bg-base-100 p-4 sm:p-8">
-        <div className="container mx-auto max-w-7xl">
+        <div className="container mx-auto max-w-6xl">
           <ClientHeader
             activeTab={activeTab}
             connectedHost={connectedHost}

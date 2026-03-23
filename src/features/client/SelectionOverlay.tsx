@@ -29,6 +29,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   variant = "sync",
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const selectedCount = selectedBooks.length;
 
   // Sort books alphabetically for the summary list
@@ -43,38 +44,41 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
       aria-label="Book selection actions"
     >
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <button
-            type="button"
-            className="font-bold flex items-center gap-1 hover:text-primary transition-colors"
-            onClick={() => setIsExpanded(!isExpanded)}
-            aria-expanded={isExpanded}
-            aria-controls="selected-books-list"
-          >
-            {selectedCount} selected{" "}
-            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-          </button>
-          <div className="flex gap-2">
+        {/* Only show header actions if not confirming */}
+        {!isConfirming && (
+          <div className="flex justify-between items-center">
             <button
               type="button"
-              className="btn btn-ghost btn-xs"
-              onClick={selectAll}
-              aria-label="Select all books"
+              className="font-bold flex items-center gap-1 hover:text-primary transition-colors"
+              onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
+              aria-controls="selected-books-list"
             >
-              {variant === "sync" ? "Select Library" : "Select Device"}
+              {selectedCount} selected{" "}
+              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs"
-              onClick={selectNone}
-              aria-label="Clear selection"
-            >
-              Clear
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={selectAll}
+                aria-label="Select all books"
+              >
+                {variant === "sync" ? "Select All" : "Select All"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={selectNone}
+                aria-label="Clear selection"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {isExpanded && (
+        {isExpanded && !isConfirming && (
           <div
             id="selected-books-list"
             className="max-h-40 overflow-y-auto bg-base-200/50 rounded-lg p-2 text-sm border border-base-content/5"
@@ -103,37 +107,65 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         )}
 
         {variant === "sync" && onBulkSync ? (
-          <button
-            type="button"
-            className="btn btn-primary w-full"
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Are you sure you want to download ${selectedCount} books to your device?`,
-                )
-              ) {
-                onBulkSync();
-              }
-            }}
-          >
-            Sync Selected to Device
-          </button>
+          isConfirming ? (
+            <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <button
+                type="button"
+                className="btn btn-primary flex-1 shadow-md shadow-primary/20"
+                onClick={() => {
+                  setIsConfirming(false);
+                  onBulkSync();
+                }}
+              >
+                Confirm Sync ({selectedCount})
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setIsConfirming(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary w-full"
+              onClick={() => setIsConfirming(true)}
+            >
+              Sync Selected to Device
+            </button>
+          )
         ) : variant === "delete" && onBulkDelete ? (
-          <button
-            type="button"
-            className="btn btn-error w-full"
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Are you sure you want to delete ${selectedCount} books from your device? This will remove the local files.`,
-                )
-              ) {
-                onBulkDelete();
-              }
-            }}
-          >
-            Delete Selected
-          </button>
+          isConfirming ? (
+            <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <button
+                type="button"
+                className="btn btn-error flex-1 shadow-md shadow-error/20"
+                onClick={() => {
+                  setIsConfirming(false);
+                  onBulkDelete();
+                }}
+              >
+                Confirm Delete ({selectedCount})
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setIsConfirming(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-error w-full"
+              onClick={() => setIsConfirming(true)}
+            >
+              Delete Selected
+            </button>
+          )
         ) : null}
       </div>
     </div>
