@@ -5,10 +5,7 @@ interface SystemInfoProps {
   version?: string;
 }
 
-export const SystemInfo: React.FC<SystemInfoProps> = ({
-  hostIp,
-  version = "1.1.0 (Stable)",
-}) => {
+export const SystemInfo: React.FC<SystemInfoProps> = ({ hostIp, version = "1.3.2 (Stable)" }) => {
   return (
     <div className="flex flex-col gap-2 p-4 bg-base-200/30 rounded-xl border border-dashed border-base-300">
       <h4 className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest">

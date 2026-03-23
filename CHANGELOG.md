@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2026-03-22
+### Added
+- **Visual Activity Preview**: Introduced a "Recent Activity" monitor on the Host Dashboard to better visualize incoming device connections and synchronization status.
+
+### Changed
+- **Modern Confirmation Flow**: Replaced outdated browser pop-ups with smooth, interactive inline confirmation buttons for book downloads and removals.
+- **Adaptive Sync Progress**: Redesigned the progress overlay to fluidly snap to the bottom of the screen on mobile devices, providing a more native-feeling experience.
+- **Layout Consistency Improvements**: Standardized dashboard widths across all devices to ensure a premium, centered viewing experience on larger monitors.
+
 ## [1.3.1] - 2026-03-22
 ### Added
 - **Interactive Connection Feedback**: Added "Connecting..." states and real-time notifications for manual IP connections.
