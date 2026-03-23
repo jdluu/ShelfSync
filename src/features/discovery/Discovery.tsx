@@ -44,7 +44,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   const { hosts, scanning, scan, knownHosts } = useDiscoveryStore();
   const { isConnecting, testConnection } = useAuthStore();
   const [manualIp, setManualIp] = useState("");
-  const [manualPort, setManualPort] = useState("8080");
+  const [manualPort, setManualPort] = useState(import.meta.env.DEV ? "1420" : "8080");
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
 
   const handleManualConnect = async () => {
@@ -66,7 +66,7 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
   const historyHosts = deduplicateHosts(knownHosts);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 max-w-3xl mx-auto w-full">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Search className="text-success" />
@@ -206,19 +206,22 @@ export const Discovery: React.FC<DiscoveryProps> = ({ onConnect }) => {
               <section>
                 <h4 className="font-bold mb-2">1. Windows/Linux Firewall</h4>
                 <p className="text-base-content/70">
-                  Ensure <strong>UDP Port 5353</strong> (mDNS) is allowed for inbound traffic on the host machine. On Windows, use "Advanced Security" to check "Inbound Rules".
+                  Ensure <strong>UDP Port 5353</strong> (mDNS) is allowed for inbound traffic on the
+                  host machine. On Windows, use "Advanced Security" to check "Inbound Rules".
                 </p>
               </section>
               <section>
                 <h4 className="font-bold mb-2">2. Network Profile</h4>
                 <p className="text-base-content/70">
-                  Discovery often fails on <strong>"Public"</strong> networks. Set your Wi-Fi network to <strong>"Private"</strong> or <strong>"Home"</strong> in OS settings.
+                  Discovery often fails on <strong>"Public"</strong> networks. Set your Wi-Fi
+                  network to <strong>"Private"</strong> or <strong>"Home"</strong> in OS settings.
                 </p>
               </section>
               <section>
                 <h4 className="font-bold mb-2">3. Virtual Adapters</h4>
                 <p className="text-base-content/70">
-                  WSL, Docker, or VPN interfaces can sometimes interfere. Try disabling them if discovery remains persistent.
+                  WSL, Docker, or VPN interfaces can sometimes interfere. Try disabling them if
+                  discovery remains persistent.
                 </p>
               </section>
               <button

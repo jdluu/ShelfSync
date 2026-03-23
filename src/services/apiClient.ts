@@ -1,6 +1,9 @@
 import type { Book, ConnectionInfo, Host } from "@/types/core";
 import { BookSchema, ConnectionInfoSchema } from "@/types/schemas";
 import { safeInvoke } from "@/utils/tauri";
+import { MOCK_BOOKS, MOCK_CONNECTION_INFO, MOCK_HOST } from "./mockData";
+
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
 /**
  * Central API interface for communicating with the Tauri backend.
@@ -44,21 +47,25 @@ export const api = {
     /**
      * Retrieves the host's local connection information (IP/Port).
      */
-    getConnectionInfo: () =>
-      safeInvoke<ConnectionInfo>("get_connection_info", undefined, {
+    getConnectionInfo: () => {
+      if (MOCK_MODE) return Promise.resolve(MOCK_CONNECTION_INFO);
+      return safeInvoke<ConnectionInfo>("get_connection_info", undefined, {
         ip: "127.0.0.1",
         port: 1420,
         hostname: "Browser",
         pin: "0000",
-      }).then((res) => ConnectionInfoSchema.parse(res)),
+      }).then((res) => ConnectionInfoSchema.parse(res));
+    },
 
     /**
      * Discovers other active ShelfSync hosts on the local network.
      */
-    discoverHosts: () =>
-      safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []).then((res) =>
+    discoverHosts: () => {
+      if (MOCK_MODE) return Promise.resolve([MOCK_CONNECTION_INFO]);
+      return safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []).then((res) =>
         ConnectionInfoSchema.array().parse(res),
-      ),
+      );
+    },
 
     /**
      * Clears the discovered hosts cache and triggers a fresh mDNS scan.
@@ -75,6 +82,10 @@ export const httpClient = {
    * Pings the host to verify connectivity.
    */
   async ping(host: Host): Promise<{ hostname: string; is_library_configured: boolean }> {
+    if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
+      return { hostname: MOCK_HOST.hostname, is_library_configured: true };
+    }
+
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
@@ -102,6 +113,12 @@ export const httpClient = {
    * @sideEffects Performs an external HTTP GET request.
    */
   async getManifest(host: Host, token?: string): Promise<Book[]> {
+    if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
+      // Return mock books. Simulate network delay.
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return MOCK_BOOKS;
+    }
+
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -131,6 +148,11 @@ export const httpClient = {
    * @sideEffects Performs an external HTTP POST request.
    */
   async checkPin(host: Host, pin: string): Promise<string> {
+    if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
+      if (pin === "1234") return "mock-token-abc-123";
+      throw new Error("Invalid PIN");
+    }
+
     const response = await fetch(`http://${host.ip}:${host.port}/api/check-pin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -157,6 +179,13 @@ export const httpClient = {
     token: string,
     since?: number,
   ): Promise<{ book_id: number; status: string }[]> {
+    if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
+      return [
+        { book_id: 1, status: "reading" },
+        { book_id: 7, status: "finished" },
+      ];
+    }
+
     const url = since
       ? `http://${host.ip}:${host.port}/api/progress?since=${since}`
       : `http://${host.ip}:${host.port}/api/progress`;
@@ -181,6 +210,10 @@ export const httpClient = {
    * @sideEffects Performs an external HTTP POST request, mutating state on the remote host.
    */
   async updateProgress(host: Host, token: string, bookId: number, status: string): Promise<void> {
+    if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
+      return Promise.resolve();
+    }
+
     const response = await fetch(`http://${host.ip}:${host.port}/api/progress`, {
       method: "POST",
       headers: {

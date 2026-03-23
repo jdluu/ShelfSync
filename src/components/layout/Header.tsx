@@ -33,6 +33,16 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
         <div className="flex items-center gap-1 sm:gap-3">
           {actions}
 
+          {onChangeRole && (
+            <button
+              type="button"
+              onClick={onChangeRole}
+              className="btn btn-ghost btn-sm font-medium hover:bg-base-200 hidden xs:inline-flex"
+            >
+              Change Role
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}

@@ -1,16 +1,16 @@
 import { requestPermission } from "@tauri-apps/plugin-notification";
 import { ArrowLeft, FileText, Library, Settings, Shield, User, Wifi, X } from "lucide-react";
 import type React from "react";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useToastStore } from "@/store/toastStore";
 import { isTauri } from "@/utils/tauri";
 import { ARTICLES } from "./help/helpArticles";
-import { ThemeSwitcher } from "./ThemeSwitcher";
-import { SettingsSection } from "./settings/SettingsSection";
-import { HelpCategory } from "./settings/HelpCategory";
-import { SystemInfo } from "./settings/SystemInfo";
 import { HelpArticleView } from "./settings/HelpArticleView";
+import { HelpCategory } from "./settings/HelpCategory";
+import { SettingsSection } from "./settings/SettingsSection";
+import { SystemInfo } from "./settings/SystemInfo";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 interface SettingsSidebarProps {
   isOpen: boolean;

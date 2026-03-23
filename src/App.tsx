@@ -1,5 +1,6 @@
-import { LazyMotion, MotionConfig, domAnimation } from "motion/react";
+import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PinModal } from "@/components/ui/PinModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
@@ -26,9 +27,17 @@ function InitializingView() {
         paddingBottom: "var(--safe-area-bottom, 0px)",
       }}
     >
-      <div className="flex flex-col items-center gap-4">
-        <span className="loading loading-spinner loading-xl text-primary"></span>
-        <p className="text-lg font-medium text-base-content/70">Initializing ShelfSync...</p>
+      <div className="flex flex-col items-center gap-6 animate-in fade-in duration-500">
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-xl animate-pulse" />
+          <BrandLogo size="lg" className="relative shadow-xl rounded-3xl" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <span className="loading loading-spinner loading-md text-primary opacity-80" />
+          <p className="text-sm font-medium text-base-content/60 tracking-wide uppercase">
+            Initializing ShelfSync
+          </p>
+        </div>
       </div>
     </div>
   );

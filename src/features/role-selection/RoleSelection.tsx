@@ -25,8 +25,8 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onSelect }) => {
 
       {/* Main Content */}
       <main id="main-content" className="flex-grow flex flex-col p-4 sm:p-6 pt-8 sm:pt-12">
-        <div className="container max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="container max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
             {/* Host Card */}
             <button
               type="button"

@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Folder, Monitor, Network } from "lucide-react";
+import { Activity, ChevronsUpDown, DownloadCloud, Folder, Monitor, Network, Smartphone } from "lucide-react";
 import type React from "react";
 import QRCodeDefault from "react-qr-code";
 
@@ -11,6 +11,8 @@ import { SkipLink } from "@/components/layout/SkipLink";
 import { useLocalLibrary } from "@/hooks/useLibraryQuery";
 import { useLibraryStore } from "@/store/libraryStore";
 import type { ConnectionInfo } from "@/types/core";
+
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
 interface HostDashboardProps {
   connectionInfo: ConnectionInfo | null;
@@ -33,7 +35,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
 
       {/* Main Content */}
       <main id="main-content" className="flex-grow p-4 sm:p-8 flex items-start justify-center">
-        <div className="container max-w-7xl">
+        <div className="container max-w-5xl w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             {/* Library Selection Card */}
             <div className="card bg-base-100 hover:bg-base-200/50 transition-all duration-300 border border-base-content/10 shadow-sm hover:shadow-xl flex flex-col items-center justify-center p-8 sm:p-12 text-center gap-6 sm:gap-8 relative overflow-hidden group">
@@ -94,10 +96,12 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                   <h2 className="text-xl font-display font-bold tracking-tight">Connectivity</h2>
                   <div className="flex items-center gap-1.5">
                     <div className="relative flex h-2 w-2">
-                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                       <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                     </div>
-                    <span className="text-[10px] font-bold text-success uppercase tracking-widest">Discovery Active</span>
+                    <span className="text-[10px] font-bold text-success uppercase tracking-widest">
+                      Discovery Active
+                    </span>
                   </div>
                 </div>
               </div>
@@ -164,6 +168,68 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
               </div>
             </div>
           </div>
+
+          {/* Connected Clients & Activity (Mock View) */}
+          {MOCK_MODE && (
+            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="card bg-base-100 border border-base-content/10 shadow-sm overflow-hidden">
+                <div className="p-5 sm:p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-info/10 rounded-lg">
+                      <Activity className="w-4 h-4 text-info" />
+                    </div>
+                    <h2 className="font-bold tracking-tight">Recent Activity</h2>
+                  </div>
+                  <div className="badge badge-success gap-1.5 border-none bg-success/10 text-success font-bold text-xs py-2 scale-95 sm:scale-100">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+                    </span>
+                    1 Active Client
+                  </div>
+                </div>
+                <div className="p-0">
+                  <div className="divide-y divide-base-content/5">
+                    {/* Mock Item 1 */}
+                    <div className="p-4 sm:p-5 flex items-center justify-between hover:bg-base-200/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center shrink-0">
+                          <Smartphone className="w-5 h-5 text-base-content/60" />
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold">Pixel 9 Pro XL</p>
+                          <p className="text-xs text-base-content/50 flex items-center gap-1 mt-0.5">
+                            <DownloadCloud className="w-3 h-3" /> Syncing "The Rust Programming Language"
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="text-xs font-mono font-medium text-base-content/70">
+                          64%
+                        </div>
+                        <progress className="progress progress-primary w-16 sm:w-24" value="64" max="100"></progress>
+                      </div>
+                    </div>
+
+                    {/* Mock Item 2 */}
+                    <div className="p-4 sm:p-5 flex items-center justify-between hover:bg-base-200/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center shrink-0">
+                          <Monitor className="w-5 h-5 text-base-content/60" />
+                        </div>
+                        <div className="flex flex-col">
+                          <p className="text-sm font-bold text-base-content/70">Linux Desktop</p>
+                          <p className="text-xs text-base-content/40 mt-0.5">
+                            Disconnected 2 hrs ago
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
