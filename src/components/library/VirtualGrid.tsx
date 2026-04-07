@@ -11,6 +11,9 @@ interface VirtualGridProps<T> {
   gridRowHeight?: number;
   listRowHeight?: number;
   gap?: number;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
 }
 
 interface VirtualGridItemProps<T> {
@@ -39,6 +42,9 @@ export function VirtualGrid<T>({
   gridRowHeight = 260, // approximate height of a grid book card
   listRowHeight = 140, // approximate height of a list book card
   gap = 16, // tailwind gap-4
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
 }: VirtualGridProps<T>) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { width } = useWindowSize();
@@ -78,51 +84,70 @@ export function VirtualGrid<T>({
     scrollMargin: offsetTop, // Offset the virtualizer calculations by how far down this container is rendered
   });
 
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // Infinite Scroll Trigger
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem || !hasNextPage || isFetchingNextPage || !fetchNextPage) return;
+
+    if (lastItem.index >= rowCount - 2) {
+      fetchNextPage();
+    }
+  }, [virtualItems, rowCount, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <div
-      ref={scrollRef}
-      style={{
-        height: `${virtualizer.getTotalSize()}px`,
-        width: "100%",
-        position: "relative",
-      }}
-    >
-      {virtualizer.getVirtualItems().map((virtualRow) => {
-        const startIndex = virtualRow.index * columnCount;
-        const rowItems = items.slice(startIndex, startIndex + columnCount);
+    <div className="w-full">
+      <div
+        ref={scrollRef}
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualItems.map((virtualRow) => {
+          const startIndex = virtualRow.index * columnCount;
+          const rowItems = items.slice(startIndex, startIndex + columnCount);
 
-        return (
-          <div
-            key={virtualRow.key}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: `${rowHeight}px`,
-              transform: `translateY(${virtualRow.start - offsetTop}px)`,
-              display: "grid",
-              // Use standard CSS Grid to define the columns dynamically
-              gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-              gap: `${gap}px`,
-            }}
-          >
-            {rowItems.map((item, colIndex) => (
-              <VirtualGridItem
-                key={keyExtractor(item)}
-                item={item}
-                index={startIndex + colIndex}
-                ItemComponent={ItemComponent}
-                keyExtractor={keyExtractor}
-              />
-            ))}
-          </div>
-        );
-      })}
+          return (
+            <div
+              key={virtualRow.key}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: `${rowHeight}px`,
+                transform: `translateY(${virtualRow.start - offsetTop}px)`,
+                display: "grid",
+                // Use standard CSS Grid to define the columns dynamically
+                gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                gap: `${gap}px`,
+              }}
+            >
+              {rowItems.map((item, colIndex) => (
+                <VirtualGridItem
+                  key={keyExtractor(item)}
+                  item={item}
+                  index={startIndex + colIndex}
+                  ItemComponent={ItemComponent}
+                  keyExtractor={keyExtractor}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      {isFetchingNextPage && (
+        <div className="flex justify-center p-8 w-full">
+          <span className="loading loading-dots loading-lg text-primary"></span>
+        </div>
+      )}
     </div>
   );
 }

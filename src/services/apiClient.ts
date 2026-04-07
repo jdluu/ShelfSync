@@ -105,31 +105,52 @@ export const httpClient = {
   /**
    * Retrieves the host's book manifest.
    *
-   * @summary Fetches the complete list of books available on the remote host.
+   * @summary Fetches a list of books available on the remote host with optional pagination.
    * @param {Host} host - The host connection details including IP and port.
    * @param {string} [token] - Optional authentication bearer token.
-   * @returns {Promise<Book[]>} A promise resolving to an array of Book objects.
+   * @param {number} [limit] - Optional limit for pagination.
+   * @param {number} [offset] - Optional offset for pagination.
+   * @returns {Promise<{ books: Book[], version: string, totalCount: number }>} A promise resolving to the books, library version, and total count.
    * @throws {Error} "Unauthorized" if the token is invalid (401), or "Failed to fetch manifest" for other network failures.
    * @sideEffects Performs an external HTTP GET request.
    */
-  async getManifest(host: Host, token?: string): Promise<Book[]> {
+  async getManifest(
+    host: Host,
+    token?: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<{ books: Book[]; version: string; totalCount: number }> {
     if (MOCK_MODE || (host.ip === "127.0.0.1" && host.port === 9999)) {
       // Return mock books. Simulate network delay.
       await new Promise((resolve) => setTimeout(resolve, 800));
-      return MOCK_BOOKS;
+      const start = offset || 0;
+      const end = limit ? start + limit : MOCK_BOOKS.length;
+      return {
+        books: MOCK_BOOKS.slice(start, end),
+        version: "mock-version",
+        totalCount: MOCK_BOOKS.length,
+      };
     }
 
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
+    const url = new URL(`http://${host.ip}:${host.port}/api/manifest`);
+    if (limit !== undefined) url.searchParams.append("limit", limit.toString());
+    if (offset !== undefined) url.searchParams.append("offset", offset.toString());
+
     try {
-      const response = await fetch(`http://${host.ip}:${host.port}/api/manifest`, { headers });
+      const response = await fetch(url.toString(), { headers });
       if (response.status === 401) throw new Error("Unauthorized");
       if (!response.ok)
         throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
-      return response.json();
+
+      const version = response.headers.get("X-Library-Version") || "unknown";
+      const totalCount = Number.parseInt(response.headers.get("X-Total-Count") || "0", 10);
+      const books = await response.json();
+      return { books, version, totalCount };
     } catch (e: unknown) {
-      console.error(`Fetch manifest error for http://${host.ip}:${host.port}/api/manifest:`, e);
+      console.error(`Fetch manifest error for ${url}:`, e);
       if (e instanceof TypeError && e.message === "Failed to fetch") {
         throw new Error("Failed to fetch: Connection refused or network isolated.");
       }

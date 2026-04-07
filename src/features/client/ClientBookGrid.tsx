@@ -18,6 +18,9 @@ interface ClientBookGridProps {
   toggleSelection: (id: number) => void;
   handleToggleStatus: (book: Book) => void;
   handleInfoClick: (book: Book, coverUrl?: string) => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
 }
 
 export const ClientBookGrid: React.FC<ClientBookGridProps> = ({
@@ -34,6 +37,9 @@ export const ClientBookGrid: React.FC<ClientBookGridProps> = ({
   toggleSelection,
   handleToggleStatus,
   handleInfoClick,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
 }) => {
   const isLocalTab = activeTab === "library";
 
@@ -42,6 +48,9 @@ export const ClientBookGrid: React.FC<ClientBookGridProps> = ({
       items={books}
       viewMode={viewMode}
       keyExtractor={(book) => book.id}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      fetchNextPage={fetchNextPage}
       itemComponent={({ item: book }) => (
         <BookCard
           book={book}

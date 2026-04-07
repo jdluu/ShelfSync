@@ -1,9 +1,10 @@
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::{header, StatusCode},
-    response::{IntoResponse, Json, Response},
+    response::{IntoResponse, Response},
 };
+use serde::Deserialize;
 use std::path::Path as FilePath;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
@@ -11,12 +12,19 @@ use tokio_util::io::ReaderStream;
 use super::auth::is_authorized;
 use super::SharedState;
 
+#[derive(Deserialize)]
+pub struct ManifestParams {
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+}
+
 /// Handler for `GET /api/manifest`.
 ///
-/// Returns the full list of books in the library.
+/// Returns a list of books in the library with optional pagination.
 /// Requires `Authorization: Bearer <token>` header.
 pub async fn get_manifest(
     header_map: header::HeaderMap,
+    params: Query<ManifestParams>,
     State(state): State<SharedState>,
 ) -> impl IntoResponse {
     if !is_authorized(&header_map, &state) {
@@ -63,11 +71,43 @@ pub async fn get_manifest(
         }
     }
 
-    let books = match state.books.lock() {
+    let books_lock = match state.books.lock() {
         Ok(b) => b,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Internal error").into_response(),
     };
-    Json(books.clone()).into_response()
+
+    let total_count = books_lock.len();
+    let version = match state.last_metadata_mtime.lock() {
+        Ok(guard) => guard
+            .and_then(|t| {
+                t.duration_since(std::time::UNIX_EPOCH)
+                    .ok()
+                    .map(|d| d.as_secs().to_string())
+            })
+            .unwrap_or_else(|| "0".to_string()),
+        Err(_) => "0".to_string(),
+    };
+
+    let start = params.offset.unwrap_or(0);
+    let end = if let Some(limit) = params.limit {
+        (start + limit).min(total_count)
+    } else {
+        total_count
+    };
+
+    let paged_books = if start < total_count {
+        books_lock[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Response::builder()
+        .header("X-Library-Version", version)
+        .header("X-Total-Count", total_count.to_string())
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(serde_json::to_string(&paged_books).unwrap()))
+        .unwrap()
+        .into_response()
 }
 
 /// Handler for `GET /api/download/{book_id}/{format}`.
