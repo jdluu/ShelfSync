@@ -169,6 +169,7 @@ mod tests {
             last_metadata_mtime: Mutex::new(None),
             bound_port: Mutex::new(8080),
             is_hosting: Mutex::new(false),
+            app_handle: Mutex::new(None),
         })
     }
 
