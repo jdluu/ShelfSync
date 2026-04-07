@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       notifySuccess("Connected!", `Successfully reached ${hostname}`);
       return true;
-    } catch (e) {
+    } catch (_e) {
       set({ isConnecting: false });
       notifyError(
         "Connection Failed",

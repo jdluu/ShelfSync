@@ -1,4 +1,12 @@
-import { Activity, ChevronsUpDown, DownloadCloud, Folder, Monitor, Network, Smartphone } from "lucide-react";
+import {
+  Activity,
+  ChevronsUpDown,
+  DownloadCloud,
+  Folder,
+  Monitor,
+  Network,
+  Smartphone,
+} from "lucide-react";
 import type React from "react";
 import QRCodeDefault from "react-qr-code";
 
@@ -199,7 +207,8 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                         <div className="flex flex-col">
                           <p className="text-sm font-bold">Pixel 9 Pro XL</p>
                           <p className="text-xs text-base-content/50 flex items-center gap-1 mt-0.5">
-                            <DownloadCloud className="w-3 h-3" /> Syncing "The Rust Programming Language"
+                            <DownloadCloud className="w-3 h-3" /> Syncing "The Rust Programming
+                            Language"
                           </p>
                         </div>
                       </div>
@@ -207,7 +216,11 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({ connectionInfo, on
                         <div className="text-xs font-mono font-medium text-base-content/70">
                           64%
                         </div>
-                        <progress className="progress progress-primary w-16 sm:w-24" value="64" max="100"></progress>
+                        <progress
+                          className="progress progress-primary w-16 sm:w-24"
+                          value="64"
+                          max="100"
+                        ></progress>
                       </div>
                     </div>
 
