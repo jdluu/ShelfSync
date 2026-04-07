@@ -7,6 +7,8 @@ export interface SyncProgress {
   progress: number;
   queue_position: number;
   queue_total: number;
+  batch_current: number;
+  batch_total: number;
   path?: string;
   error?: string;
 }

@@ -51,34 +51,68 @@ export const useSyncStore = create<SyncState>((set) => ({
       if (MOCK_MODE) {
         // Mock progress iteration
         const count = newBooks.length;
-        useToastStore.getState().addToast(`Syncing ${count} book${count !== 1 ? "s" : ""}…`, "info");
-        
+        useToastStore
+          .getState()
+          .addToast(`Syncing ${count} book${count !== 1 ? "s" : ""}…`, "info");
+
         for (const book of newBooks) {
           // Add to queue
           useSyncStore.getState().setSyncProgress({
             ...useSyncStore.getState().syncProgress,
-            [book.id]: { book_id: book.id, title: book.title, status: "downloading", progress: 0, queue_position: 1, queue_total: 1 },
+            [book.id]: {
+              book_id: book.id,
+              title: book.title,
+              status: "downloading",
+              progress: 0,
+              queue_position: 1,
+              queue_total: 1,
+              batch_current: newBooks.indexOf(book) + 1,
+              batch_total: count,
+            },
           });
-          
+
           // Fake download frames
           for (let p = 10; p <= 100; p += 30) {
-            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise((resolve) => setTimeout(resolve, 400));
             useSyncStore.getState().setSyncProgress({
               ...useSyncStore.getState().syncProgress,
-              [book.id]: { book_id: book.id, title: book.title, status: "downloading", progress: p / 100, queue_position: 1, queue_total: 1 },
+              [book.id]: {
+                book_id: book.id,
+                title: book.title,
+                status: "downloading",
+                progress: p / 100,
+                queue_position: 1,
+                queue_total: 1,
+                batch_current: newBooks.indexOf(book) + 1,
+                batch_total: count,
+              },
             });
           }
-          
+
           // Complete
           useSyncStore.getState().setSyncProgress({
             ...useSyncStore.getState().syncProgress,
-            [book.id]: { book_id: book.id, title: book.title, status: "completed", progress: 1, queue_position: 1, queue_total: 1 },
+            [book.id]: {
+              book_id: book.id,
+              title: book.title,
+              status: "completed",
+              progress: 1,
+              queue_position: 1,
+              queue_total: 1,
+              batch_current: newBooks.indexOf(book) + 1,
+              batch_total: count,
+            },
           });
-          
+
           // Add to local storage
           const localBooks = useLibraryStore.getState().localBooks;
           if (!localBooks.find((b: Book) => b.id === book.id)) {
-            useLibraryStore.getState().setLocalBooks([...localBooks, { ...book, local_path: `/mock/path/${book.id}.epub` }]);
+            useLibraryStore
+              .getState()
+              .setLocalBooks([
+                ...localBooks,
+                { ...book, local_path: `/mock/path/${book.id}.epub` },
+              ]);
           }
         }
         return;

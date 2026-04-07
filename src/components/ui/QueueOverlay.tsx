@@ -7,6 +7,8 @@ interface SyncItem {
   title: string;
   status: string;
   progress: number;
+  batch_current: number;
+  batch_total: number;
 }
 
 interface QueueOverlayProps {
@@ -27,8 +29,10 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
 
   if (items.length === 0) return null;
 
+  // Use batch metadata from any item if available, otherwise fallback to local count
+  const anyItem = items.find((i) => i.batch_total > 0);
   const completedCount = items.filter((p) => p.status === "completed").length;
-  const totalCount = items.length;
+  const totalCount = anyItem ? anyItem.batch_total : items.length;
 
   return (
     <output
@@ -43,7 +47,7 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
             <div className="flex flex-col">
               <span className="font-bold text-sm">Sync Progress</span>
               <span className="text-xs text-base-content/70">
-                {completedCount} of {totalCount} syncs finished
+                Book {anyItem?.batch_current || completedCount} of {totalCount} syncing
               </span>
             </div>
           </div>
