@@ -1,4 +1,5 @@
 import { ArrowUp } from "lucide-react";
+import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useState } from "react";
 import { Footer } from "@/components/layout/Footer";
@@ -76,6 +77,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
     setActiveTab,
     collapsedGroups,
     toggleGroupCollapse,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useClientDashboard();
 
   const [detailsBook, setDetailsBook] = useState<{ book: Book; coverUrl?: string } | null>(null);
@@ -138,56 +142,33 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
             />
           )}
 
-          <div className="mt-8">
-            {activeTab === "explore" ? (
-              <div className="flex flex-col gap-4">
-                {error && <ClientErrorBanner error={error} clearError={clearError} />}
+          <div className="mt-8 relative min-h-[400px]">
+            <AnimatePresence mode="wait">
+              {activeTab === "explore" ? (
+                <m.div
+                  key="explore"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col gap-4"
+                >
+                  {error && <ClientErrorBanner error={error} clearError={clearError} />}
 
-                {loading ? (
-                  <ClientSkeletonGrid />
-                ) : !connectedHost ? (
-                  <Discovery onConnect={connect} />
-                ) : books.length === 0 ? (
-                  <ClientNoBooksFound refresh={refresh} />
-                ) : groupedBooks ? (
-                  <ClientGroupedGrid
-                    groupedBooks={groupedBooks}
-                    collapsedGroups={collapsedGroups}
-                    toggleGroupCollapse={toggleGroupCollapse}
-                    selectGroup={selectGroup}
-                    getGroupSelectLabel={getGroupSelectLabel}
-                    isGroupSelected={isGroupSelected}
-                    viewMode={viewMode}
-                    activeTab={activeTab}
-                    connectedHost={connectedHost}
-                    token={token}
-                    selectedIds={selectedIds}
-                    selectionMode={selectionMode}
-                    syncProgress={syncProgress}
-                    openLocalBook={openLocalBook}
-                    syncBook={syncBook}
-                    toggleSelection={toggleSelection}
-                    handleToggleStatus={handleToggleStatus}
-                    handleInfoClick={handleInfoClick}
-                  />
-                ) : (
-                  <div className="animate-in fade-in duration-500 flex flex-col gap-8">
-                    {viewMode === "grid" && !searchTerm && !sortOption.includes("title") && (
-                      <div className="hidden sm:block w-full">
-                        <CoverFlow
-                          books={filteredRemoteBooks.slice(0, 10)}
-                          title="Featured Books"
-                          host={connectedHost}
-                          token={token}
-                          onInfoClick={handleInfoClick}
-                        />
-                        <h3 className="text-xl font-bold tracking-tight text-base-content mb-4 px-1">
-                          All Books
-                        </h3>
-                      </div>
-                    )}
-                    <ClientBookGrid
-                      books={filteredRemoteBooks}
+                  {loading ? (
+                    <ClientSkeletonGrid />
+                  ) : !connectedHost ? (
+                    <Discovery onConnect={connect} />
+                  ) : books.length === 0 ? (
+                    <ClientNoBooksFound refresh={refresh} />
+                  ) : groupedBooks ? (
+                    <ClientGroupedGrid
+                      groupedBooks={groupedBooks}
+                      collapsedGroups={collapsedGroups}
+                      toggleGroupCollapse={toggleGroupCollapse}
+                      selectGroup={selectGroup}
+                      getGroupSelectLabel={getGroupSelectLabel}
+                      isGroupSelected={isGroupSelected}
                       viewMode={viewMode}
                       activeTab={activeTab}
                       connectedHost={connectedHost}
@@ -201,46 +182,71 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                       handleToggleStatus={handleToggleStatus}
                       handleInfoClick={handleInfoClick}
                     />
+                  ) : (
+                    <div className="flex flex-col gap-8">
+                      {viewMode === "grid" && !searchTerm && !sortOption.includes("title") && (
+                        <div className="hidden sm:block w-full">
+                          <CoverFlow
+                            books={filteredRemoteBooks.slice(0, 10)}
+                            title="Featured Books"
+                            host={connectedHost}
+                            token={token}
+                            onInfoClick={handleInfoClick}
+                          />
+                          <h3 className="text-xl font-bold tracking-tight text-base-content mb-4 px-1">
+                            All Books
+                          </h3>
+                        </div>
+                      )}
+                      <ClientBookGrid
+                        books={filteredRemoteBooks}
+                        viewMode={viewMode}
+                        activeTab={activeTab}
+                        connectedHost={connectedHost}
+                        token={token}
+                        selectedIds={selectedIds}
+                        selectionMode={selectionMode}
+                        syncProgress={syncProgress}
+                        openLocalBook={openLocalBook}
+                        syncBook={syncBook}
+                        toggleSelection={toggleSelection}
+                        handleToggleStatus={handleToggleStatus}
+                        handleInfoClick={handleInfoClick}
+                        hasNextPage={hasNextPage}
+                        isFetchingNextPage={isFetchingNextPage}
+                        fetchNextPage={fetchNextPage}
+                      />
+                    </div>
+                  )}
+                </m.div>
+              ) : (
+                <m.section
+                  key="library"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="flex items-center justify-between mb-8 px-1">
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-2xl font-black tracking-tight">My Library</h3>
+                      <p className="text-xs text-base-content/50">
+                        Books downloaded to this device
+                      </p>
+                    </div>
+                    <div className="badge badge-primary font-bold">{localBooks.length} Items</div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-8 px-1">
-                  <div className="flex flex-col gap-1">
-                    <h3 className="text-2xl font-black tracking-tight">My Library</h3>
-                    <p className="text-xs text-base-content/50">Books downloaded to this device</p>
-                  </div>
-                  <div className="badge badge-primary font-bold">{localBooks.length} Items</div>
-                </div>
 
-                {localBooks.length === 0 ? (
-                  <ClientEmptyState setActiveTab={setActiveTab} />
-                ) : groupedBooks ? (
-                  <ClientGroupedGrid
-                    groupedBooks={groupedBooks}
-                    collapsedGroups={collapsedGroups}
-                    toggleGroupCollapse={toggleGroupCollapse}
-                    selectGroup={selectGroup}
-                    getGroupSelectLabel={getGroupSelectLabel}
-                    isGroupSelected={isGroupSelected}
-                    viewMode={viewMode}
-                    activeTab={activeTab}
-                    connectedHost={connectedHost}
-                    token={token}
-                    selectedIds={selectedIds}
-                    selectionMode={selectionMode}
-                    syncProgress={syncProgress}
-                    openLocalBook={openLocalBook}
-                    syncBook={syncBook}
-                    toggleSelection={toggleSelection}
-                    handleToggleStatus={handleToggleStatus}
-                    handleInfoClick={handleInfoClick}
-                  />
-                ) : (
-                  <div className="animate-in fade-in duration-500">
-                    <ClientBookGrid
-                      books={filteredLocalBooks}
+                  {localBooks.length === 0 ? (
+                    <ClientEmptyState setActiveTab={setActiveTab} />
+                  ) : groupedBooks ? (
+                    <ClientGroupedGrid
+                      groupedBooks={groupedBooks}
+                      collapsedGroups={collapsedGroups}
+                      toggleGroupCollapse={toggleGroupCollapse}
+                      selectGroup={selectGroup}
+                      getGroupSelectLabel={getGroupSelectLabel}
+                      isGroupSelected={isGroupSelected}
                       viewMode={viewMode}
                       activeTab={activeTab}
                       connectedHost={connectedHost}
@@ -254,10 +260,31 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                       handleToggleStatus={handleToggleStatus}
                       handleInfoClick={handleInfoClick}
                     />
-                  </div>
-                )}
-              </section>
-            )}
+                  ) : (
+                    <div>
+                      <ClientBookGrid
+                        books={filteredLocalBooks}
+                        viewMode={viewMode}
+                        activeTab={activeTab}
+                        connectedHost={connectedHost}
+                        token={token}
+                        selectedIds={selectedIds}
+                        selectionMode={selectionMode}
+                        syncProgress={syncProgress}
+                        openLocalBook={openLocalBook}
+                        syncBook={syncBook}
+                        toggleSelection={toggleSelection}
+                        handleToggleStatus={handleToggleStatus}
+                        handleInfoClick={handleInfoClick}
+                        hasNextPage={hasNextPage}
+                        isFetchingNextPage={isFetchingNextPage}
+                        fetchNextPage={fetchNextPage}
+                      />
+                    </div>
+                  )}
+                </m.section>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>

@@ -45,6 +45,8 @@ export const BookCard: React.FC<BookCardProps> = ({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
+  // ... (rest of the component state)
+
   // Prioritize local cover if we are in local variant OR if we have a local path
   const isLocalImage =
     variant === "local" ||
@@ -115,12 +117,13 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   if (compact) {
     return (
-      <div
+      <article
         className={`card bg-base-100/80 backdrop-blur-sm border transition-all duration-300 overflow-hidden outline-none relative group ${
           selected
             ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary"
             : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
         }`}
+        aria-labelledby={`book-title-${book.id}`}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
         {selectable && onSelect && (
@@ -161,19 +164,20 @@ export const BookCard: React.FC<BookCardProps> = ({
             onInfoClick={onInfoClick}
             compact={true}
           />
-          <BookMetadata book={book} compact={true} />
+          <BookMetadata id={`book-title-${book.id}`} book={book} compact={true} />
         </div>
-      </div>
+      </article>
     );
   }
 
   return (
-    <div
+    <article
       className={`card bg-base-100/80 backdrop-blur-sm border transition-all duration-300 overflow-hidden outline-none relative group ${
         selected
           ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary ring-offset-1 ring-offset-base-100"
           : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
       }`}
+      aria-labelledby={`book-title-${book.id}`}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       {selectable && onSelect && (
@@ -217,7 +221,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           />
 
           <div className="flex flex-col gap-1 flex-1 overflow-hidden mt-1 pr-10">
-            <BookMetadata book={book} compact={false} />
+            <BookMetadata id={`book-title-${book.id}`} book={book} compact={false} />
 
             {variant === "host-view" && (
               <p className="text-[10px] sm:text-xs text-base-content/50 font-mono break-all line-clamp-2">
@@ -271,6 +275,6 @@ export const BookCard: React.FC<BookCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 };

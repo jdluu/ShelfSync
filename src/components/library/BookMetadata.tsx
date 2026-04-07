@@ -4,13 +4,15 @@ import type { Book } from "@/types/core";
 interface BookMetadataProps {
   book: Book;
   compact?: boolean;
+  id?: string;
 }
 
-export const BookMetadata: React.FC<BookMetadataProps> = ({ book, compact }) => {
+export const BookMetadata: React.FC<BookMetadataProps> = ({ book, compact, id }) => {
   if (compact) {
     return (
       <div className="flex flex-col w-full px-1 z-10">
         <h3
+          id={id}
           className="text-xs font-bold line-clamp-2 leading-tight min-h-[2.5em] tracking-tight"
           title={book.title}
         >
@@ -37,7 +39,7 @@ export const BookMetadata: React.FC<BookMetadataProps> = ({ book, compact }) => 
 
   return (
     <>
-      <h3 className="text-sm font-bold truncate w-full" title={book.title}>
+      <h3 id={id} className="text-sm font-bold truncate w-full" title={book.title}>
         {book.title}
       </h3>
       <p className="text-sm text-base-content/70 truncate w-full" title={book.authors}>
