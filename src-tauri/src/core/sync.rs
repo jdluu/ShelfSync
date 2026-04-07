@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Semaphore};
 
 #[derive(Serialize, Clone, Debug)]
 pub struct SyncProgress {
@@ -18,6 +18,8 @@ pub struct SyncProgress {
     pub error: Option<String>,
     pub queue_position: usize,
     pub queue_total: usize,
+    pub batch_current: usize,
+    pub batch_total: usize,
     pub path: Option<String>,
 }
 
@@ -28,6 +30,8 @@ pub struct SyncTask {
     pub host_port: u16,
     pub token: String,
     pub destination_root: PathBuf,
+    pub batch_id: u64,
+    pub batch_total: usize,
 }
 
 #[derive(Clone)]
@@ -48,19 +52,32 @@ impl SyncManager {
                 .timeout(Duration::from_secs(300))
                 .build()
                 .unwrap_or_else(|_| Client::new());
-            while let Some(task) = rx.recv().await {
-                // Process one task at a time
-                if let Err(e) = process_task::<R>(&app, &client, &task, &active_queue_clone).await {
-                    log::error!("Sync error: {}", e);
-                }
 
-                // Remove from active queue
-                match active_queue_clone.lock() {
-                    Ok(mut queue) => {
-                        queue.retain(|b| b.id != task.book.id);
+            // Limit concurrency to 3
+            let semaphore = Arc::new(Semaphore::new(3));
+
+            while let Some(task) = rx.recv().await {
+                let app_clone = app.clone();
+                let client_clone = client.clone();
+                let queue_clone = active_queue_clone.clone();
+                let sem_permit = semaphore.clone().acquire_owned().await.unwrap();
+
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) =
+                        process_task::<R>(&app_clone, &client_clone, &task, &queue_clone).await
+                    {
+                        log::error!("Sync error: {}", e);
                     }
-                    Err(e) => log::warn!("Could not update sync queue: {}", e),
-                }
+
+                    // Remove from active queue
+                    match queue_clone.lock() {
+                        Ok(mut queue) => {
+                            queue.retain(|b| b.id != task.book.id);
+                        }
+                        Err(e) => log::warn!("Could not update sync queue: {}", e),
+                    }
+                    drop(sem_permit);
+                });
             }
         });
 
@@ -71,7 +88,6 @@ impl SyncManager {
     }
 
     pub async fn add_tasks(&self, tasks: Vec<SyncTask>) -> Result<(), String> {
-        // Add books to queue and collect tasks, then drop lock before sending
         let tasks_to_send: Vec<_> = {
             let mut queue = match self.active_queue.lock() {
                 Ok(q) => q,
@@ -83,7 +99,7 @@ impl SyncManager {
                     queue.push(task.book.clone());
                 })
                 .collect()
-        }; // Lock is dropped here
+        };
 
         for task in tasks_to_send {
             self.sender.send(task).await.map_err(|e| e.to_string())?;
@@ -253,12 +269,12 @@ async fn process_task<R: Runtime>(
                 let mut file = match fs::File::create(&dest_path) {
                     Ok(f) => f,
                     Err(e) => {
-                        emit_progress(app, &book, 0.0, "error", Some("File creation failed".to_string()), queue);
+                        emit_progress(app, &book, 0.0, "error", Some("File creation failed".to_string()), queue, task);
                         return Err(e.into());
                     }
                 };
 
-                emit_progress(app, &book, 0.0, "downloading", None, queue);
+                emit_progress(app, &book, 0.0, "downloading", None, queue, task);
 
                 let mut download_success = true;
                 while let Some(item) = stream.next().await {
@@ -273,7 +289,7 @@ async fn process_task<R: Runtime>(
 
                             if total_size > 0 {
                                 let progress = downloaded as f64 / total_size as f64;
-                                emit_progress(app, &book, progress, "downloading", None, queue);
+                                emit_progress(app, &book, progress, "downloading", None, queue, task);
                             }
                         }
                         Err(e) => {
@@ -285,7 +301,7 @@ async fn process_task<R: Runtime>(
                 }
                 
                 if download_success {
-                    emit_progress(app, &book, 1.0, "completed", None, queue);
+                    emit_progress(app, &book, 1.0, "completed", None, queue, task);
                     return Ok(());
                 }
             }
@@ -305,6 +321,7 @@ async fn process_task<R: Runtime>(
                 "error",
                 Some("Download failed after retries".to_string()),
                 queue,
+                task,
             );
             return Err("Download failed".into());
         }
@@ -321,6 +338,7 @@ fn emit_progress<R: Runtime>(
     status: &str,
     error: Option<String>,
     queue: &Arc<Mutex<Vec<Book>>>,
+    task: &SyncTask,
 ) {
     let (pos, total) = match queue.lock() {
         Ok(q) => (0, q.len()),
@@ -337,6 +355,8 @@ fn emit_progress<R: Runtime>(
             error,
             queue_position: pos,
             queue_total: total,
+            batch_current: task.batch_id as usize,
+            batch_total: task.batch_total,
             path: Some(book.path.clone()),
         },
     );

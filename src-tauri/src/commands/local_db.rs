@@ -98,9 +98,11 @@ pub fn save_local_book(
     local_path: String,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    let conn = open_client_db(&state)?;
+    let mut conn = open_client_db(&state)?;
 
-    let exists: i64 = conn
+    let tx = conn.transaction()?;
+
+    let exists: i64 = tx
         .query_row(
             "SELECT COUNT(*) FROM books WHERE remote_id = ?1",
             params![book.id],
@@ -124,7 +126,7 @@ pub fn save_local_book(
     }
 
     if exists > 0 {
-        conn.execute(
+        tx.execute(
             "UPDATE books SET title = ?1, authors = ?2, format = ?3, local_path = ?4, 
              cover_local_path = ?5, series = ?6, series_index = ?7, tags = ?8, 
              publisher = ?9, description = ?10, rating = ?11, language = ?12, 
@@ -137,7 +139,7 @@ pub fn save_local_book(
             ],
         )?;
     } else {
-        conn.execute(
+        tx.execute(
             "INSERT INTO books (title, authors, remote_id, format, local_path, read_status, 
                 cover_local_path, series, series_index, tags, publisher, description, rating, language, published_date) 
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
@@ -147,6 +149,16 @@ pub fn save_local_book(
                 book.publisher, book.description, book.rating, book.language, book.published_date
             ],
         )?;
+    }
+
+    tx.commit()?;
+
+    // Sync to Calibre metadata.db in the library root
+    let local_path_buf = std::path::Path::new(&local_path);
+    if let Some(root) = local_path_buf.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+        if let Err(e) = crate::core::calibre::sync_book_to_calibre_db(root, &book) {
+            log::error!("Failed to sync to Calibre metadata.db: {}", e);
+        }
     }
 
     let book_id_str = book.id.to_string();
@@ -174,13 +186,15 @@ pub fn update_local_read_status(
     status: String,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    let conn = open_client_db(&state)?;
+    let mut conn = open_client_db(&state)?;
+    let tx = conn.transaction()?;
 
-    conn.execute(
+    tx.execute(
         "UPDATE books SET read_status = ?1 WHERE id = ?2",
         params![status, id],
     )?;
 
+    tx.commit()?;
     Ok(())
 }
 

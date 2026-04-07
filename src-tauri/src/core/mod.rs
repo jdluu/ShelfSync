@@ -1,4 +1,5 @@
 pub mod ble;
+pub mod calibre;
 pub mod db;
 pub mod mdns;
 pub mod network;

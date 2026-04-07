@@ -131,14 +131,18 @@ pub async fn start_bulk_sync(
             .clone()
     }; // Lock is dropped here
 
+    let batch_total = books.len();
     let tasks = books
         .into_iter()
-        .map(|book| crate::core::sync::SyncTask {
+        .enumerate()
+        .map(|(i, book)| crate::core::sync::SyncTask {
             book,
             host_ip: host_ip.clone(),
             host_port,
             token: token.clone(),
             destination_root: std::path::PathBuf::from(&destination_root),
+            batch_id: (i + 1) as u64,
+            batch_total,
         })
         .collect();
 
