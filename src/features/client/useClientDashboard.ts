@@ -5,6 +5,7 @@ import { useSyncProgress } from "@/hooks/useSyncProgress";
 import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
+import { useToastStore } from "@/store/toastStore";
 import { isTauri } from "@/utils/tauri";
 import { useBookFilters } from "./useBookFilters";
 import { useBookSelection } from "./useBookSelection";

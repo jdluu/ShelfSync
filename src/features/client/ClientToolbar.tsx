@@ -2,7 +2,7 @@ import { LayoutGrid, List } from "lucide-react";
 import type React from "react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
-import type { GroupByOption } from "@/features/client/useClientDashboard";
+import type { GroupByOption } from "@/features/client/useBookFilters";
 
 interface ClientToolbarProps {
   refresh: () => void;

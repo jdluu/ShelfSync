@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
-import { useHostManifest } from "@/hooks/useLibraryQuery";
+import { useHostManifest, useInfiniteHostManifest } from "@/hooks/useLibraryQuery";
 import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
@@ -60,6 +60,7 @@ vi.mock("@/store/syncStore", () => ({
 
 vi.mock("@/hooks/useLibraryQuery", () => ({
   useHostManifest: vi.fn(),
+  useInfiniteHostManifest: vi.fn(),
 }));
 
 vi.mock("@/hooks/useSyncProgress", () => ({
@@ -99,6 +100,16 @@ describe("ClientDashboard Integration", () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+    });
+
+    (useInfiniteHostManifest as unknown as Mock).mockReturnValue({
+      data: { pages: [{ books: [], totalCount: 0, version: "1.0.0" }], pageParams: [] },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      fetchNextPage: vi.fn(),
+      hasNextPage: true,
+      isFetchingNextPage: false,
     });
   });
 
