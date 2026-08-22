@@ -1,5 +1,7 @@
 use super::{Acquisition, Catalog, NavigationLink, OpdsError, Publication, Series};
-use quick_xml::{events::Event, Reader};
+use quick_xml::events::Event;
+use quick_xml::escape;
+use quick_xml::Reader;
 use std::collections::HashMap;
 
 const MAX_FEED_SIZE: u64 = 10 * 1024 * 1024;
@@ -65,8 +67,7 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                 }
             }
             Event::Text(e) => {
-                text_buf = e
-                    .unescape()
+                text_buf = escape::unescape(std::str::from_utf8(&*e).unwrap_or(""))
                     .map(|c| c.into_owned())
                     .unwrap_or_else(|_| text_buf.clone());
             }
