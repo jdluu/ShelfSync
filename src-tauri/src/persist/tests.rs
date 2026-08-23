@@ -421,6 +421,12 @@ fn classify_covers_all_record_states() {
         "an older revision with a local file is superseded"
     );
     assert_eq!(
+        repo::classify_library_record(false, false, true, Some(JobState::Completed)),
+        Some(LibrarySection::Superseded),
+        "a superseded revision keeps its section even when reconciliation marked \
+         the publication unavailable"
+    );
+    assert_eq!(
         repo::classify_library_record(true, true, false, Some(JobState::Running)),
         Some(LibrarySection::Downloading)
     );

@@ -508,6 +508,80 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn server_removal_preserves_superseded_revisions_per_state_model() {
+        let app = Router::new().route(
+            "/opds",
+            get(|| async { (StatusCode::OK, Body::from(feed_for("Empty", &[], None))) }),
+        );
+        let server = TestServer::builder().http_transport().build(app);
+        let catalog_url = server.server_url("/opds").unwrap();
+
+        let env = setup_env(catalog_url.clone()).await;
+        let book = publication("book-2", "Second Edition");
+        let metadata_json = serde_json::to_string(&book).unwrap();
+        let upsert = env
+            .store
+            .upsert_publication(crate::persist::PublicationInput {
+                account_id: env.account_id,
+                provider: "grimmory".to_string(),
+                canonical_id: book.id.clone(),
+                metadata_json,
+            })
+            .await
+            .unwrap();
+        let resolved = resolve_link(&env.catalog_url, &book.links[0].href).unwrap();
+        let acquisition = env
+            .store
+            .upsert_acquisition(crate::persist::AcquisitionInput {
+                publication_id: upsert.publication.id,
+                media_type: MEDIA_TYPE_EPUB.to_string(),
+                canonical_url: resolved.url.as_str().to_string(),
+            })
+            .await
+            .unwrap();
+
+        // An older revision downloaded before the current one; creating it
+        // first makes the later seed revision the current revision.
+        let old_revision = env
+            .store
+            .create_file_revision(crate::persist::RevisionInput {
+                acquisition_id: acquisition.acquisition.id,
+                expected_length: None,
+                expected_hash: None,
+                hash_algorithm: None,
+                local_relative_path: Some("book-2-old.epub".to_string()),
+            })
+            .await
+            .unwrap();
+        let old_path = env.content_root.join("book-2-old.epub");
+        std::fs::write(&old_path, b"old epub").unwrap();
+
+        seed_downloaded_book(&env, &book).await;
+        let current_path = env.content_root.join("book-2.epub");
+
+        let client = make_client(catalog_url.clone());
+        let report = refresh_library_metadata(&env.store, &client, "grimmory")
+            .await
+            .unwrap();
+        assert_eq!(report.removed, vec!["book-2".to_string()]);
+
+        assert!(old_path.exists(), "server removal must never delete local files");
+        assert!(current_path.exists(), "server removal must never delete local files");
+
+        let snapshot = env.store.library_snapshot().await.unwrap();
+        assert_eq!(snapshot.complete.len(), 0);
+        assert_eq!(snapshot.unavailable.len(), 1);
+        assert!(snapshot.unavailable[0].is_current_revision);
+        assert_eq!(
+            snapshot.superseded.len(),
+            1,
+            "the older revision stays superseded instead of being folded into unavailable"
+        );
+        assert_eq!(snapshot.superseded[0].revision_id, old_revision.id);
+        assert!(!snapshot.superseded[0].is_current_revision);
+    }
+
+    #[tokio::test]
     async fn repeated_refresh_is_stable() {
         let app = Router::new().route(
             "/opds",
