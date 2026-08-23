@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle, Download } from "lucide-react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import type React from "react";
+import { useEffect, useState } from "react";
 
 interface SyncItem {
   book_id: number;
@@ -16,18 +17,31 @@ interface QueueOverlayProps {
   onClose?: () => void;
 }
 
+const SETTLE_HIDE_DELAY_MS = 5000;
+
 export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
   // Get all active or recently completed items
   const items = Object.values(progress).filter((p) => p.status !== "idle");
 
-  // Sort to show active first
-  items.sort((a, b) => {
-    if (a.status === "downloading") return -1;
-    if (b.status === "downloading") return 1;
-    return 0;
-  });
+  // Sort to show active first (consistent comparator keeps insertion order otherwise)
+  const rank = (status: string) => (status === "downloading" ? 0 : 1);
+  items.sort((a, b) => rank(a.status) - rank(b.status));
 
-  if (items.length === 0) return null;
+  const hasActive = items.some((p) => p.status === "downloading");
+  const [showSettled, setShowSettled] = useState(true);
+
+  // Keep the overlay visible for a short grace period after the queue
+  // settles, then dismiss it so it does not linger indefinitely.
+  useEffect(() => {
+    if (hasActive) {
+      setShowSettled(true);
+      return;
+    }
+    const timer = setTimeout(() => setShowSettled(false), SETTLE_HIDE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [hasActive]);
+
+  if (items.length === 0 || !showSettled) return null;
 
   // Use batch metadata from any item if available, otherwise fallback to local count
   const anyItem = items.find((i) => i.batch_total > 0);

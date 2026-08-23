@@ -2,8 +2,9 @@ import { listen } from "@tauri-apps/api/event";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { isPermissionGranted, sendNotification } from "@tauri-apps/plugin-notification";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { getLocalBooks, saveBook as saveLocalBook } from "@/services/localDb";
+import { useSyncStore } from "@/store/syncStore";
 import { useToastStore } from "@/store/toastStore";
 import type { Book } from "@/types/core";
 import type { SyncProgress } from "@/types/library";
@@ -13,8 +14,10 @@ const SYNC_TOAST_KEY = "sync-progress";
 /**
  * Hook to listen for Tauri 'sync-progress' events and manage sync state.
  *
- * Shows a single updating progress toast instead of one notification per book.
- * Sends one summary OS notification when the entire batch completes.
+ * Mirrors every event into the sync store so the queue overlay and per-book
+ * badges stay live. Shows a single updating progress toast instead of one
+ * notification per book. Sends one summary OS notification when the entire
+ * batch completes.
  *
  * @param booksRef - A stable ref to the current list of available books.
  * @param offlineStoragePath - Custom path where synced books are stored.
@@ -25,8 +28,6 @@ export function useSyncProgress(
   offlineStoragePath: string,
   onSyncComplete: (localBooks: Book[]) => void,
 ) {
-  const [syncProgress, setSyncProgress] = useState<Record<number, SyncProgress>>({});
-
   // Track batch state across events without re-subscribing
   const batchRef = useRef({
     completed: 0,
@@ -42,7 +43,8 @@ export function useSyncProgress(
     const setup = async () => {
       unlisten = await listen<SyncProgress>("sync-progress", async (event) => {
         const prog = event.payload;
-        setSyncProgress((prev) => ({ ...prev, [prog.book_id]: prog }));
+        const { syncProgress: prev, setSyncProgress } = useSyncStore.getState();
+        setSyncProgress({ ...prev, [prog.book_id]: prog });
 
         const batch = batchRef.current;
 
@@ -152,6 +154,4 @@ export function useSyncProgress(
       if (unlisten) unlisten();
     };
   }, [booksRef, offlineStoragePath, onSyncComplete]);
-
-  return syncProgress;
 }
