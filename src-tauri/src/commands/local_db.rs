@@ -22,9 +22,19 @@ fn open_client_db(state: &AppState) -> Result<Connection, AppError> {
 /// Creates the 'books' table and handles migrations for the 'read_status' column.
 #[tauri::command]
 pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
-    let conn = open_client_db(&state)?;
+    let mut conn = open_client_db(&state)?;
+    initialize_schema(&mut conn)?;
+    Ok(())
+}
 
-    conn.execute(
+/// Creates the `books` table, applies column migrations, and prunes duplicates.
+///
+/// Every statement runs inside a single transaction so a crash or power loss
+/// mid-initialization cannot leave a half-migrated schema behind.
+fn initialize_schema(conn: &mut Connection) -> Result<(), rusqlite::Error> {
+    let tx = conn.transaction()?;
+
+    tx.execute(
         "CREATE TABLE IF NOT EXISTS books (
             id INTEGER PRIMARY KEY,
             title TEXT NOT NULL,
@@ -46,13 +56,14 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
         [],
     )?;
 
-    let mut stmt = conn.prepare("PRAGMA table_info(books)")?;
+    let mut stmt = tx.prepare("PRAGMA table_info(books)")?;
     let columns: Vec<String> = stmt
         .query_map([], |row| row.get(1))?
         .collect::<Result<Vec<_>, _>>()?;
+    drop(stmt);
 
     if !columns.contains(&"read_status".to_string()) {
-        conn.execute(
+        tx.execute(
             "ALTER TABLE books ADD COLUMN read_status TEXT DEFAULT 'unread'",
             [],
         )?;
@@ -72,23 +83,23 @@ pub fn init_local_db(state: State<'_, AppState>) -> Result<(), AppError> {
 
     for (col_name, col_type) in new_columns {
         if !columns.contains(&col_name.to_string()) {
-            conn.execute(
+            tx.execute(
                 &format!("ALTER TABLE books ADD COLUMN {} {}", col_name, col_type),
                 [],
             )?;
         }
     }
 
-    let _ = conn.execute(
+    let _ = tx.execute(
         "DELETE FROM books WHERE id NOT IN (SELECT MAX(id) FROM books GROUP BY remote_id) AND remote_id IS NOT NULL",
         [],
     );
 
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_authors ON books(authors)", [])?;
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)", [])?;
+    tx.execute("CREATE INDEX IF NOT EXISTS idx_books_title ON books(title)", [])?;
+    tx.execute("CREATE INDEX IF NOT EXISTS idx_books_authors ON books(authors)", [])?;
+    tx.execute("CREATE INDEX IF NOT EXISTS idx_books_series ON books(series)", [])?;
 
-    Ok(())
+    tx.commit()
 }
 
 /// Saves a book's metadata and its local filesystem path to the local database.
@@ -300,4 +311,157 @@ pub fn delete_local_book(id: i64, state: State<'_, AppState>) -> Result<(), AppE
     conn.execute("DELETE FROM books WHERE id = ?1", params![id])?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn column_names(conn: &Connection) -> Vec<String> {
+        let mut stmt = conn.prepare("PRAGMA table_info(books)").unwrap();
+        stmt.query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn fresh_database_gets_full_schema() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&mut conn).unwrap();
+
+        let cols = column_names(&conn);
+        for expected in [
+            "id",
+            "title",
+            "authors",
+            "remote_id",
+            "format",
+            "local_path",
+            "read_status",
+            "cover_local_path",
+            "series",
+            "series_index",
+            "tags",
+            "publisher",
+            "description",
+            "rating",
+            "language",
+            "published_date",
+        ] {
+            assert!(cols.iter().any(|c| c == expected), "missing column {expected}");
+        }
+
+        for index in ["idx_books_title", "idx_books_authors", "idx_books_series"] {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                    params![index],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1, "missing index {index}");
+        }
+    }
+
+    #[test]
+    fn legacy_table_is_migrated_in_place() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE books (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                authors TEXT NOT NULL,
+                remote_id INTEGER UNIQUE,
+                format TEXT,
+                local_path TEXT
+            )",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO books (title, authors, remote_id, format, local_path)
+             VALUES ('Dune', 'Frank Herbert', 7, 'epub', '/lib/dune.epub')",
+            [],
+        )
+        .unwrap();
+
+        initialize_schema(&mut conn).unwrap();
+
+        let cols = column_names(&conn);
+        for expected in [
+            "read_status",
+            "cover_local_path",
+            "series",
+            "series_index",
+            "tags",
+            "publisher",
+            "description",
+            "rating",
+            "language",
+            "published_date",
+        ] {
+            assert!(cols.iter().any(|c| c == expected), "missing column {expected}");
+        }
+
+        let (status, title): (String, String) = conn
+            .query_row(
+                "SELECT read_status, title FROM books WHERE remote_id = 7",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(status, "unread");
+        assert_eq!(title, "Dune");
+    }
+
+    #[test]
+    fn duplicate_remote_rows_are_pruned() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        // Pre-UNIQUE legacy table: this is the only shape that can hold
+        // duplicate remote_ids; the schema's UNIQUE constraint prevents
+        // them everywhere else.
+        conn.execute(
+            "CREATE TABLE books (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                authors TEXT NOT NULL,
+                remote_id INTEGER
+            )",
+            [],
+        )
+        .unwrap();
+        for title in ["first", "second", "third"] {
+            conn.execute(
+                "INSERT INTO books (title, authors, remote_id) VALUES (?1, 'A', 42)",
+                params![title],
+            )
+            .unwrap();
+        }
+
+        initialize_schema(&mut conn).unwrap();
+
+        let (count, title): (i64, String) = conn
+            .query_row(
+                "SELECT COUNT(*), MAX(title) FROM books WHERE remote_id = 42",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(title, "third");
+    }
+
+    #[test]
+    fn initialization_is_idempotent() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&mut conn).unwrap();
+        let first = column_names(&conn);
+
+        initialize_schema(&mut conn).unwrap();
+        let second = column_names(&conn);
+
+        assert_eq!(first, second);
+    }
 }
