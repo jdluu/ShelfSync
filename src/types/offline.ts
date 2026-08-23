@@ -93,10 +93,11 @@ export function buildPublicationLibraryInfo(
     supersededOnly: boolean,
   ) => {
     for (const record of records) {
-      const entry: PublicationLibraryInfo = (info[record.canonical_id] ??= {
-        primary: null,
-        superseded: [],
-      });
+      let entry = info[record.canonical_id];
+      if (!entry) {
+        entry = { primary: null, superseded: [] };
+        info[record.canonical_id] = entry;
+      }
       const categorized: CategorizedLibraryRecord = { ...record, section };
       if (supersededOnly || !record.is_current_revision) {
         entry.superseded.push(categorized);
