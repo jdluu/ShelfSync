@@ -30,6 +30,7 @@ interface OpdsCatalogScreenProps {
   downloadStatuses?: Record<string, DownloadStatus>;
   downloadErrors?: Record<string, string | null>;
   downloadLocalPaths?: Record<string, string | null>;
+  downloadProgress?: Record<string, number | null>;
   onDownload?: (
     config: {
       catalogUrl: string;
@@ -66,6 +67,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   downloadStatuses = {},
   downloadErrors = {},
   downloadLocalPaths = {},
+  downloadProgress,
   onDownload,
 }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -188,18 +190,28 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               <span className="font-mono break-all">{url}</span>
             </p>
             <div className="flex items-center gap-2">
-              <label className="form-control w-full max-w-xs" htmlFor="opds-content-root">
-                <span className="label-text mb-1 font-medium">Content root</span>
-                <input
-                  id="opds-content-root"
-                  type="text"
-                  autoComplete="off"
-                  value={contentRoot}
-                  onChange={(e) => onContentRootChange(e.target.value)}
-                  placeholder="/downloads/opds"
-                  className="input input-bordered input-sm w-full"
-                />
-              </label>
+              <details
+                className="collapse collapse-arrow rounded-lg bg-base-100 border border-base-content/10"
+                data-testid="opds-advanced-options"
+              >
+                <summary className="collapse-title min-h-0 py-2 text-sm font-medium">
+                  Advanced options
+                </summary>
+                <div className="collapse-content">
+                  <label className="form-control w-full" htmlFor="opds-content-root">
+                    <span className="label-text mb-1 font-medium">Content root</span>
+                    <input
+                      id="opds-content-root"
+                      type="text"
+                      autoComplete="off"
+                      value={contentRoot}
+                      onChange={(e) => onContentRootChange(e.target.value)}
+                      placeholder="/downloads/opds"
+                      className="input input-bordered input-sm w-full"
+                    />
+                  </label>
+                </div>
+              </details>
               <button
                 type="button"
                 onClick={handleDisconnect}
@@ -227,6 +239,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
             downloadStatuses={downloadStatuses}
             downloadErrors={downloadErrors}
             downloadLocalPaths={downloadLocalPaths}
+            downloadProgress={downloadProgress}
           />
         </>
       )}

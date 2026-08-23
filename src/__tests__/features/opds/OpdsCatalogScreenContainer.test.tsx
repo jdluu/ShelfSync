@@ -1,10 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import OpdsCatalogScreenContainer from "@/features/opds/OpdsCatalogScreenContainer";
 import { opdsClient } from "@/services/opdsClient";
-import type { Catalog, Publication } from "@/types/opds";
+import type { Catalog, DownloadProgress, DownloadResult, Publication } from "@/types/opds";
+
+const tauriState = vi.hoisted(() => ({ enabled: false }));
+
+vi.mock("@/utils/tauri", () => ({
+  isTauri: () => tauriState.enabled,
+  isMobile: () => false,
+  safeInvoke: vi.fn(),
+  safeStoreLoad: vi.fn(),
+}));
 
 vi.mock("@/services/opdsClient", () => ({
   opdsClient: {
@@ -91,10 +100,12 @@ async function startEpubDownload(): Promise<void> {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  tauriState.enabled = false;
 });
 
 afterEach(() => {
   cleanup();
+  tauriState.enabled = false;
 });
 
 describe("OpdsCatalogScreenContainer", () => {
@@ -276,6 +287,73 @@ describe("OpdsCatalogScreenContainer", () => {
 
       const statusAlert = screen.getByRole("status");
       expect(statusAlert.textContent).toContain("Download failed");
+    });
+
+    it("threads live per-publication progress percent into publication cards", async () => {
+      tauriState.enabled = true;
+
+      let progressCallback: ((progress: DownloadProgress) => void) | null = null;
+      let resolveDownload: ((result: DownloadResult) => void) | null = null;
+
+      vi.mocked(opdsClient.onDownloadProgress).mockImplementation((_publicationId, callback) => {
+        progressCallback = callback;
+        return () => {};
+      });
+      vi.mocked(opdsClient.downloadPublication).mockImplementation(
+        () =>
+          new Promise<DownloadResult>((resolve) => {
+            resolveDownload = resolve;
+          }),
+      );
+
+      const publication = createPublication({ id: "pub-progress-e2e", title: "Dune" });
+      renderContainer();
+
+      await connectThroughForm(createCatalog({ publications: [publication] }));
+      await waitFor(() => {
+        expect(screen.queryByText("Dune")).not.toBeNull();
+      });
+
+      await startEpubDownload();
+
+      await waitFor(() => {
+        expect(progressCallback).not.toBeNull();
+      });
+
+      await act(async () => {
+        progressCallback?.({
+          publicationId: "pub-progress-e2e",
+          bytesReceived: 50,
+          totalBytes: 200,
+          status: "downloading",
+        });
+      });
+
+      const progressBar = screen.getByRole("progressbar", { name: "Downloading Dune" });
+      expect(progressBar.getAttribute("value")).toBe("25");
+      expect(screen.getByText("25%")).not.toBeNull();
+
+      await act(async () => {
+        progressCallback?.({
+          publicationId: "pub-progress-e2e",
+          bytesReceived: 200,
+          totalBytes: 200,
+          status: "downloading",
+        });
+      });
+      expect(screen.getByText("100%")).not.toBeNull();
+
+      await act(async () => {
+        resolveDownload?.({
+          localPath: "/downloads/ShelfSync/dune.epub",
+          mediaType: "application/epub+zip",
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByText("Download status: completed")).not.toBeNull();
+      });
+      expect(screen.queryByRole("progressbar")).toBeNull();
     });
   });
 });

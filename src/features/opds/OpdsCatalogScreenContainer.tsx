@@ -31,9 +31,12 @@ const OpdsCatalogScreenContainer: React.FC = () => {
   const [downloadStatuses, setDownloadStatuses] = useState<Record<string, DownloadStatus>>({});
   const [downloadErrors, setDownloadErrors] = useState<Record<string, string | null>>({});
   const [downloadLocalPaths, setDownloadLocalPaths] = useState<Record<string, string | null>>({});
+  const [downloadProgressPercents, setDownloadProgressPercents] = useState<
+    Record<string, number | null>
+  >({});
 
   const catalogQuery = useOpdsCatalog(url, username, password, page, connected);
-  const { status, error, localPath, mediaType, startDownload } = useOpdsDownload();
+  const { status, error, localPath, mediaType, progress, startDownload } = useOpdsDownload();
 
   const activeDownloadIdRef = useRef<string | null>(null);
   const pendingResultRef = useRef<PendingDownloadResult | null>(null);
@@ -59,6 +62,20 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     }
   }, [status, error, localPath, mediaType]);
 
+  useEffect(() => {
+    const publicationId = activeDownloadIdRef.current;
+    if (!publicationId || !progress) return;
+    if (progress.publicationId !== publicationId) return;
+
+    const { bytesReceived, totalBytes } = progress;
+    const percent =
+      totalBytes && totalBytes > 0
+        ? Math.min(100, Math.max(0, Math.round((bytesReceived / totalBytes) * 100)))
+        : null;
+
+    setDownloadProgressPercents((prev) => ({ ...prev, [publicationId]: percent }));
+  }, [progress]);
+
   const handleConnect = useCallback((payload: OpdsConnectPayload) => {
     if (!isValidOpdsCatalogUrl(payload.url)) return;
     setUrl(payload.url);
@@ -75,6 +92,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     setDownloadStatuses({});
     setDownloadErrors({});
     setDownloadLocalPaths({});
+    setDownloadProgressPercents({});
   }, []);
 
   const handlePageChange = useCallback((nextPage: number) => {
@@ -117,6 +135,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
       downloadStatuses={downloadStatuses}
       downloadErrors={downloadErrors}
       downloadLocalPaths={downloadLocalPaths}
+      downloadProgress={downloadProgressPercents}
       onDownload={handleDownload}
     />
   );

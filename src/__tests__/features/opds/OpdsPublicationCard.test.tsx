@@ -421,3 +421,131 @@ describe("OpdsPublicationCard with download props", () => {
     expect(screen.getByText("Download status: downloading")).not.toBeNull();
   });
 });
+
+describe("OpdsPublicationCard download progress", () => {
+  afterEach(cleanup);
+
+  const renderDownloadingCard = (downloadProgress?: number | null) =>
+    render(
+      <OpdsPublicationCard
+        publication={createMockPublication({
+          title: "Progress Book",
+          links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+        })}
+        catalogUrl="https://example.com/opds"
+        contentRoot="/content"
+        onDownload={vi.fn()}
+        downloadStatus="downloading"
+        downloadProgress={downloadProgress ?? null}
+      />,
+    );
+
+  it("renders a determinate progress bar with percent when total size is known", () => {
+    renderDownloadingCard(42);
+
+    const progressBar = screen.getByRole("progressbar", { name: "Downloading Progress Book" });
+    expect(progressBar.getAttribute("value")).toBe("42");
+    expect(progressBar.getAttribute("max")).toBe("100");
+    expect(screen.getByText("42%")).not.toBeNull();
+  });
+
+  it("renders an indeterminate progress bar without percent when total size is unknown", () => {
+    renderDownloadingCard(null);
+
+    const progressBar = screen.getByRole("progressbar", { name: "Downloading Progress Book" });
+    expect(progressBar.hasAttribute("value")).toBe(false);
+    expect(screen.queryByText(/%\s*$/)).toBeNull();
+    expect(screen.getByText("Downloading…")).not.toBeNull();
+  });
+
+  it("does not render a progress bar when not downloading", () => {
+    render(
+      <OpdsPublicationCard
+        publication={createMockPublication({ title: "Idle Book" })}
+        catalogUrl="https://example.com/opds"
+        contentRoot="/content"
+        onDownload={vi.fn()}
+        downloadStatus="completed"
+        downloadLocalPath="/content/idle.epub"
+        downloadProgress={50}
+      />,
+    );
+
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByText("50%")).toBeNull();
+  });
+});
+
+describe("OpdsPublicationCard format dropdown dismissal", () => {
+  afterEach(cleanup);
+
+  const renderCardWithMenu = () => {
+    render(
+      <OpdsPublicationCard
+        publication={createMockPublication({
+          title: "Dropdown Book",
+          links: [
+            { href: "https://example.com/book.epub", media_type: "application/epub+zip" },
+            { href: "https://example.com/book.pdf", media_type: "application/pdf" },
+          ],
+        })}
+        catalogUrl="https://example.com/opds"
+        contentRoot="/content"
+        onDownload={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select download format" }));
+  };
+
+  it("closes the format menu when Escape is pressed", () => {
+    renderCardWithMenu();
+    expect(screen.getByRole("option", { name: "EPUB" })).not.toBeNull();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("option", { name: "EPUB" })).toBeNull();
+    const trigger = screen.getByRole("button", { name: "Select download format" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("closes the format menu on click outside", () => {
+    renderCardWithMenu();
+    expect(screen.getByRole("option", { name: "PDF" })).not.toBeNull();
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole("option", { name: "PDF" })).toBeNull();
+    const trigger = screen.getByRole("button", { name: "Select download format" });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("keeps the format menu open when clicking inside the card menu area", () => {
+    renderCardWithMenu();
+
+    fireEvent.mouseDown(screen.getByRole("option", { name: "EPUB" }));
+
+    expect(screen.getByRole("option", { name: "EPUB" })).not.toBeNull();
+  });
+
+  it("stops listening after the menu closes so Escape no longer affects it", () => {
+    renderCardWithMenu();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("option", { name: "EPUB" })).toBeNull();
+
+    expect(() => fireEvent.keyDown(document, { key: "Escape" })).not.toThrow();
+    expect(screen.getByRole("button", { name: "Select download format" })).not.toBeNull();
+  });
+
+  it("still selects a format with full mouse sequence (mousedown then click)", () => {
+    renderCardWithMenu();
+
+    const option = screen.getByRole("option", { name: "EPUB" });
+    fireEvent.mouseDown(option);
+    fireEvent.click(option);
+
+    expect(screen.getByRole("button", { name: "Download as EPUB" })).not.toBeNull();
+    expect(screen.queryByRole("option", { name: "EPUB" })).toBeNull();
+  });
+});

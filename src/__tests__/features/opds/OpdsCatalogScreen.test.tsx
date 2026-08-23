@@ -330,6 +330,36 @@ describe("OpdsCatalogScreen connection lifecycle", () => {
     expect(capturedViewProps.current).toBeNull();
   });
 
+  it("forwards per-publication download progress to the catalog view", () => {
+    const base = (): React.ReactElement => (
+      <OpdsCatalogScreen
+        url="https://example.com/opds"
+        onUrlChange={vi.fn()}
+        username="alice"
+        onUsernameChange={vi.fn()}
+        password="secret"
+        onPasswordChange={vi.fn()}
+        connected={true}
+        onConnect={vi.fn()}
+        onDisconnect={vi.fn()}
+        catalog={createMockCatalog()}
+        loading={false}
+        error={null}
+        page={1}
+        onPageChange={vi.fn()}
+        contentRoot="/downloads/opds"
+        onContentRootChange={vi.fn()}
+        downloadStatuses={{ "pub-1": "downloading" }}
+        downloadProgress={{ "pub-1": 63 }}
+      />
+    );
+
+    render(base());
+
+    expect(capturedViewProps.current).not.toBeNull();
+    expect(capturedViewProps.current?.downloadProgress).toEqual({ "pub-1": 63 });
+  });
+
   it("clears visible credential values after disconnect", () => {
     render(
       <Harness
@@ -357,9 +387,16 @@ describe("OpdsCatalogScreen connection lifecycle", () => {
 });
 
 describe("OpdsCatalogScreen content root input", () => {
-  it("updates the content root through its change handler", () => {
-    const onContentRootChange = vi.fn();
-    render(
+  interface ContentRootHarnessProps {
+    contentRoot?: string;
+    onContentRootChange: (value: string) => void;
+  }
+
+  function renderConnectedScreen({
+    contentRoot = "/downloads/opds",
+    onContentRootChange,
+  }: ContentRootHarnessProps) {
+    return render(
       <OpdsCatalogScreen
         url="https://example.com/opds"
         onUrlChange={vi.fn()}
@@ -374,10 +411,37 @@ describe("OpdsCatalogScreen content root input", () => {
         error={null}
         page={1}
         onPageChange={vi.fn()}
-        contentRoot="/downloads/opds"
+        contentRoot={contentRoot}
         onContentRootChange={onContentRootChange}
       />,
     );
+  }
+
+  it("moves the content root input into a collapsed Advanced options disclosure", () => {
+    renderConnectedScreen({ onContentRootChange: vi.fn() });
+
+    const summary = screen.getByText("Advanced options");
+    const details = summary.closest("details");
+    expect(details).not.toBeNull();
+    expect(details?.open).toBe(false);
+
+    const contentRootInput = screen.getByLabelText("Content root") as HTMLInputElement;
+    expect(details?.contains(contentRootInput)).toBe(true);
+  });
+
+  it("expands the Advanced options disclosure when the summary is clicked", () => {
+    renderConnectedScreen({ onContentRootChange: vi.fn() });
+
+    const details = screen.getByText("Advanced options").closest("details");
+    expect(details?.open).toBe(false);
+
+    fireEvent.click(screen.getByText("Advanced options"));
+    expect(details?.open).toBe(true);
+  });
+
+  it("updates the content root through its change handler", () => {
+    const onContentRootChange = vi.fn();
+    const { rerender } = renderConnectedScreen({ onContentRootChange });
 
     const contentRootInput = screen.getByLabelText("Content root") as HTMLInputElement;
     expect(contentRootInput.value).toBe("/downloads/opds");
@@ -386,8 +450,7 @@ describe("OpdsCatalogScreen content root input", () => {
 
     expect(onContentRootChange).toHaveBeenCalledWith("/library/books");
 
-    cleanup();
-    render(
+    rerender(
       <OpdsCatalogScreen
         url="https://example.com/opds"
         onUrlChange={vi.fn()}

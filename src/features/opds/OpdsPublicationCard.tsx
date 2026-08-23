@@ -5,7 +5,7 @@ import {
   Download as DownloadIcon,
 } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
 
 interface OpdsPublicationCardProps {
@@ -66,6 +66,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
   contentRoot,
   onDownload,
   downloadStatus = "idle",
+  downloadProgress = null,
   downloadLocalPath = null,
   downloadErrorMessage = null,
 }) => {
@@ -88,6 +89,31 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
 
   const [selectedFormat, setSelectedFormat] = useState<MediaType | null>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
+  const formatMenuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showFormatMenu) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowFormatMenu(false);
+      }
+    };
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        formatMenuContainerRef.current &&
+        event.target instanceof Node &&
+        !formatMenuContainerRef.current.contains(event.target)
+      ) {
+        setShowFormatMenu(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [showFormatMenu]);
 
   const formatLabels = useMemo(() => {
     if (!showFormats || !publication.links || publication.links.length === 0) return [];
@@ -187,7 +213,20 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                 {downloadErrorMessage}
               </p>
             )}
-            <div className="relative inline-block w-full">
+            {downloadStatus === "downloading" && (
+              <div className="flex flex-col gap-1">
+                <progress
+                  className="progress progress-primary w-full"
+                  max={100}
+                  value={typeof downloadProgress === "number" ? downloadProgress : undefined}
+                  aria-label={`Downloading ${publication.title}`}
+                />
+                <p className="text-xs text-base-content/70">
+                  {typeof downloadProgress === "number" ? `${downloadProgress}%` : "Downloading…"}
+                </p>
+              </div>
+            )}
+            <div ref={formatMenuContainerRef} className="relative inline-block w-full">
               <button
                 type="button"
                 onClick={() => setShowFormatMenu(!showFormatMenu)}

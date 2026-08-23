@@ -680,5 +680,102 @@ describe("OpdsCatalogView", () => {
       expect(screen.getByText("PDF")).not.toBeNull();
       expect(screen.getByRole("list", { name: /Available formats/i })).not.toBeNull();
     });
+
+    it("renders a determinate progress bar for the downloading publication when progress is known", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            id: "pub-progress-1",
+            title: "Progressing Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={vi.fn()}
+          downloadStatuses={{ "pub-progress-1": "downloading" }}
+          downloadProgress={{ "pub-progress-1": 37 }}
+        />,
+      );
+
+      const progressBar = screen.getByRole("progressbar", { name: "Downloading Progressing Book" });
+      expect(progressBar.getAttribute("value")).toBe("37");
+      expect(screen.getByText("37%")).not.toBeNull();
+    });
+
+    it("renders an indeterminate progress bar when progress is not yet known", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            id: "pub-progress-2",
+            title: "Unknown Size Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={vi.fn()}
+          downloadStatuses={{ "pub-progress-2": "downloading" }}
+          downloadProgress={{ "pub-progress-2": null }}
+        />,
+      );
+
+      const progressBar = screen.getByRole("progressbar", {
+        name: "Downloading Unknown Size Book",
+      });
+      expect(progressBar.hasAttribute("value")).toBe(false);
+      expect(screen.queryByText(/%$/)).toBeNull();
+    });
+
+    it("does not render a progress bar for publications that are not downloading", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            id: "pub-progress-3",
+            title: "Idle Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={vi.fn()}
+          downloadStatuses={{ "pub-progress-3": "idle" }}
+          downloadProgress={{ "pub-progress-3": 80 }}
+        />,
+      );
+
+      expect(screen.queryByRole("progressbar")).toBeNull();
+      expect(screen.queryByText("80%")).toBeNull();
+    });
   });
 });
