@@ -3,7 +3,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import type { Catalog, NavigationLink } from "@/types/opds";
+import type { Catalog, DownloadStatus, MediaType, NavigationLink, Publication } from "@/types/opds";
 import { OpdsPublicationCard } from "./OpdsPublicationCard";
 
 interface OpdsCatalogViewProps {
@@ -13,6 +13,26 @@ interface OpdsCatalogViewProps {
   page: number;
   onPageChange: (page: number) => void;
   onRetry?: () => void;
+  downloadConfig?: {
+    catalogUrl: string;
+    transientUsername?: string;
+    transientPassword?: string;
+    contentRoot: string;
+  };
+  onDownload?: (
+    config: {
+      catalogUrl: string;
+      transientUsername?: string;
+      transientPassword?: string;
+      contentRoot: string;
+    },
+    publication: Publication,
+    format: MediaType,
+  ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  downloadStatuses?: Record<string, DownloadStatus>;
+  downloadErrors?: Record<string, string | null>;
+  downloadLocalPaths?: Record<string, string | null>;
+  downloadProgress?: Record<string, number | null>;
 }
 
 export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
@@ -22,6 +42,12 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   page,
   onPageChange,
   onRetry,
+  downloadConfig,
+  onDownload,
+  downloadStatuses = {},
+  downloadErrors = {},
+  downloadLocalPaths = {},
+  downloadProgress = {},
 }) => {
   const navigationLinks = useMemo(() => {
     if (!catalog?.links) return [];
@@ -35,6 +61,8 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   const loadingKeys = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => `load-${i}`);
   }, []);
+
+  const hasDownloadProps = downloadConfig && onDownload;
 
   if (isLoading) {
     return (
@@ -121,9 +149,28 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {catalog.publications.map((publication) => (
-              <OpdsPublicationCard key={publication.id} publication={publication} />
-            ))}
+            {catalog.publications.map((publication) => {
+              const pubDownloadStatus = downloadStatuses[publication.id] ?? "idle";
+              const pubDownloadError = downloadErrors[publication.id] ?? null;
+              const pubDownloadPath = downloadLocalPaths[publication.id] ?? null;
+              const pubDownloadProgress = downloadProgress[publication.id] ?? null;
+
+              return (
+                <OpdsPublicationCard
+                  key={publication.id}
+                  publication={publication}
+                  catalogUrl={downloadConfig?.catalogUrl}
+                  transientUsername={downloadConfig?.transientUsername}
+                  transientPassword={downloadConfig?.transientPassword}
+                  contentRoot={downloadConfig?.contentRoot}
+                  onDownload={hasDownloadProps ? onDownload : undefined}
+                  downloadStatus={pubDownloadStatus}
+                  downloadProgress={pubDownloadProgress}
+                  downloadLocalPath={pubDownloadPath}
+                  downloadErrorMessage={pubDownloadError}
+                />
+              );
+            })}
           </div>
         )}
       </section>

@@ -20,7 +20,7 @@ const createMockPublication = (overrides?: Partial<Publication>): Publication =>
     authors: ["Test Author"],
     languages: ["en"],
     relations: [],
-    descriptions: ["A test publication description that should be displayed in the card"],
+    descriptions: ["A test publication description"],
     links: [],
     identifiers: {},
     ...overrides,
@@ -505,6 +505,180 @@ describe("OpdsCatalogView", () => {
 
       const prevBtn = screen.getByText("Previous");
       expect(prevBtn.hasAttribute("disabled")).toBe(true);
+    });
+  });
+
+  describe("with download props", () => {
+    it("passes download props to publication cards", () => {
+      const onDownload = vi.fn();
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            title: "Downloadable Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            transientUsername: "user",
+            transientPassword: "pass",
+            contentRoot: "/content",
+          }}
+          onDownload={onDownload}
+        />,
+      );
+
+      const button = screen.getByRole("button", { name: "Select download format" });
+      expect(button).not.toBeNull();
+    });
+
+    it("passes download status to publication cards", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            id: "pub-status-1",
+            title: "Book with Download",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={vi.fn()}
+          downloadStatuses={{ "pub-status-1": "downloading" }}
+        />,
+      );
+
+      expect(screen.getAllByText(/downloading/i).length).toBeGreaterThan(0);
+    });
+
+    it("passes download error to publication cards", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            id: "pub-error-1",
+            title: "Error Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={vi.fn()}
+          downloadErrors={{ "pub-error-1": "Network error" }}
+          downloadStatuses={{ "pub-error-1": "failed" }}
+        />,
+      );
+
+      expect(screen.getByText(/Network error/i)).not.toBeNull();
+    });
+
+    it("does not show download section for publications without EPUB/PDF links", () => {
+      const onDownload = vi.fn();
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            title: "Non-downloadable Book",
+            links: [{ href: "https://example.com/book.html", media_type: "text/html" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+          onDownload={onDownload}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Select download format" })).toBeNull();
+    });
+
+    it("does not show download section without onDownload callback", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            title: "Test Book",
+            links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+          downloadConfig={{
+            catalogUrl: "https://example.com/opds",
+            contentRoot: "/content",
+          }}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Select download format" })).toBeNull();
+    });
+
+    it("preserves existing behavior when download props are absent", () => {
+      const catalog = createMockCatalog({
+        publications: [
+          createMockPublication({
+            title: "Regular Book",
+            authors: ["Author"],
+            links: [
+              { href: "https://example.com/book.epub", media_type: "application/epub+zip" },
+              { href: "https://example.com/book.pdf", media_type: "application/pdf" },
+            ],
+          }),
+        ],
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("EPUB")).not.toBeNull();
+      expect(screen.getByText("PDF")).not.toBeNull();
+      expect(screen.getByRole("list", { name: /Available formats/i })).not.toBeNull();
     });
   });
 });

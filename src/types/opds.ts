@@ -73,3 +73,32 @@ export interface FetchOpdsCatalogParams {
   page?: number | null;
   page_size?: number | null;
 }
+
+export type MediaType = "application/epub+zip" | "application/pdf" | string;
+
+export interface DownloadConfig {
+  catalogUrl: string;
+  transientUsername?: string;
+  transientPassword?: string;
+  contentRoot: string;
+}
+
+export interface DownloadProgress {
+  publicationId: string;
+  bytesReceived: number;
+  totalBytes: number | null;
+  status: "starting" | "downloading" | "completed" | "failed";
+  error?: string;
+}
+
+export type DownloadStatus = "idle" | "downloading" | "completed" | "failed";
+
+export interface DownloadResult {
+  localPath: string;
+  mediaType: MediaType;
+}
+
+export type AcquisitionFormat = {
+  href: string;
+  mediaType: MediaType;
+};
