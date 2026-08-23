@@ -130,7 +130,6 @@ pub fn plan_download_destination(
     let filename = derive_filename(&publication.title, media_type);
 
     let dest_path = content_root.join(&filename);
-
     if !is_path_contained(content_root, &dest_path)? {
         return Err(AcquisitionError::PathEscaped(
             dest_path.to_string_lossy().to_string(),
@@ -139,7 +138,7 @@ pub fn plan_download_destination(
 
     Ok(DownloadPlan {
         url: resolved_url,
-        destination: dest_path,
+        destination: PathBuf::from(&filename),
         filename,
         media_type: media_type.to_string(),
     })

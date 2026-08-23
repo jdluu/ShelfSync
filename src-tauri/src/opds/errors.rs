@@ -87,3 +87,36 @@ impl From<OpdsTransportError> for crate::error::AppError {
         crate::error::AppError::OpdsTransport(err.to_string())
     }
 }
+
+#[derive(Debug, Error, Serialize)]
+pub enum DownloadError {
+    #[error("Download failed: {0}")]
+    Transport(String),
+
+    #[error("Content size {0} bytes exceeds maximum {1} bytes")]
+    SizeExceeded(u64, u64),
+
+    #[error("Invalid content type: expected {0}, got {1}")]
+    ContentTypeMismatch(String, String),
+
+    #[error("Destination path invalid: {0}")]
+    InvalidDestination(String),
+
+    #[error("IO error during download")]
+    IoError,
+
+    #[error("File unexpectedly closed before completion")]
+    IncompleteDownload,
+}
+
+impl From<DownloadError> for crate::error::AppError {
+    fn from(err: DownloadError) -> Self {
+        crate::error::AppError::OpdsTransport(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for DownloadError {
+    fn from(_: std::io::Error) -> Self {
+        DownloadError::IoError
+    }
+}

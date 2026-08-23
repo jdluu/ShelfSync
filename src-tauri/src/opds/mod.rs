@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 mod acquisition;
+mod downloader;
 mod errors;
 mod http_client;
 mod http_client_tests;
@@ -12,7 +13,10 @@ pub use acquisition::{
     derive_filename, is_valid_media_type, plan_download_destination, select_acquisition,
     validate_download_url, DownloadPlan, MEDIA_TYPE_EPUB, MEDIA_TYPE_PDF,
 };
-pub use errors::{AcquisitionError, OpdsTransportError};
+pub use downloader::{
+    download_file, DownloadContext, DEFAULT_DOWNLOAD_TIMEOUT_SECS, DEFAULT_MAX_DOWNLOAD_SIZE,
+};
+pub use errors::{AcquisitionError, DownloadError, OpdsTransportError};
 pub use http_client::{ClientPagination, OpdsClient};
 pub use parser::parse_catalog;
 pub use parser::parse_catalog_from_str;
