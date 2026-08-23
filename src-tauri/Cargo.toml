@@ -57,6 +57,7 @@ epub = "2.1"
 quick-xml = { version = "0.41", features = ["serialize", "escape-html"] }
  url = "2.5"
  base64 = "0.22"
+ sha2 = "0.10"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 

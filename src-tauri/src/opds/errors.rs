@@ -93,11 +93,38 @@ pub enum DownloadError {
     #[error("Download failed: {0}")]
     Transport(String),
 
+    #[error("Network error during download")]
+    Network(String),
+
+    #[error("Authentication failed: credentials rejected")]
+    AuthFailed,
+
+    #[error("Forbidden: account does not have access to this file")]
+    Forbidden,
+
+    #[error("Download resource not found")]
+    NotFound,
+
+    #[error("Rate limited by server, retry later")]
+    RateLimited,
+
+    #[error("Server error: HTTP {0}")]
+    Server(u16),
+
     #[error("Content size {0} bytes exceeds maximum {1} bytes")]
     SizeExceeded(u64, u64),
 
-    #[error("Invalid content type: expected {0}, got {1}")]
+    #[error("Content type mismatch: expected {0}, got {1}")]
     ContentTypeMismatch(String, String),
+
+    #[error("Length mismatch: expected {0} bytes, received {1} bytes")]
+    LengthMismatch(u64, u64),
+
+    #[error("Hash mismatch ({0}): computed digest {1}")]
+    HashMismatch(String, String),
+
+    #[error("Invalid EPUB archive: {0}")]
+    InvalidZip(String),
 
     #[error("Destination path invalid: {0}")]
     InvalidDestination(String),
@@ -107,6 +134,18 @@ pub enum DownloadError {
 
     #[error("File unexpectedly closed before completion")]
     IncompleteDownload,
+
+    #[error("Download cancelled")]
+    Cancelled,
+}
+
+impl DownloadError {
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self,
+            DownloadError::Network(_) | DownloadError::Server(_) | DownloadError::RateLimited
+        )
+    }
 }
 
 impl From<DownloadError> for crate::error::AppError {

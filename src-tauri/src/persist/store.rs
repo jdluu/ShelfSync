@@ -168,6 +168,16 @@ impl LibraryStore {
             .await
     }
 
+    pub async fn complete_download(
+        &self,
+        revision_id: i64,
+        relative_path: String,
+        job_id: i64,
+    ) -> Result<StoredDownloadJob, PersistError> {
+        self.run(move |conn| repo::complete_download(conn, revision_id, &relative_path, job_id))
+            .await
+    }
+
     pub async fn get_job(&self, job_id: i64) -> Result<Option<StoredDownloadJob>, PersistError> {
         self.run(move |conn| repo::get_job(conn, job_id)).await
     }

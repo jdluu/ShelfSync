@@ -6,6 +6,7 @@ mod downloader;
 mod errors;
 mod http_client;
 mod http_client_tests;
+mod install;
 mod parser;
 mod transport;
 
@@ -18,6 +19,10 @@ pub use downloader::{
 };
 pub use errors::{AcquisitionError, DownloadError, OpdsTransportError};
 pub use http_client::{ClientPagination, OpdsClient};
+pub use install::{
+    download_verified_epub, safe_join, safe_remove_within_root, sha256_file, validate_epub_zip,
+    InstallError, InstalledDownload, VerifiedEpubRequest, DEFAULT_MAX_ATTEMPTS,
+};
 pub use parser::parse_catalog;
 pub use parser::parse_catalog_from_str;
 pub use transport::{

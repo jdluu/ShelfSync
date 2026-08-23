@@ -508,6 +508,36 @@ pub fn set_job_state(
     Ok(changed == 1)
 }
 
+pub fn complete_download(
+    conn: &mut Connection,
+    revision_id: i64,
+    relative_path: &str,
+    job_id: i64,
+) -> Result<StoredDownloadJob, PersistError> {
+    let normalized = validate_relative_path(relative_path)?;
+    let tx = conn.transaction()?;
+    let changed = tx.execute(
+        "UPDATE file_revision SET local_relative_path = ?1, updated_at = ?2 WHERE id = ?3",
+        params![normalized, now_unix(), revision_id],
+    )?;
+    if changed != 1 {
+        return Err(PersistError::Invalid(format!(
+            "file revision {revision_id} does not exist"
+        )));
+    }
+    let completed = set_job_state(&tx, job_id, JobState::Completed, None)?;
+    if !completed {
+        return Err(PersistError::Invalid(format!(
+            "download job {job_id} is not active and cannot be completed"
+        )));
+    }
+    let job = get_job(&tx, job_id)?.ok_or_else(|| {
+        PersistError::Invalid(format!("download job {job_id} vanished after update"))
+    })?;
+    tx.commit()?;
+    Ok(job)
+}
+
 pub fn active_jobs(conn: &Connection) -> Result<Vec<StoredDownloadJob>, PersistError> {
     let mut stmt = conn.prepare(&format!(
         "SELECT {JOB_COLUMNS} FROM download_job WHERE state IN {ACTIVE_JOB_STATES} ORDER BY id"

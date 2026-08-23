@@ -48,11 +48,25 @@ fn sanitize_error_message(err: &DownloadError) -> String {
                 "Download failed".to_string()
             }
         }
+        DownloadError::Network(_) => "Network error during download".to_string(),
+        DownloadError::AuthFailed => "Authentication failed".to_string(),
+        DownloadError::Forbidden => "Access to this file is forbidden".to_string(),
+        DownloadError::NotFound => "Download resource not found".to_string(),
+        DownloadError::RateLimited => "Rate limited by server".to_string(),
+        DownloadError::Server(_) => "Server error during download".to_string(),
         DownloadError::ContentTypeMismatch(_, _) => "Content type mismatch".to_string(),
         DownloadError::SizeExceeded(_, _) => "Download too large".to_string(),
+        DownloadError::LengthMismatch(expected, actual) => {
+            format!("Download size mismatch: expected {expected} bytes, received {actual} bytes")
+        }
+        DownloadError::HashMismatch(algorithm, _) => {
+            format!("Checksum verification failed ({algorithm})")
+        }
+        DownloadError::InvalidZip(msg) => format!("Invalid EPUB archive: {msg}"),
         DownloadError::InvalidDestination(_) => "Invalid download destination".to_string(),
         DownloadError::IoError => "IO error during download".to_string(),
         DownloadError::IncompleteDownload => "Download incomplete".to_string(),
+        DownloadError::Cancelled => "Download cancelled".to_string(),
     }
 }
 

@@ -67,17 +67,18 @@ impl DownloadContext {
         }
 
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/xml"));
-
         headers
+    }
+
+    pub(crate) fn request_headers(&self, url: &url::Url) -> HeaderMap {
+        self.build_headers(url)
     }
 }
 
-pub async fn download_file(
+pub(crate) async fn send_download_request(
     plan: &DownloadPlan,
     context: &DownloadContext,
-    dest_root: &Path,
-    progress_callback: Option<ProgressCallback>,
-) -> Result<PathBuf, DownloadError> {
+) -> Result<reqwest::Response, DownloadError> {
     let url = &plan.url;
 
     if url.username().is_empty() && url.password().is_some() {
@@ -92,7 +93,7 @@ pub async fn download_file(
         ));
     }
 
-    let headers = context.build_headers(url);
+    let headers = context.request_headers(url);
 
     let response = context
         .client
@@ -101,18 +102,30 @@ pub async fn download_file(
         .timeout(Duration::from_secs(DEFAULT_DOWNLOAD_TIMEOUT_SECS))
         .send()
         .await
-        .map_err(|e| DownloadError::Transport(e.to_string()))?;
+        .map_err(|e| DownloadError::Network(e.to_string()))?;
 
-    let status = response.status();
-    if !status.is_success() {
-        return Err(DownloadError::Transport(format!(
+    classify_status(response)
+}
+
+fn classify_status(response: reqwest::Response) -> Result<reqwest::Response, DownloadError> {
+    match response.status() {
+        status if status.is_success() => Ok(response),
+        reqwest::StatusCode::UNAUTHORIZED => Err(DownloadError::AuthFailed),
+        reqwest::StatusCode::FORBIDDEN => Err(DownloadError::Forbidden),
+        reqwest::StatusCode::NOT_FOUND => Err(DownloadError::NotFound),
+        reqwest::StatusCode::TOO_MANY_REQUESTS => Err(DownloadError::RateLimited),
+        status if status.is_server_error() => Err(DownloadError::Server(status.as_u16())),
+        status => Err(DownloadError::Transport(format!(
             "HTTP status error: {}",
             status
-        )));
+        ))),
     }
+}
 
-    let total_bytes = response.content_length();
-
+pub(crate) fn check_content_type(
+    plan: &DownloadPlan,
+    response: &reqwest::Response,
+) -> Result<(), DownloadError> {
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
         let ct_str = content_type.to_str().unwrap_or("");
         if !is_accepted_content_type(ct_str, &plan.media_type) {
@@ -122,6 +135,20 @@ pub async fn download_file(
             ));
         }
     }
+    Ok(())
+}
+
+pub async fn download_file(
+    plan: &DownloadPlan,
+    context: &DownloadContext,
+    dest_root: &Path,
+    progress_callback: Option<ProgressCallback>,
+) -> Result<PathBuf, DownloadError> {
+    let response = send_download_request(plan, context).await?;
+
+    check_content_type(plan, &response)?;
+
+    let total_bytes = response.content_length();
 
     let dest_path = validate_and_join_path(dest_root, &plan.destination)?;
 
@@ -135,18 +162,7 @@ pub async fn download_file(
         })?;
     }
 
-    let temp_suffix = Uuid::new_v4().to_string();
-    let part_path = dest_path.with_extension(
-        format!(
-            "{}.part-{}",
-            dest_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("file"),
-            temp_suffix
-        )
-        .as_str(),
-    );
+    let part_path = make_unique_part_path(&dest_path);
 
     let pre_existing = dest_path.exists();
     let original_content: Option<Vec<u8>> = if pre_existing {
@@ -186,6 +202,21 @@ pub async fn download_file(
             Err(e)
         }
     }
+}
+
+pub(crate) fn make_unique_part_path(dest_path: &Path) -> PathBuf {
+    let temp_suffix = Uuid::new_v4().to_string();
+    dest_path.with_extension(
+        format!(
+            "{}.part-{}",
+            dest_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("file"),
+            temp_suffix
+        )
+        .as_str(),
+    )
 }
 
 fn is_accepted_content_type(received: &str, expected: &str) -> bool {
@@ -232,13 +263,13 @@ fn validate_and_join_path(root: &Path, dest: &Path) -> Result<PathBuf, DownloadE
     Ok(full_path)
 }
 
-async fn stream_to_file(
+pub(crate) async fn stream_to_file(
     response: reqwest::Response,
     part_path: &Path,
     max_size: u64,
     progress_callback: &Option<ProgressCallback>,
     total_bytes: Option<u64>,
-) -> Result<(), DownloadError> {
+) -> Result<u64, DownloadError> {
     use tokio::io::AsyncWriteExt;
 
     let file = tokio::fs::File::create(part_path).await?;
@@ -252,8 +283,7 @@ async fn stream_to_file(
     }
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk
-            .map_err(|_| DownloadError::Transport("Failed to read response body".to_string()))?;
+        let chunk = chunk.map_err(|e| DownloadError::Network(e.to_string()))?;
         let chunk_len = chunk.len() as u64;
 
         if received.checked_add(chunk_len).is_none() || received + chunk_len > max_size {
@@ -276,7 +306,7 @@ async fn stream_to_file(
         return Err(DownloadError::IncompleteDownload);
     }
 
-    Ok(())
+    Ok(received)
 }
 
 #[cfg(test)]
@@ -413,7 +443,7 @@ mod tests {
         let dest_root = temp_dir.path();
 
         let result = download_file(&plan, &context, dest_root, None).await;
-        assert!(matches!(result, Err(DownloadError::Transport(_))));
+        assert!(matches!(result, Err(DownloadError::Forbidden)));
     }
 
     #[tokio::test]
