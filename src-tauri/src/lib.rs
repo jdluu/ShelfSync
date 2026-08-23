@@ -4,6 +4,7 @@ pub mod error;
 pub mod http;
 pub mod models;
 pub mod opds;
+pub mod persist;
 
 use crate::{
     commands::{library, network},
