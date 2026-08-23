@@ -1,10 +1,34 @@
 //! Optional KOReader reading progress adapter.
 //!
-//! Book identity is the KOReader partial MD5 of the verified local file
-//! bytes. Progress is never mapped by title, filename, local path, or
-//! provider id.
+//! Wire contract verified against the live Grimmory documentation
+//! (https://grimmory.org/docs/integration/koreader and its generated API
+//! reference) and against KOReader's own sync client behavior:
+//!
+//! - `GET {base}/users/auth` authorizes the dedicated KOReader credentials.
+//! - `GET {base}/syncs/progress/{partial_md5}` returns the stored progress
+//!   object or 404 when nothing was recorded for that document yet.
+//! - `PUT {base}/syncs/progress` stores a progress object.
+//! - Progress objects carry `timestamp` (int64), `document`, `percentage`,
+//!   `progress`, `device`, and `device_id`.
+//! - Every request uses HTTP Basic auth with KOReader credentials that are
+//!   stored under their own provider key, never the OPDS credentials.
+//! - Book identity is the KOReader partial MD5 of the verified local file
+//!   bytes. Progress is never mapped by title, filename, local path, or
+//!   provider id.
+//!
+//! Failure isolation: this module is a pure consumer of caller supplied
+//! snapshots. It holds no handles into download or persistence state, so any
+//! sync failure can only surface as a typed error and can never corrupt
+//! download records.
 
+pub mod adapter;
+pub mod client;
+pub mod error;
 pub mod identity;
+pub mod model;
+#[cfg(test)]
+mod tests;
+pub mod service;
 pub mod time;
 
 use crate::credentials::CredentialAccount;
@@ -20,7 +44,12 @@ pub fn koreader_credential_account(origin: &str, username: &str) -> CredentialAc
     CredentialAccount::new(KOREADER_CREDENTIAL_PROVIDER, origin, username)
 }
 
+pub use adapter::ProgressAdapter;
+pub use client::{KoReaderSyncClient, KoReaderSyncConfig, DEFAULT_REQUEST_TIMEOUT_SECS};
+pub use error::ProgressSyncError;
 pub use identity::{koreader_partial_md5_file, koreader_partial_md5_reader, sample_offset};
+pub use model::{KoReaderProgress, LocalProgressSnapshot};
+pub use service::{PullOutcome, ProgressSyncAccount, ProgressSyncService, PushOutcome};
 pub use time::normalize_timestamp_seconds;
 
 #[cfg(test)]
