@@ -1,7 +1,7 @@
 import { KeyRound, Link2, LogOut, PlugZap, User } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import type { Catalog, DownloadStatus } from "@/types/opds";
+import type { Catalog, DownloadStatus, MediaType, Publication } from "@/types/opds";
 import { OpdsCatalogView } from "./OpdsCatalogView";
 
 export interface OpdsConnectPayload {
@@ -30,6 +30,16 @@ interface OpdsCatalogScreenProps {
   downloadStatuses?: Record<string, DownloadStatus>;
   downloadErrors?: Record<string, string | null>;
   downloadLocalPaths?: Record<string, string | null>;
+  onDownload?: (
+    config: {
+      catalogUrl: string;
+      transientUsername?: string;
+      transientPassword?: string;
+      contentRoot: string;
+    },
+    publication: Publication,
+    format: MediaType,
+  ) => Promise<{ localPath: string; mediaType: MediaType }>;
 }
 
 export const isValidOpdsCatalogUrl = (value: string): boolean => {
@@ -56,6 +66,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   downloadStatuses = {},
   downloadErrors = {},
   downloadLocalPaths = {},
+  onDownload,
 }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -212,6 +223,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               transientPassword: password,
               contentRoot,
             }}
+            onDownload={onDownload}
             downloadStatuses={downloadStatuses}
             downloadErrors={downloadErrors}
             downloadLocalPaths={downloadLocalPaths}
