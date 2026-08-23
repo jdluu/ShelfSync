@@ -50,3 +50,6 @@ keys/
 logs/
 *.log
 *.txt
+docs/analysis/
+plans/
+.dev-docs/
