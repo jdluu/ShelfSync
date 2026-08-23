@@ -30,14 +30,19 @@ pub async fn fetch_opds_catalog(
 
     let client = OpdsClient::new(config)?;
 
-    let page = page.unwrap_or(1).max(1);
-    let page_size = page_size.unwrap_or(50).clamp(1, 100);
+    if page.is_none() && page_size.is_none() {
+        let catalog = client.fetch_catalog().await?;
+        Ok(catalog)
+    } else {
+        let page = page.unwrap_or(1).max(1);
+        let page_size = page_size.unwrap_or(50).clamp(1, 100);
 
-    let pagination = ClientPagination::new(page, page_size);
+        let pagination = ClientPagination::new(page, page_size);
 
-    let catalog = client.fetch_page(Some(pagination)).await?;
+        let catalog = client.fetch_page(Some(pagination)).await?;
 
-    Ok(catalog)
+        Ok(catalog)
+    }
 }
 
 #[cfg(test)]
@@ -191,5 +196,102 @@ mod tests {
         .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_opds_catalog_routes_root_vs_paginated() {
+        use axum::extract::Query;
+        use serde::Deserialize;
+
+        #[derive(Debug, Deserialize)]
+        struct PaginationQuery {
+            page: Option<u32>,
+            size: Option<u32>,
+        }
+
+        async fn handle_opds(
+            Query(query): Query<PaginationQuery>,
+        ) -> (axum::http::StatusCode, String) {
+            if query.page.is_some() || query.size.is_some() {
+                (
+                    StatusCode::OK,
+                    r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>PaginatedFeed</title>
+</feed>"#
+                        .to_string(),
+                )
+            } else {
+                (
+                    StatusCode::OK,
+                    r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>OPDS Catalog</title>
+</feed>"#
+                        .to_string(),
+                )
+            }
+        }
+
+        let app = Router::new()
+            .route("/opds", get(handle_opds))
+            .route("/opds/", get(handle_opds));
+        let server = TestServer::builder().http_transport().build(app);
+        let url = server.server_url("/opds").unwrap();
+
+        let result = fetch_opds_catalog(
+            url.to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+            Some(2),
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        let catalog = result.unwrap();
+        assert_eq!(catalog.title, "PaginatedFeed");
+    }
+
+    #[tokio::test]
+    async fn test_fetch_opds_catalog_uses_root_url_when_no_pagination() {
+        use axum::extract::Query;
+        use serde::Deserialize;
+
+        #[derive(Debug, Deserialize)]
+        struct PaginationQuery {
+            _page: Option<u32>,
+            _size: Option<u32>,
+        }
+
+        async fn handle_root(_query: Query<PaginationQuery>) -> (axum::http::StatusCode, String) {
+            (
+                StatusCode::OK,
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>OPDS Catalog</title>
+</feed>"#
+                    .to_string(),
+            )
+        }
+
+        let app = Router::new()
+            .route("/opds", get(handle_root))
+            .route("/opds/", get(handle_root));
+        let server = TestServer::builder().http_transport().build(app);
+        let url = server.server_url("/opds").unwrap();
+
+        let result = fetch_opds_catalog(
+            url.to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+            None,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        let catalog = result.unwrap();
+        assert_eq!(catalog.title, "OPDS Catalog");
     }
 }
