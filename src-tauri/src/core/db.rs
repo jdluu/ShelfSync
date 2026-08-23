@@ -2,119 +2,7 @@ use crate::error::AppError;
 use crate::models::Book;
 use std::collections::HashMap;
 
-/// Decodes HTML character entities in a string.
-fn decode_html_entities(input: &str) -> String {
-    let mut result = String::with_capacity(input.len());
-    let mut chars = input.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if ch == '&' {
-            let mut entity = String::new();
-            let mut found_semi = false;
-            for ec in chars.by_ref() {
-                if ec == ';' {
-                    found_semi = true;
-                    break;
-                }
-                entity.push(ec);
-                if entity.len() > 10 {
-                    break;
-                }
-            }
-            if !found_semi {
-                result.push('&');
-                result.push_str(&entity);
-                continue;
-            }
-            if let Some(stripped) = entity.strip_prefix('#') {
-                let code = if let Some(hex) = stripped
-                    .strip_prefix('x')
-                    .or_else(|| stripped.strip_prefix('X'))
-                {
-                    u32::from_str_radix(hex, 16).ok()
-                } else {
-                    stripped.parse::<u32>().ok()
-                };
-                if let Some(c) = code.and_then(char::from_u32) {
-                    result.push(c);
-                } else {
-                    result.push('&');
-                    result.push_str(&entity);
-                    result.push(';');
-                }
-            } else {
-                match entity.as_str() {
-                    "amp" => result.push('&'),
-                    "lt" => result.push('<'),
-                    "gt" => result.push('>'),
-                    "quot" => result.push('"'),
-                    "apos" => result.push('\''),
-                    "nbsp" => result.push('\u{00A0}'),
-                    "mdash" => result.push('\u{2014}'),
-                    "ndash" => result.push('\u{2013}'),
-                    "hellip" => result.push('\u{2026}'),
-                    "lsquo" => result.push('\u{2018}'),
-                    "rsquo" => result.push('\u{2019}'),
-                    "ldquo" => result.push('\u{201C}'),
-                    "rdquo" => result.push('\u{201D}'),
-                    "trade" => result.push('\u{2122}'),
-                    "copy" => result.push('\u{00A9}'),
-                    "reg" => result.push('\u{00AE}'),
-                    _ => {
-                        result.push('&');
-                        result.push_str(&entity);
-                        result.push(';');
-                    }
-                }
-            }
-        } else {
-            result.push(ch);
-        }
-    }
-    result
-}
-
-fn clean_html_description(text: &str) -> String {
-    let clean = text
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n")
-        .replace("<p>", "\n")
-        .replace("</p>", "\n")
-        .replace("<div>", "\n")
-        .replace("</div>", "\n")
-        .replace("<li>", "\n- ")
-        .replace("</li>", "");
-
-    let mut result = String::new();
-    let mut inside_tag = false;
-    for ch in clean.chars() {
-        if ch == '<' {
-            inside_tag = true;
-        } else if ch == '>' {
-            inside_tag = false;
-        } else if !inside_tag {
-            result.push(ch);
-        }
-    }
-    
-    // Collapse multiple newlines and trim
-    let decoded = decode_html_entities(&result);
-    let mut final_res = String::new();
-    let mut last_was_newline = false;
-    for c in decoded.trim().chars() {
-        if c == '\n' {
-            if !last_was_newline {
-                final_res.push(c);
-                last_was_newline = true;
-            }
-        } else {
-            final_res.push(c);
-            last_was_newline = false;
-        }
-    }
-    final_res
-}
+use super::html_clean::clean_html_description;
 
 fn fetch_authors(conn: &rusqlite::Connection) -> HashMap<i64, String> {
     let mut map = HashMap::new();
@@ -252,6 +140,28 @@ fn fetch_languages(conn: &rusqlite::Connection) -> HashMap<i64, String> {
     map
 }
 
+struct RelatedMaps {
+    authors: HashMap<i64, String>,
+    formats: HashMap<i64, Vec<String>>,
+    tags: HashMap<i64, Vec<String>>,
+    series: HashMap<i64, String>,
+    publishers: HashMap<i64, String>,
+    descriptions: HashMap<i64, String>,
+    ratings: HashMap<i64, f64>,
+    languages: HashMap<i64, String>,
+}
+
+fn apply_related_data(book: &mut Book, maps: &mut RelatedMaps) {
+    if let Some(val) = maps.authors.remove(&book.id) { book.authors = val; }
+    if let Some(val) = maps.formats.remove(&book.id) { book.formats = val; }
+    if let Some(val) = maps.tags.remove(&book.id) { book.tags = val; }
+    if let Some(val) = maps.series.remove(&book.id) { book.series = Some(val); }
+    if let Some(val) = maps.publishers.remove(&book.id) { book.publisher = Some(val); }
+    if let Some(val) = maps.descriptions.remove(&book.id) { book.description = Some(val); }
+    if let Some(val) = maps.ratings.remove(&book.id) { book.rating = Some(val); }
+    if let Some(val) = maps.languages.remove(&book.id) { book.language = Some(val); }
+}
+
 pub async fn get_calibre_metadata(pool: &deadpool_sqlite::Pool) -> Result<Vec<Book>, AppError> {
     let conn = pool.get().await.map_err(|e| AppError::Unknown(e.to_string()))?;
 
@@ -290,24 +200,19 @@ pub async fn get_calibre_metadata(pool: &deadpool_sqlite::Pool) -> Result<Vec<Bo
 
         let mut books: Vec<Book> = book_iter.flatten().collect();
 
-        let mut authors = fetch_authors(conn);
-        let mut formats = fetch_formats(conn);
-        let mut tags = fetch_tags(conn);
-        let mut series = fetch_series(conn);
-        let mut publishers = fetch_publishers(conn);
-        let mut descriptions = fetch_descriptions(conn);
-        let mut ratings = fetch_ratings(conn);
-        let mut languages = fetch_languages(conn);
+        let mut related = RelatedMaps {
+            authors: fetch_authors(conn),
+            formats: fetch_formats(conn),
+            tags: fetch_tags(conn),
+            series: fetch_series(conn),
+            publishers: fetch_publishers(conn),
+            descriptions: fetch_descriptions(conn),
+            ratings: fetch_ratings(conn),
+            languages: fetch_languages(conn),
+        };
 
         for b in &mut books {
-            if let Some(val) = authors.remove(&b.id) { b.authors = val; }
-            if let Some(val) = formats.remove(&b.id) { b.formats = val; }
-            if let Some(val) = tags.remove(&b.id) { b.tags = val; }
-            if let Some(val) = series.remove(&b.id) { b.series = Some(val); }
-            if let Some(val) = publishers.remove(&b.id) { b.publisher = Some(val); }
-            if let Some(val) = descriptions.remove(&b.id) { b.description = Some(val); }
-            if let Some(val) = ratings.remove(&b.id) { b.rating = Some(val); }
-            if let Some(val) = languages.remove(&b.id) { b.language = Some(val); }
+            apply_related_data(b, &mut related);
         }
 
         log::info!("Successfully loaded {} books in {:?}.", books.len(), start.elapsed());

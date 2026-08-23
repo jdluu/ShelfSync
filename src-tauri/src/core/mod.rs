@@ -1,6 +1,7 @@
 pub mod ble;
 pub mod calibre;
 pub mod db;
+mod html_clean;
 pub mod mdns;
 pub mod network;
 pub mod progress;
