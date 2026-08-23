@@ -247,6 +247,11 @@ pub fn run() {
                 let _ = offline_store_slot.set(std::sync::Arc::new(store));
             });
 
+            // 4c. Init secure OPDS credential store.
+            // Desktop: session-only in-memory store. Android: encrypted file
+            // store keyed by an Android Keystore AES/GCM key.
+            handle.manage(commands::credentials::build_shared_store(&app_data_dir));
+
             // 5. Spawn server task and get bound port
             let state_clone = app_state.server.clone();
             let server_handle = app.handle().clone();
@@ -298,7 +303,10 @@ pub fn run() {
             crate::commands::offline::list_offline_library,
             crate::commands::offline::refresh_offline_library,
             crate::commands::offline::delete_offline_content,
-            crate::commands::offline::check_download_space
+            crate::commands::offline::check_download_space,
+            crate::commands::credentials::opds_save_credential,
+            crate::commands::credentials::opds_load_credential,
+            crate::commands::credentials::opds_delete_credential
         ]);
 
     builder

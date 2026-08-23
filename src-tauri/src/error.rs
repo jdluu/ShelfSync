@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("Offline library error: {0}")]
     OfflineLibrary(String),
 
+    #[error("Credential storage error: {0}")]
+    Credential(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
