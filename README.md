@@ -10,6 +10,12 @@
 
 ShelfSync is a cross-platform desktop and mobile application designed to facilitate the synchronization of e-book libraries between devices on a local network. Built upon the Tauri framework, it leverages a Rust-based backend for performance and system integration, coupled with a React and TypeScript frontend for a responsive user interface. The application specifically targets Calibre libraries, allowing a central host to serve content to client devices for offline reading.
 
+> **Direction change:** ShelfSync is being refactored into a Grimmory/OPDS
+> client (catalog browsing, verified downloads, offline reconciliation). It is
+> NOT an EPUB reader — reading happens in the separate Leafline app. See
+> `docs/app-boundaries.md` for the strict division of responsibility and
+> `plans/grimmory-client-roadmap.md` for the active roadmap.
+
 ## Prerequisites
 
 To build and run this project, the following dependencies must be installed on the development system:
