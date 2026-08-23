@@ -1,8 +1,9 @@
-import { LayoutGrid, List } from "lucide-react";
+import { Download, LayoutGrid, List } from "lucide-react";
 import type React from "react";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { SortMenu, type SortOption } from "@/components/ui/SortMenu";
 import type { GroupByOption } from "@/features/client/useBookFilters";
+import type { SyncBatchSummary } from "@/store/syncStore";
 
 interface ClientToolbarProps {
   refresh: () => void;
@@ -19,13 +20,14 @@ interface ClientToolbarProps {
   showScrollTop: boolean;
   groupBy: GroupByOption;
   setGroupBy: (option: GroupByOption) => void;
+  syncSummary?: SyncBatchSummary | null;
 }
 
 /**
  * Sticky toolbar for the Client Dashboard.
  *
  * Contains disconnect/refresh actions, view mode toggle, selection mode controls,
- * search bar, and sort menu.
+ * search bar, sort menu, and a compact X-of-Y sync progress indicator.
  */
 export const ClientToolbar: React.FC<ClientToolbarProps> = ({
   refresh,
@@ -42,7 +44,11 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
   showScrollTop,
   groupBy,
   setGroupBy,
+  syncSummary = null,
 }) => {
+  const summaryLabel = syncSummary
+    ? `${syncSummary.done} of ${syncSummary.total} books synced`
+    : "";
   return (
     <div
       className="sticky top-[72px] z-[900] bg-base-100/95 backdrop-blur-sm px-1 py-3 border-b border-base-200 flex flex-col gap-3 transition-shadow duration-300"
@@ -54,6 +60,17 @@ export const ClientToolbar: React.FC<ClientToolbarProps> = ({
             <h2 className="text-sm sm:text-lg font-bold">Available Books</h2>
             <span className="badge badge-primary badge-sm py-1 font-medium">{bookCount}</span>
           </div>
+
+          {syncSummary?.active && (
+            <output
+              className="badge badge-info badge-outline gap-1 py-1 font-medium"
+              aria-live="polite"
+              aria-label={`Syncing: ${summaryLabel}`}
+            >
+              <Download className="w-3 h-3" aria-hidden="true" />
+              {syncSummary.done}/{syncSummary.total}
+            </output>
+          )}
 
           <div className="flex items-center gap-1">
             <button
