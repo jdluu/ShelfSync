@@ -23,6 +23,14 @@ impl ParsedOrigin {
         ParsedOrigin { scheme, host, port }
     }
 
+    pub fn scheme(&self) -> &str {
+        &self.scheme
+    }
+
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
     pub fn from_origin_str(origin: &str) -> Self {
         if origin.is_empty() {
             return ParsedOrigin {
@@ -129,7 +137,7 @@ pub fn parse_origin(url: &Url) -> ParsedOrigin {
     ParsedOrigin::from_url(url)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CatalogConfig {
     pub provider: String,
     pub url: Url,
@@ -140,6 +148,21 @@ pub struct CatalogConfig {
     pub https_preferred: bool,
     pub trusted_lan: bool,
 }
+
+impl std::fmt::Debug for CatalogConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CatalogConfig")
+            .field("provider", &self.provider)
+            .field("url", &self.url)
+            .field("username", &REDACTED)
+            .field("password", &REDACTED)
+            .field("https_preferred", &self.https_preferred)
+            .field("trusted_lan", &self.trusted_lan)
+            .finish()
+    }
+}
+
+const REDACTED: &str = "***";
 
 impl CatalogConfig {
     pub fn new(
@@ -566,5 +589,37 @@ mod tests {
         let url2 = Url::parse("http://example.com:80/opds").unwrap();
         assert!(origin_matches(&url1, "http://example.com"));
         assert!(origin_matches(&url2, "http://example.com"));
+    }
+
+    #[test]
+    fn test_debug_output_redacts_credentials() {
+        let url = Url::parse("https://example.com/opds").unwrap();
+        let config =
+            CatalogConfig::new("grimmory", url, "alice", "s3cret-password".to_string()).unwrap();
+
+        let debug = format!("{config:?}");
+        assert!(
+            !debug.contains("s3cret-password"),
+            "password leaked in debug: {debug}"
+        );
+        assert!(
+            !debug.contains("alice"),
+            "username leaked in debug: {debug}"
+        );
+        assert!(debug.contains("***"));
+
+        // Serialize output must not carry credentials either.
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(
+            !json.contains("s3cret-password"),
+            "password leaked in json: {json}"
+        );
+        assert!(
+            !json.contains("\"alice\""),
+            "username leaked in json: {json}"
+        );
+
+        // The host stays available for diagnostics.
+        assert!(format!("{config:?}").contains("example.com"));
     }
 }
