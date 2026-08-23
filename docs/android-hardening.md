@@ -75,7 +75,10 @@ no code path persists OPDS passwords outside this abstraction.
 
 - `CatalogConfig` implements `Debug` manually: username and password print as
   `***` in any diagnostic formatting. Serialization also skips both fields.
-- `OpdsCredentials` redacts the password in `Debug` and `Serialize`.
+- `OpdsCredentials` redacts the password in `Debug`. It deliberately keeps a
+  plain `Serialize` implementation because loading a stored credential must
+  return the real secret to the caller; the type must therefore never be
+  passed to logging or tracing sinks.
 - Credential store errors are static strings; they never embed account data.
 - No `log!` call site receives a password; the transport error sanitizer in
   `commands/opds.rs` maps auth failures to fixed messages.

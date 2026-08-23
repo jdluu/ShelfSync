@@ -65,9 +65,11 @@ impl CredentialAccount {
     }
 }
 
-/// OPDS basic auth credentials. The password is redacted in every diagnostic
-/// formatting path.
-#[derive(Clone, PartialEq, Eq)]
+/// OPDS basic auth credentials. The password is redacted in diagnostic
+/// formatting (`Debug`). Serialization is left intact on purpose: loading a
+/// stored credential must deliver the real secret back to the caller, so
+/// these values must never be passed to logging or tracing sinks.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpdsCredentials {
     pub username: String,
     pub password: String,
@@ -88,31 +90,6 @@ impl std::fmt::Debug for OpdsCredentials {
             .field("username", &self.username)
             .field("password", &REDACTED)
             .finish()
-    }
-}
-
-impl Serialize for OpdsCredentials {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("OpdsCredentials", 2)?;
-        state.serialize_field("username", &self.username)?;
-        state.serialize_field("password", &REDACTED)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for OpdsCredentials {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        struct Raw {
-            username: String,
-            password: String,
-        }
-        let raw = Raw::deserialize(deserializer)?;
-        Ok(OpdsCredentials {
-            username: raw.username,
-            password: raw.password,
-        })
     }
 }
 
@@ -290,11 +267,12 @@ impl<C: CredentialCipher> CredentialStore for EncryptedFileStore<C> {
     fn delete(&self, account: &CredentialAccount) -> Result<bool, CredentialStoreError> {
         let mut entries = self.entries.lock().map_err(|_| CredentialStoreError::Io)?;
         let removed = entries.remove(&account.storage_key());
-        let result = self.persist(&entries);
-        // Report deletion success even if persistence failed? No: the caller
-        // must know the on-disk state is uncertain, but the in-memory entry is
-        // gone either way. Surface the persistence failure.
-        result?;
+        // Only touch disk when something was actually removed; the caller
+        // must still know the on-disk state changed, so a persistence failure
+        // surfaces even though the in-memory entry is already gone.
+        if removed.is_some() {
+            self.persist(&entries)?;
+        }
         Ok(removed.is_some())
     }
 }
@@ -404,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn credentials_debug_and_json_redact_password() {
+    fn credentials_debug_redacts_password() {
         let creds = OpdsCredentials::new("alice", PASSWORD);
 
         let debug = format!("{creds:?}");
@@ -414,8 +392,11 @@ mod tests {
         );
         assert!(debug.contains("***"));
 
+        // Serialization intentionally keeps the real secret because loading a
+        // stored credential must return it; the store file on disk is the
+        // boundary that must stay clean.
         let json = serde_json::to_string(&creds).unwrap();
-        assert!(!json.contains(PASSWORD), "password leaked in json: {json}");
+        assert!(json.contains(PASSWORD));
     }
 
     #[test]
