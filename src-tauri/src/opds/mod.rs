@@ -8,7 +8,7 @@ mod parser;
 mod transport;
 
 pub use errors::OpdsTransportError;
-pub use http_client::OpdsClient;
+pub use http_client::{ClientPagination, OpdsClient};
 pub use parser::parse_catalog;
 pub use parser::parse_catalog_from_str;
 pub use transport::{
