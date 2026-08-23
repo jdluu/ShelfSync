@@ -7,6 +7,7 @@ pub mod models;
 pub mod offline;
 pub mod opds;
 pub mod persist;
+pub mod progress;
 
 use crate::{
     commands::{library, network},
