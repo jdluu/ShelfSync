@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle, Download } from "lucide-react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { deriveSyncSummary } from "@/store/syncStore";
 
 interface SyncItem {
   book_id: number;
@@ -43,10 +44,10 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
 
   if (items.length === 0 || !showSettled) return null;
 
-  // Use batch metadata from any item if available, otherwise fallback to local count
-  const anyItem = items.find((i) => i.batch_total > 0);
-  const completedCount = items.filter((p) => p.status === "completed").length;
-  const totalCount = anyItem ? anyItem.batch_total : items.length;
+  const summary = deriveSyncSummary(progress);
+  const summaryLabel = summary
+    ? `${summary.done} of ${summary.total} book${summary.total !== 1 ? "s" : ""} synced`
+    : "";
 
   return (
     <output
@@ -61,7 +62,8 @@ export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
             <div className="flex flex-col">
               <span className="font-bold text-sm">Sync Progress</span>
               <span className="text-xs text-base-content/70">
-                Book {anyItem?.batch_current || completedCount} of {totalCount} syncing
+                {summaryLabel}
+                {summary?.active ? " · downloading" : ""}
               </span>
             </div>
           </div>

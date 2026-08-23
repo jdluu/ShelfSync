@@ -10,6 +10,34 @@ import { isTauri, safeInvoke } from "@/utils/tauri";
 
 const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
+export interface SyncBatchSummary {
+  /** Books finished (completed or failed). */
+  done: number;
+  failed: number;
+  total: number;
+  active: boolean;
+}
+
+/**
+ * Derive an "X of Y" batch summary from the per-book progress map.
+ *
+ * Prefers the authoritative backend batch size when present and falls back
+ * to the number of tracked entries otherwise.
+ */
+export function deriveSyncSummary(
+  progress: Record<number, SyncProgress>,
+): SyncBatchSummary | null {
+  const items = Object.values(progress);
+  if (items.length === 0) return null;
+  const batched = items.find((p) => p.batch_total > 0);
+  return {
+    done: items.filter((p) => p.status === "completed" || p.status === "error").length,
+    failed: items.filter((p) => p.status === "error").length,
+    total: batched ? batched.batch_total : items.length,
+    active: items.some((p) => p.status === "downloading"),
+  };
+}
+
 interface SyncState {
   syncProgress: Record<number, SyncProgress>;
   manualError: string | null;

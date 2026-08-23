@@ -54,9 +54,10 @@ vi.mock("@/store/libraryStore", () => ({
   useLibraryStore: vi.fn(),
 }));
 
-vi.mock("@/store/syncStore", () => ({
-  useSyncStore: vi.fn(),
-}));
+vi.mock("@/store/syncStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/store/syncStore")>();
+  return { ...actual, useSyncStore: vi.fn() };
+});
 
 vi.mock("@/hooks/useLibraryQuery", () => ({
   useHostManifest: vi.fn(),

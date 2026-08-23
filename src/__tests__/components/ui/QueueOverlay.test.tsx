@@ -43,6 +43,32 @@ describe("QueueOverlay", () => {
     expect(screen.getByText("Book 1")).toBeDefined();
     expect(screen.getByText("Book 2")).toBeDefined();
     expect(screen.getByText("Sync Progress")).toBeDefined();
+    expect(screen.getByText("0 of 3 books synced · downloading")).toBeDefined();
+  });
+
+  it("shows an X of Y books summary line while a batch is running", () => {
+    render(
+      <QueueOverlay
+        progress={{
+          1: makeProgress({ book_id: 1, status: "completed", progress: 1, batch_total: 4 }),
+          2: makeProgress({ book_id: 2, batch_total: 4 }),
+          3: makeProgress({ book_id: 3, batch_total: 4 }),
+        }}
+      />,
+    );
+    expect(screen.getByText("1 of 4 books synced · downloading")).toBeDefined();
+  });
+
+  it("reports the final count without the downloading suffix once settled", () => {
+    render(
+      <QueueOverlay
+        progress={{
+          1: makeProgress({ book_id: 1, status: "completed", progress: 1, batch_total: 2 }),
+          2: makeProgress({ book_id: 2, status: "completed", progress: 1, batch_total: 2 }),
+        }}
+      />,
+    );
+    expect(screen.getByText("2 of 2 books synced")).toBeDefined();
   });
 
   it("caps the visible list and shows a queue overflow row", () => {

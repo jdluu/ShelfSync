@@ -10,6 +10,7 @@ import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
 import { CoverFlow } from "@/components/ui/CoverFlow";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import { Discovery } from "@/features/discovery/Discovery";
+import { deriveSyncSummary } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { ClientBookGrid } from "./ClientBookGrid";
 import { ClientEmptyState } from "./ClientEmptyState";
@@ -91,6 +92,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
   const isGroupSelected = (groupBooks: Book[]) =>
     groupBooks.length > 0 && groupBooks.every((b) => selectedIds.has(b.id));
 
+  const syncSummary = deriveSyncSummary(syncProgress);
+
   // Determine the correct labeling for group selection
   const getGroupSelectLabel = (isSelected: boolean) => {
     const prefix = isSelected ? "Deselect" : "Select";
@@ -139,6 +142,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
               showScrollTop={showScrollTop}
               groupBy={groupBy}
               setGroupBy={setGroupBy}
+              syncSummary={syncSummary}
             />
           )}
 
