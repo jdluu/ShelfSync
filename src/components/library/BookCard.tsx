@@ -107,6 +107,14 @@ export const BookCard: React.FC<BookCardProps> = ({
     setImgLoaded(true);
   };
 
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (!selectable || !onSelect) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+      e.preventDefault();
+      onSelect();
+    }
+  };
+
   const getStatusColor = (status: string | null | undefined) => {
     if (status === "finished") return "badge-success";
     if (status === "reading") return "badge-info";
@@ -123,7 +131,9 @@ export const BookCard: React.FC<BookCardProps> = ({
             ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary"
             : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
         }`}
-        aria-labelledby={`book-title-${book.id}`}
+        aria-label={`${book.title} by ${book.authors}`}
+        tabIndex={selectable && onSelect ? 0 : undefined}
+        onKeyDown={handleCardKeyDown}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
         {selectable && onSelect && (
@@ -177,7 +187,9 @@ export const BookCard: React.FC<BookCardProps> = ({
           ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary ring-offset-1 ring-offset-base-100"
           : "border-base-content/5 hover:shadow-xl hover:border-primary/30 hover:-translate-y-1"
       }`}
-      aria-labelledby={`book-title-${book.id}`}
+      aria-label={`${book.title} by ${book.authors}`}
+      tabIndex={selectable && onSelect ? 0 : undefined}
+      onKeyDown={handleCardKeyDown}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       {selectable && onSelect && (
