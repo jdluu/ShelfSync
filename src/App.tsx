@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
@@ -17,6 +18,7 @@ const ClientDashboard = lazy(() =>
 const HostDashboard = lazy(() =>
   import("@/features/host/HostDashboard").then((m) => ({ default: m.HostDashboard })),
 );
+const OpdsCatalogScreenContainer = lazy(() => import("@/features/opds/OpdsCatalogScreenContainer"));
 
 function InitializingView() {
   return (
@@ -92,6 +94,8 @@ function AppContent() {
 
   const { authRequired, pairingHost, pair, disconnect } = useAuthStore();
 
+  const [opdsMode, setOpdsMode] = useState(false);
+
   if (appLoading) return <InitializingView />;
 
   if (authRequired) {
@@ -105,8 +109,34 @@ function AppContent() {
     );
   }
 
+  if (opdsMode) {
+    return (
+      <div className="h-screen w-screen flex flex-col bg-base-100 font-sans">
+        <header
+          className="flex items-center gap-3 px-3 sm:px-6 py-2 border-b border-base-content/10 bg-base-100"
+          style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 0.5rem)" }}
+        >
+          <button type="button" onClick={() => setOpdsMode(false)} className="btn btn-ghost btn-sm">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Back
+          </button>
+          <span className="text-lg sm:text-xl font-display font-bold tracking-tight">
+            Browse Catalog (OPDS)
+          </span>
+        </header>
+        <main id="main-content" className="flex-grow overflow-y-auto p-4 sm:p-6">
+          <div className="container max-w-4xl mx-auto">
+            <Suspense fallback={<InitializingView />}>
+              <OpdsCatalogScreenContainer />
+            </Suspense>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (role === "unselected") {
-    return <RoleSelection onSelect={handleRoleSelect} />;
+    return <RoleSelection onSelect={handleRoleSelect} onBrowseCatalog={() => setOpdsMode(true)} />;
   }
 
   if (role === "host") {
