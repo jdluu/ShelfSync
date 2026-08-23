@@ -3,6 +3,10 @@ import type React from "react";
 import { useMemo } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
+import type {
+  CategorizedLibraryRecord,
+  PublicationLibraryInfo,
+} from "@/types/offline";
 import type { Catalog, DownloadStatus, MediaType, NavigationLink, Publication } from "@/types/opds";
 import { OpdsPublicationCard } from "./OpdsPublicationCard";
 
@@ -33,6 +37,9 @@ interface OpdsCatalogViewProps {
   downloadErrors?: Record<string, string | null>;
   downloadLocalPaths?: Record<string, string | null>;
   downloadProgress?: Record<string, number | null>;
+  libraryInfoByPublicationId?: Record<string, PublicationLibraryInfo>;
+  deletingRevisionId?: number | null;
+  onDeleteLocal?: (publicationId: string, record: CategorizedLibraryRecord) => void;
 }
 
 export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
@@ -48,6 +55,9 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   downloadErrors = {},
   downloadLocalPaths = {},
   downloadProgress = {},
+  libraryInfoByPublicationId = {},
+  deletingRevisionId = null,
+  onDeleteLocal,
 }) => {
   const navigationLinks = useMemo(() => {
     if (!catalog?.links) return [];
@@ -168,6 +178,13 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
                   downloadProgress={pubDownloadProgress}
                   downloadLocalPath={pubDownloadPath}
                   downloadErrorMessage={pubDownloadError}
+                  libraryInfo={libraryInfoByPublicationId[publication.id] ?? null}
+                  deletingRevisionId={deletingRevisionId}
+                  onDeleteLocal={
+                    onDeleteLocal
+                      ? (record) => onDeleteLocal(publication.id, record)
+                      : undefined
+                  }
                 />
               );
             })}

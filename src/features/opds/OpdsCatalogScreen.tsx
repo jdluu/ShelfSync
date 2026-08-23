@@ -1,6 +1,11 @@
-import { KeyRound, Link2, LogOut, PlugZap, User } from "lucide-react";
+import { KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import type {
+  CategorizedLibraryRecord,
+  OfflineRefreshReport,
+  PublicationLibraryInfo,
+} from "@/types/offline";
 import type { Catalog, DownloadStatus, MediaType, Publication } from "@/types/opds";
 import { OpdsCatalogView } from "./OpdsCatalogView";
 
@@ -41,6 +46,10 @@ interface OpdsCatalogScreenProps {
     publication: Publication,
     format: MediaType,
   ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  libraryInfoByPublicationId?: Record<string, PublicationLibraryInfo>;
+  deletingRevisionId?: number | null;
+  onDeleteLocal?: (publicationId: string, record: CategorizedLibraryRecord) => void;
+  onRefreshLibrary?: () => Promise<OfflineRefreshReport | null>;
 }
 
 export const isValidOpdsCatalogUrl = (value: string): boolean => {
@@ -69,8 +78,36 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   downloadLocalPaths = {},
   downloadProgress,
   onDownload,
+  libraryInfoByPublicationId = {},
+  deletingRevisionId = null,
+  onDeleteLocal,
+  onRefreshLibrary,
 }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [refreshingLibrary, setRefreshingLibrary] = useState(false);
+  const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
+
+  const handleRefreshLibrary = async () => {
+    if (!onRefreshLibrary || refreshingLibrary) return;
+    setRefreshingLibrary(true);
+    setRefreshSummary(null);
+    try {
+      const report = await onRefreshLibrary();
+      if (report) {
+        const parts: string[] = [`${report.publications_seen} publications checked`];
+        if (report.added.length > 0) parts.push(`${report.added.length} new`);
+        if (report.changed.length > 0) parts.push(`${report.changed.length} changed`);
+        if (report.removed.length > 0)
+          parts.push(
+            `${report.removed.length} removed from server (kept locally)`,
+          );
+        if (report.truncated) parts.push("listing incomplete");
+        setRefreshSummary(parts.join(", "));
+      }
+    } finally {
+      setRefreshingLibrary(false);
+    }
+  };
 
   const handleUrlChange = (nextUrl: string) => {
     setValidationError(null);
@@ -212,6 +249,21 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                   </label>
                 </div>
               </details>
+              {onRefreshLibrary && (
+                <button
+                  type="button"
+                  onClick={handleRefreshLibrary}
+                  disabled={refreshingLibrary}
+                  className="btn btn-outline btn-sm"
+                  aria-label="Refresh catalog metadata and reconcile downloads"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${refreshingLibrary ? "animate-spin" : ""}`}
+                    aria-hidden="true"
+                  />
+                  {refreshingLibrary ? "Refreshing..." : "Refresh"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleDisconnect}
@@ -221,6 +273,11 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                 Disconnect
               </button>
             </div>
+            {refreshSummary && (
+              <p className="text-xs text-base-content/60" role="status" aria-live="polite">
+                {refreshSummary}
+              </p>
+            )}
           </div>
 
           <OpdsCatalogView
@@ -240,6 +297,9 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
             downloadErrors={downloadErrors}
             downloadLocalPaths={downloadLocalPaths}
             downloadProgress={downloadProgress}
+            libraryInfoByPublicationId={libraryInfoByPublicationId}
+            deletingRevisionId={deletingRevisionId}
+            onDeleteLocal={onDeleteLocal}
           />
         </>
       )}

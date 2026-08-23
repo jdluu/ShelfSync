@@ -1,6 +1,13 @@
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useOpdsCatalog } from "@/hooks/useOpdsCatalog";
+import { offlineLibraryClient } from "@/services/offlineLibrary";
+import type {
+  CategorizedLibraryRecord,
+  OfflineRefreshReport,
+  PublicationLibraryInfo,
+} from "@/types/offline";
 import type {
   DownloadConfig,
   DownloadResult,
@@ -8,6 +15,8 @@ import type {
   MediaType,
   Publication,
 } from "@/types/opds";
+import { buildPublicationLibraryInfo } from "@/types/offline";
+import { isTauri } from "@/utils/tauri";
 import type { OpdsConnectPayload } from "./OpdsCatalogScreen";
 import { isValidOpdsCatalogUrl, OpdsCatalogScreen } from "./OpdsCatalogScreen";
 import { useOpdsDownload } from "./useOpdsDownload";
@@ -35,11 +44,31 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     Record<string, number | null>
   >({});
 
+  const [libraryInfoByPublicationId, setLibraryInfoByPublicationId] = useState<
+    Record<string, PublicationLibraryInfo>
+  >({});
+  const [deletingRevisionId, setDeletingRevisionId] = useState<number | null>(null);
+
+  const queryClient = useQueryClient();
   const catalogQuery = useOpdsCatalog(url, username, password, page, connected);
   const { status, error, localPath, mediaType, progress, startDownload } = useOpdsDownload();
 
   const activeDownloadIdRef = useRef<string | null>(null);
   const pendingResultRef = useRef<PendingDownloadResult | null>(null);
+
+  const refreshLibrarySnapshot = useCallback(async () => {
+    if (!isTauri()) return;
+    try {
+      const snapshot = await offlineLibraryClient.list();
+      setLibraryInfoByPublicationId(buildPublicationLibraryInfo(snapshot));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (connected) {
+      void refreshLibrarySnapshot();
+    }
+  }, [connected, refreshLibrarySnapshot]);
 
   useEffect(() => {
     const publicationId = activeDownloadIdRef.current;
@@ -51,6 +80,8 @@ const OpdsCatalogScreenContainer: React.FC = () => {
 
     if (status !== "completed" && status !== "failed") return;
 
+    void refreshLibrarySnapshot();
+
     const pending = pendingResultRef.current;
     if (pending && pending.publicationId === publicationId) {
       pendingResultRef.current = null;
@@ -60,7 +91,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
         mediaType: status === "completed" ? (mediaType ?? pending.format) : pending.format,
       });
     }
-  }, [status, error, localPath, mediaType]);
+  }, [status, error, localPath, mediaType, refreshLibrarySnapshot]);
 
   useEffect(() => {
     const publicationId = activeDownloadIdRef.current;
@@ -114,6 +145,38 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     [startDownload],
   );
 
+  const handleDeleteLocal = useCallback(
+    async (_publicationId: string, record: CategorizedLibraryRecord) => {
+      if (deletingRevisionId !== null) return;
+      setDeletingRevisionId(record.revision_id);
+      try {
+        await offlineLibraryClient.deleteContent(record.revision_id);
+        await refreshLibrarySnapshot();
+      } catch {
+        // Keep the record visible on failure so the user can retry deletion.
+      } finally {
+        setDeletingRevisionId(null);
+      }
+    },
+    [deletingRevisionId, refreshLibrarySnapshot],
+  );
+
+  const handleRefreshLibrary = useCallback(async (): Promise<OfflineRefreshReport | null> => {
+    if (!isTauri()) return null;
+    try {
+      const report = await offlineLibraryClient.refresh({
+        catalogUrl: url.trim(),
+        username,
+        password,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["opds", "catalog", url] });
+      await refreshLibrarySnapshot();
+      return report;
+    } catch {
+      return null;
+    }
+  }, [password, queryClient, refreshLibrarySnapshot, url, username]);
+
   return (
     <OpdsCatalogScreen
       url={url}
@@ -137,6 +200,10 @@ const OpdsCatalogScreenContainer: React.FC = () => {
       downloadLocalPaths={downloadLocalPaths}
       downloadProgress={downloadProgressPercents}
       onDownload={handleDownload}
+      libraryInfoByPublicationId={libraryInfoByPublicationId}
+      deletingRevisionId={deletingRevisionId}
+      onDeleteLocal={handleDeleteLocal}
+      onRefreshLibrary={handleRefreshLibrary}
     />
   );
 };
