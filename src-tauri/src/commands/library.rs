@@ -4,7 +4,20 @@ use crate::{
     models::Book,
     AppState,
 };
+use std::path::Path;
 use tauri::State;
+
+/// Builds an async SQLite pool for a Calibre library's `metadata.db`.
+fn build_library_pool(db_path: &Path) -> Result<deadpool_sqlite::Pool, AppError> {
+    let mut cfg = deadpool_sqlite::Config::new(db_path);
+    let mut pool_config = deadpool_sqlite::PoolConfig::default();
+    pool_config.max_size = 16;
+    cfg.pool = Some(pool_config);
+    cfg.builder(deadpool_sqlite::Runtime::Tokio1)
+        .map_err(|e| AppError::Unknown(e.to_string()))?
+        .build()
+        .map_err(|e| AppError::Unknown(e.to_string()))
+}
 
 #[tauri::command]
 pub async fn get_books(
@@ -12,20 +25,12 @@ pub async fn get_books(
     state: State<'_, AppState>,
     app: tauri::AppHandle,
 ) -> Result<Vec<Book>, AppError> {
-    let db_path = std::path::Path::new(&library_path).join("metadata.db");
+    let db_path = Path::new(&library_path).join("metadata.db");
     if !db_path.exists() {
         return Err(AppError::LibraryNotFound(library_path.clone()));
     }
 
-    let mut cfg = deadpool_sqlite::Config::new(&db_path);
-    let mut pool_config = deadpool_sqlite::PoolConfig::default();
-    pool_config.max_size = 16;
-    cfg.pool = Some(pool_config);
-    let pool = cfg
-        .builder(deadpool_sqlite::Runtime::Tokio1)
-        .map_err(|e| AppError::Unknown(e.to_string()))?
-        .build()
-        .map_err(|e| AppError::Unknown(e.to_string()))?;
+    let pool = build_library_pool(&db_path)?;
 
     // 1. Fetch from DB
     let books = db::get_calibre_metadata(&pool).await?;
@@ -70,15 +75,7 @@ pub async fn set_library_path(
         return Err(AppError::LibraryNotFound(path.clone()));
     }
 
-    let mut cfg = deadpool_sqlite::Config::new(&db_path);
-    let mut pool_config = deadpool_sqlite::PoolConfig::default();
-    pool_config.max_size = 16;
-    cfg.pool = Some(pool_config);
-    let pool = cfg
-        .builder(deadpool_sqlite::Runtime::Tokio1)
-        .map_err(|e| AppError::Unknown(e.to_string()))?
-        .build()
-        .map_err(|e| AppError::Unknown(e.to_string()))?;
+    let pool = build_library_pool(&db_path)?;
 
     // 1. Fetch and cache books
     let books = db::get_calibre_metadata(&pool).await?;
