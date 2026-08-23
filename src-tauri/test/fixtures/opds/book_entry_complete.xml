@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Complete Book Entry</title>
+  <entry>
+    <id>grimmory:book:42</id>
+    <title>The Way of Kings: Book One</title>
+    <author>Brandon Sanderson</author>
+    <id scheme="isbn">978-0-7653-7777-5</id>
+    <id scheme="grimmory">42</id>
+    <published>2010-08-16</published>
+    <updated>2024-01-15T10:30:00Z</updated>
+    <summary>The first book in Brandon Sanderson's epic fantasy series The Stormlight Archive.</summary>
+    <language>en</language>
+    <series>Stormlight Archive</series>
+    <index>1.0</index>
+    <contributor>
+      <name>David Goldman</name>
+    </contributor>
+    <link href="/api/v1/opds/42/download" rel="acquisition" type="application/epub+zip"/>
+    <link href="/api/v1/opds/42/download" rel="acquisition" type="application/pdf"/>
+    <link href="/api/v1/opds/42/cover" rel="cover" type="image/jpeg"/>
+    <link href="/api/v1/opds/42" rel="alternate" type="text/html"/>
+  </entry>
+</feed>

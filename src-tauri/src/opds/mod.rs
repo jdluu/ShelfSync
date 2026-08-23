@@ -1,6 +1,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+mod errors;
+mod http_client;
+mod http_client_tests;
+mod parser;
+mod transport;
+
+pub use errors::OpdsTransportError;
+pub use http_client::OpdsClient;
+pub use parser::parse_catalog;
+pub use parser::parse_catalog_from_str;
+pub use transport::{
+    is_local_address, is_safe_origin, parse_origin, resolve_link, validate_same_origin,
+    validate_url_scheme, CatalogConfig, ParsedOrigin, ResolvedUrl, DEFAULT_HTTPS_PORT,
+    DEFAULT_HTTP_PORT, DEFAULT_PAGE_SIZE, MAX_FEED_SIZE, MAX_PAGE_SIZE,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Catalog {
     pub title: String,
@@ -134,11 +150,6 @@ impl From<OpdsError> for String {
         err.to_string()
     }
 }
-
-mod parser;
-
-pub use parser::parse_catalog;
-pub use parser::parse_catalog_from_str;
 
 #[cfg(test)]
 mod tests {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Book with Missing Fields</title>
+  <entry>
+    <id>grimmory:book:99</id>
+    <title>Minimal Book</title>
+    <link href="/api/v1/opds/99/download" rel="acquisition" type="application/epub+zip"/>
+  </entry>
+  <entry>
+    <id>grimmory:book:100</id>
+    <title>Another Minimal Book</title>
+    <author>Author Name</author>
+    <id scheme="grimmory">100</id>
+  </entry>
+</feed>

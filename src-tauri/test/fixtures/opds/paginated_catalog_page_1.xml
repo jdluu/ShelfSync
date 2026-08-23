@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="https://opds.org/schema/2010/feed">
+  <title>Library Catalog - Page 1</title>
+  <updated>2024-01-15T10:30:00Z</updated>
+  <author>
+    <name>Library System</name>
+  </author>
+  <link href="/api/v1/opds/catalog?page=1" rel="self" type="application/atom+xml"/>
+  <link href="/api/v1/opds/catalog?page=2" rel="next" type="application/atom+xml"/>
+  <totalResults>150</totalResults>
+  <entry>
+    <id>grimmory:book:1</id>
+    <title>The Way of Kings</title>
+    <author>Brandon Sanderson</author>
+    <id scheme="grimmory">1</id>
+    <published>2010-08-16</published>
+    <updated>2024-01-15T10:30:00Z</updated>
+    <link href="/api/v1/opds/1/download" rel="acquisition" type="application/epub+zip"/>
+    <link href="/api/v1/opds/1/cover" rel="cover" type="image/jpeg"/>
+  </entry>
+  <entry>
+    <id>grimmory:book:2</id>
+    <title>Words of Radiance</title>
+    <author>Brandon Sanderson</author>
+    <id scheme="grimmory">2</id>
+    <link href="/api/v1/opds/2/download" rel="acquisition" type="application/epub+zip"/>
+  </entry>
+</feed>

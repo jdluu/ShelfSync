@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="https://opds.org/schema/2010/feed">
+  <title>Library Catalog - Page 2</title>
+  <updated>2024-01-15T10:30:00Z</updated>
+  <author>
+    <name>Library System</name>
+  </author>
+  <link href="/api/v1/opds/catalog?page=1" rel="prev" type="application/atom+xml"/>
+  <link href="/api/v1/opds/catalog?page=2" rel="self" type="application/atom+xml"/>
+  <link href="/api/v1/opds/catalog?page=3" rel="next" type="application/atom+xml"/>
+  <totalResults>150</totalResults>
+  <entry>
+    <id>grimmory:book:3</id>
+    <title>Oathbringer</title>
+    <author>Brandon Sanderson</author>
+    <id scheme="grimmory">3</id>
+    <link href="/api/v1/opds/3/download" rel="acquisition" type="application/epub+zip"/>
+  </entry>
+  <entry>
+    <id>grimmory:book:4</id>
+    <title>Dawnshard</title>
+    <author>Brandon Sanderson</author>
+    <id scheme="grimmory">4</id>
+    <link href="/api/v1/opds/4/download" rel="acquisition" type="application/epub+zip"/>
+  </entry>
+</feed>

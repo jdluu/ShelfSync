@@ -1,10 +1,10 @@
 use super::{Acquisition, Catalog, NavigationLink, OpdsError, Publication, Series};
-use quick_xml::events::Event;
 use quick_xml::escape;
+use quick_xml::events::Event;
 use quick_xml::Reader;
 use std::collections::HashMap;
 
-const MAX_FEED_SIZE: u64 = 10 * 1024 * 1024;
+use crate::opds::transport::MAX_FEED_SIZE;
 
 pub fn parse_catalog(xml: &str) -> Result<Catalog, OpdsError> {
     parse_catalog_from_str(xml)
@@ -143,24 +143,32 @@ fn handle_catalog_element(
                     let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
                     match k {
                         "href" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                link.href = v.into_owned();
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            link.href = v.into_owned();
                         }
                         "rel" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                link.rel = Some(v.into_owned());
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            link.rel = Some(v.into_owned());
                         }
                         "title" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                link.title = Some(v.into_owned());
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            link.title = Some(v.into_owned());
                         }
                         "type" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                link.r#type = Some(v.into_owned());
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            link.r#type = Some(v.into_owned());
                         }
                         _ => {}
                     }
@@ -196,9 +204,11 @@ fn handle_publication_element(
                 if let Ok(attr) = attr {
                     let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
                     if k == "scheme" {
-                        if let Ok(v) = attr.unescape_value() {
-                            *pending_identifier_scheme = Some(v.into_owned());
-                        }
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        *pending_identifier_scheme = Some(v.into_owned());
                     }
                 }
             }
@@ -222,21 +232,27 @@ fn handle_publication_element(
                     let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
                     match k {
                         "href" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                acq.href = v.into_owned();
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            acq.href = v.into_owned();
                         }
                         "type" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                let type_val = v.into_owned();
-                                acq.r#type = Some(type_val.clone());
-                                acq.media_type = Some(type_val);
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            let type_val = v.into_owned();
+                            acq.r#type = Some(type_val.clone());
+                            acq.media_type = Some(type_val);
                         }
                         "rel" => {
-                            if let Ok(v) = attr.unescape_value() {
-                                acq.rel = Some(v.into_owned());
-                            }
+                            let v = escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default();
+                            acq.rel = Some(v.into_owned());
                         }
                         _ => {}
                     }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>No Auth Catalog</title>
+  <updated>2024-01-15T10:30:00Z</updated>
+  <author>
+    <name>Public Catalog</name>
+  </author>
+  <link href="/public/catalog" rel="self" type="application/atom+xml"/>
+  <entry>
+    <id>public:book:1</id>
+    <title>Public Domain Book</title>
+    <author>Anonymous</author>
+    <id scheme="public">book:1</id>
+    <link href="/public/download/book:1.epub" rel="acquisition" type="application/epub+zip"/>
+  </entry>
+</feed>

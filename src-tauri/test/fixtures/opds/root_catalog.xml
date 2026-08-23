@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="https://opds.org/schema/2010/feed">
+  <title>Grimmory OPDS</title>
+  <updated>2024-01-15T10:30:00Z</updated>
+  <author>
+    <name>Grimmory</name>
+  </author>
+  <link href="/api/v1/opds" rel="self" type="application/atom+xml; profile=opds-gallery"/>
+  <link href="/api/v1/opds" rel="alternate" type="text/html"/>
+  <entry>
+    <id>grimmory:featured:1</id>
+    <title>Featured Books</title>
+    <summary>Recently added and popular books</summary>
+  </entry>
+</feed>

@@ -15,6 +15,9 @@ pub enum AppError {
     #[error("Internal lock error")]
     LockPoisoned,
 
+    #[error("OPDS transport error: {0}")]
+    OpdsTransport(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
