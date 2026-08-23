@@ -231,7 +231,7 @@ pub async fn refresh_library_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::opds::{OpdsClient, MEDIA_TYPE_EPUB};
+    use crate::opds::{Acquisition, CatalogConfig, OpdsClient, MEDIA_TYPE_EPUB};
     use crate::persist::JobState;
     use axum::body::Body;
     use axum::http::StatusCode;
