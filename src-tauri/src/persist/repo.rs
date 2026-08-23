@@ -4,9 +4,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::error::PersistError;
 use super::model::{
-    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, PublicationInput,
-    PublicationUpsert, RevisionInput, StoredAcquisition, StoredDownloadJob, StoredFileRevision,
-    StoredPublication,
+    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, LibraryRecord, LibrarySection,
+    LibrarySnapshot, PublicationInput, PublicationUpsert, RevisionInput, StoredAcquisition,
+    StoredDownloadJob, StoredFileRevision, StoredPublication,
 };
 
 const MAX_METADATA_JSON_BYTES: usize = 256 * 1024;
@@ -244,6 +244,22 @@ pub fn set_publication_available(
     Ok(changed == 1)
 }
 
+pub fn list_publications_for_account(
+    conn: &Connection,
+    account_id: i64,
+) -> Result<Vec<StoredPublication>, PersistError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {PUBLICATION_COLUMNS} FROM publication
+         WHERE account_id = ?1 ORDER BY id"
+    ))?;
+    let rows = stmt.query_map(params![account_id], publication_from_row)?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
 fn acquisition_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAcquisition> {
     Ok(StoredAcquisition {
         id: row.get(0)?,
@@ -419,6 +435,47 @@ pub fn current_revision(
     Ok(found)
 }
 
+pub fn get_revision(
+    conn: &Connection,
+    revision_id: i64,
+) -> Result<Option<StoredFileRevision>, PersistError> {
+    let found = conn
+        .query_row(
+            &format!("SELECT {REVISION_COLUMNS} FROM file_revision WHERE id = ?1"),
+            params![revision_id],
+            revision_from_row,
+        )
+        .optional()?;
+    Ok(found)
+}
+
+pub fn revisions_for_acquisition(
+    conn: &Connection,
+    acquisition_id: i64,
+) -> Result<Vec<StoredFileRevision>, PersistError> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {REVISION_COLUMNS} FROM file_revision
+         WHERE acquisition_id = ?1 ORDER BY id"
+    ))?;
+    let rows = stmt.query_map(params![acquisition_id], revision_from_row)?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
+pub fn clear_revision_local_path(
+    conn: &Connection,
+    revision_id: i64,
+) -> Result<bool, PersistError> {
+    let changed = conn.execute(
+        "UPDATE file_revision SET local_relative_path = NULL, updated_at = ?1 WHERE id = ?2",
+        params![now_unix(), revision_id],
+    )?;
+    Ok(changed == 1)
+}
+
 fn job_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredDownloadJob> {
     let state_raw: String = row.get(2)?;
     let state = JobState::parse(&state_raw).ok_or_else(|| {
@@ -590,4 +647,121 @@ pub fn purge_stale_jobs(conn: &Connection, older_than_unix: i64) -> Result<usize
         params![older_than_unix],
     )?;
     Ok(removed)
+}
+
+fn latest_job_for_revision(
+    conn: &Connection,
+    revision_id: i64,
+) -> Result<Option<StoredDownloadJob>, PersistError> {
+    let found = conn
+        .query_row(
+            &format!(
+                "SELECT {JOB_COLUMNS} FROM download_job
+                 WHERE revision_id = ?1 ORDER BY id DESC LIMIT 1"
+            ),
+            params![revision_id],
+            job_from_row,
+        )
+        .optional()?;
+    Ok(found)
+}
+
+pub fn classify_library_record(
+    publication_available: bool,
+    is_current_revision: bool,
+    has_local_file: bool,
+    latest_job_state: Option<JobState>,
+) -> Option<LibrarySection> {
+    if !is_current_revision && has_local_file {
+        return Some(LibrarySection::Superseded);
+    }
+    if !publication_available {
+        return Some(LibrarySection::Unavailable);
+    }
+    match latest_job_state {
+        Some(JobState::Queued | JobState::Running) => Some(LibrarySection::Downloading),
+        Some(JobState::Failed | JobState::Interrupted | JobState::Cancelled) => {
+            Some(LibrarySection::Failed)
+        }
+        _ if has_local_file => Some(LibrarySection::Complete),
+        _ => None,
+    }
+}
+
+fn record_from_parts(
+    publication: &StoredPublication,
+    acquisition: &StoredAcquisition,
+    revision: &StoredFileRevision,
+    is_current_revision: bool,
+    latest_job: Option<&StoredDownloadJob>,
+) -> LibraryRecord {
+    LibraryRecord {
+        publication_id: publication.id,
+        account_id: publication.account_id,
+        provider: publication.provider.clone(),
+        canonical_id: publication.canonical_id.clone(),
+        metadata_json: publication.metadata_json.clone(),
+        publication_available: publication.available,
+        acquisition_id: acquisition.id,
+        media_type: acquisition.media_type.clone(),
+        canonical_url: acquisition.canonical_url.clone(),
+        revision_id: revision.id,
+        is_current_revision,
+        local_relative_path: revision.local_relative_path.clone(),
+        expected_length: revision.expected_length,
+        job_state: latest_job.map(|job| job.state),
+        job_error: latest_job.and_then(|job| job.error.clone()),
+        updated_at: revision.updated_at,
+    }
+}
+
+fn push_record(snapshot: &mut LibrarySnapshot, section: LibrarySection, record: LibraryRecord) {
+    match section {
+        LibrarySection::Complete => snapshot.complete.push(record),
+        LibrarySection::Downloading => snapshot.downloading.push(record),
+        LibrarySection::Failed => snapshot.failed.push(record),
+        LibrarySection::Unavailable => snapshot.unavailable.push(record),
+        LibrarySection::Superseded => snapshot.superseded.push(record),
+    }
+}
+
+pub fn library_snapshot(conn: &Connection) -> Result<LibrarySnapshot, PersistError> {
+    let mut snapshot = LibrarySnapshot::default();
+    let mut account_stmt =
+        conn.prepare("SELECT id FROM catalog_account ORDER BY id")?;
+    let account_ids: Vec<i64> = account_stmt
+        .query_map([], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(account_stmt);
+
+    for account_id in account_ids {
+        for publication in list_publications_for_account(conn, account_id)? {
+            for acquisition in list_acquisitions(conn, publication.id)? {
+                let revisions = revisions_for_acquisition(conn, acquisition.id)?;
+                let current_revision_id = revisions.iter().map(|r| r.id).max();
+                for revision in &revisions {
+                    let is_current = current_revision_id == Some(revision.id);
+                    let latest_job = latest_job_for_revision(conn, revision.id)?;
+                    let section = classify_library_record(
+                        publication.available,
+                        is_current,
+                        revision.local_relative_path.is_some(),
+                        latest_job.as_ref().map(|job| job.state),
+                    );
+                    let Some(section) = section else {
+                        continue;
+                    };
+                    let record = record_from_parts(
+                        &publication,
+                        &acquisition,
+                        revision,
+                        is_current,
+                        latest_job.as_ref(),
+                    );
+                    push_record(&mut snapshot, section, record);
+                }
+            }
+        }
+    }
+    Ok(snapshot)
 }

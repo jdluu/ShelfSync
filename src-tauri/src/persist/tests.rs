@@ -2,7 +2,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 use tempfile::tempdir;
 
 use super::error::PersistError;
-use super::model::{AcquisitionInput, JobState, PublicationInput, RevisionInput};
+use super::model::{
+    AcquisitionInput, JobState, PublicationInput, RevisionInput, StoredDownloadJob,
+};
 use super::repo;
 use super::schema::{self, CURRENT_SCHEMA_VERSION};
 use super::store::LibraryStore;
@@ -356,6 +358,188 @@ fn download_job_requires_existing_revision() {
     let conn = migrated_conn();
     let err = repo::create_download_job(&conn, 999).unwrap_err();
     assert!(matches!(err, PersistError::Invalid(_)));
+}
+
+struct SnapshotFixture {
+    conn: Connection,
+    publication_id: i64,
+    acquisition_id: i64,
+}
+
+fn snapshot_fixture() -> SnapshotFixture {
+    let mut conn = migrated_conn();
+    let account =
+        repo::ensure_catalog_account(&conn, "grimmory", "https://books.example.com", "alice")
+            .unwrap();
+    let upsert =
+        repo::upsert_publication(&mut conn, &publication_input(account.id, "book-1", "First"))
+            .unwrap();
+    let acquisition = repo::upsert_acquisition(
+        &mut conn,
+        &AcquisitionInput {
+            publication_id: upsert.publication.id,
+            media_type: "application/epub+zip".to_string(),
+            canonical_url: "https://books.example.com/download/book-1.epub".to_string(),
+        },
+    )
+    .unwrap();
+    SnapshotFixture {
+        conn,
+        publication_id: upsert.publication.id,
+        acquisition_id: acquisition.acquisition.id,
+    }
+}
+
+fn completed_download(fixture: &mut SnapshotFixture, relative_path: &str) -> StoredDownloadJob {
+    let revision = repo::create_file_revision(
+        &mut fixture.conn,
+        &RevisionInput {
+            acquisition_id: fixture.acquisition_id,
+            expected_length: None,
+            expected_hash: None,
+            hash_algorithm: None,
+            local_relative_path: None,
+        },
+    )
+    .unwrap();
+    let job = repo::create_download_job(&fixture.conn, revision.id).unwrap();
+    assert!(repo::set_job_state(&fixture.conn, job.id, JobState::Running, None).unwrap());
+    repo::complete_download(&mut fixture.conn, revision.id, relative_path, job.id).unwrap()
+}
+
+#[test]
+fn classify_covers_all_record_states() {
+    use super::model::LibrarySection;
+
+    assert_eq!(
+        repo::classify_library_record(true, true, true, Some(JobState::Completed)),
+        Some(LibrarySection::Complete)
+    );
+    assert_eq!(
+        repo::classify_library_record(true, false, true, Some(JobState::Completed)),
+        Some(LibrarySection::Superseded),
+        "an older revision with a local file is superseded"
+    );
+    assert_eq!(
+        repo::classify_library_record(true, true, false, Some(JobState::Running)),
+        Some(LibrarySection::Downloading)
+    );
+    assert_eq!(
+        repo::classify_library_record(true, true, false, Some(JobState::Failed)),
+        Some(LibrarySection::Failed)
+    );
+    assert_eq!(
+        repo::classify_library_record(false, true, true, Some(JobState::Completed)),
+        Some(LibrarySection::Unavailable)
+    );
+    assert_eq!(
+        repo::classify_library_record(true, false, false, Some(JobState::Completed)),
+        None,
+        "current revision without a local file and without an active failure is not listed"
+    );
+}
+
+#[test]
+fn library_snapshot_groups_records_by_state() {
+    let mut fixture = snapshot_fixture();
+
+    // A superseded older revision that also had a local file.
+    let old_revision = repo::create_file_revision(
+        &mut fixture.conn,
+        &RevisionInput {
+            acquisition_id: fixture.acquisition_id,
+            expected_length: None,
+            expected_hash: None,
+            hash_algorithm: None,
+            local_relative_path: Some("books/book-1-old.epub".to_string()),
+        },
+    )
+    .unwrap();
+
+    // Complete download of the current revision.
+    let complete_job = completed_download(&mut fixture, "books/book-1.epub");
+    assert!(complete_job.revision_id > old_revision.id);
+
+    let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
+    assert_eq!(snapshot.complete.len(), 1);
+    assert_eq!(snapshot.complete[0].revision_id, complete_job.revision_id);
+    assert!(snapshot.complete[0].is_current_revision);
+    assert_eq!(
+        snapshot.complete[0].local_relative_path.as_deref(),
+        Some("books/book-1.epub")
+    );
+    assert_eq!(snapshot.superseded.len(), 1);
+    assert_eq!(snapshot.superseded[0].revision_id, old_revision.id);
+    assert!(!snapshot.superseded[0].is_current_revision);
+    assert!(snapshot.downloading.is_empty());
+    assert!(snapshot.failed.is_empty());
+    assert!(snapshot.unavailable.is_empty());
+
+    // A new running job for a fresh revision shows as downloading.
+    let revision = repo::create_file_revision(
+        &mut fixture.conn,
+        &RevisionInput {
+            acquisition_id: fixture.acquisition_id,
+            expected_length: None,
+            expected_hash: None,
+            hash_algorithm: None,
+            local_relative_path: None,
+        },
+    )
+    .unwrap();
+    let job = repo::create_download_job(&fixture.conn, revision.id).unwrap();
+    assert!(repo::set_job_state(&fixture.conn, job.id, JobState::Running, None).unwrap());
+
+    let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
+    assert_eq!(snapshot.downloading.len(), 1);
+    assert_eq!(snapshot.downloading[0].revision_id, revision.id);
+    assert_eq!(snapshot.downloading[0].job_state, Some(JobState::Running));
+
+    // Failing the job moves it into the failed section.
+    assert!(
+        repo::set_job_state(&fixture.conn, job.id, JobState::Failed, Some("boom")).unwrap()
+    );
+    let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
+    assert!(snapshot.downloading.is_empty());
+    assert_eq!(snapshot.failed.len(), 1);
+    assert_eq!(snapshot.failed[0].job_error.as_deref(), Some("boom"));
+}
+
+#[test]
+fn server_removal_marks_records_unavailable_without_touching_local_paths() {
+    let mut fixture = snapshot_fixture();
+    let job = completed_download(&mut fixture, "books/book-1.epub");
+    drop(job);
+
+    assert!(repo::set_publication_available(&fixture.conn, fixture.publication_id, false).unwrap());
+
+    let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
+    assert!(snapshot.complete.is_empty());
+    assert_eq!(snapshot.unavailable.len(), 1);
+    assert!(!snapshot.unavailable[0].publication_available);
+    assert_eq!(
+        snapshot.unavailable[0].local_relative_path.as_deref(),
+        Some("books/book-1.epub"),
+        "local path must survive server removal"
+    );
+}
+
+#[test]
+fn clear_revision_local_path_forgets_deleted_files() {
+    let mut fixture = snapshot_fixture();
+    let job = completed_download(&mut fixture, "books/book-1.epub");
+
+    assert!(repo::clear_revision_local_path(&fixture.conn, job.revision_id).unwrap());
+    let revision = repo::get_revision(&fixture.conn, job.revision_id)
+        .unwrap()
+        .unwrap();
+    assert!(revision.local_relative_path.is_none());
+
+    let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
+    assert!(
+        snapshot.complete.is_empty() && snapshot.failed.is_empty(),
+        "a deleted current revision should not be listed"
+    );
 }
 
 #[tokio::test]

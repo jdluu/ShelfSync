@@ -138,3 +138,54 @@ pub struct AcquisitionUpsert {
     pub acquisition: StoredAcquisition,
     pub created: bool,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LibrarySection {
+    Complete,
+    Downloading,
+    Failed,
+    Unavailable,
+    Superseded,
+}
+
+impl LibrarySection {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            LibrarySection::Complete => "complete",
+            LibrarySection::Downloading => "downloading",
+            LibrarySection::Failed => "failed",
+            LibrarySection::Unavailable => "unavailable",
+            LibrarySection::Superseded => "superseded",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct LibraryRecord {
+    pub publication_id: i64,
+    pub account_id: i64,
+    pub provider: String,
+    pub canonical_id: String,
+    pub metadata_json: String,
+    pub publication_available: bool,
+    pub acquisition_id: i64,
+    pub media_type: String,
+    pub canonical_url: String,
+    pub revision_id: i64,
+    pub is_current_revision: bool,
+    pub local_relative_path: Option<String>,
+    pub expected_length: Option<i64>,
+    pub job_state: Option<JobState>,
+    pub job_error: Option<String>,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct LibrarySnapshot {
+    pub complete: Vec<LibraryRecord>,
+    pub downloading: Vec<LibraryRecord>,
+    pub failed: Vec<LibraryRecord>,
+    pub unavailable: Vec<LibraryRecord>,
+    pub superseded: Vec<LibraryRecord>,
+}

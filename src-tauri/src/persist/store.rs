@@ -5,9 +5,9 @@ use tokio::sync::Mutex as AsyncMutex;
 
 use super::error::PersistError;
 use super::model::{
-    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, PublicationInput,
-    PublicationUpsert, RevisionInput, StoredAcquisition, StoredDownloadJob, StoredFileRevision,
-    StoredPublication,
+    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, LibrarySnapshot,
+    PublicationInput, PublicationUpsert, RevisionInput, StoredAcquisition, StoredDownloadJob,
+    StoredFileRevision, StoredPublication,
 };
 use super::{repo, schema};
 
@@ -107,6 +107,18 @@ impl LibraryStore {
             .await
     }
 
+    pub async fn list_publications_for_account(
+        &self,
+        account_id: i64,
+    ) -> Result<Vec<StoredPublication>, PersistError> {
+        self.run(move |conn| repo::list_publications_for_account(conn, account_id))
+            .await
+    }
+
+    pub async fn library_snapshot(&self) -> Result<LibrarySnapshot, PersistError> {
+        self.run(|conn| repo::library_snapshot(conn)).await
+    }
+
     pub async fn upsert_acquisition(
         &self,
         input: AcquisitionInput,
@@ -147,6 +159,30 @@ impl LibraryStore {
         acquisition_id: i64,
     ) -> Result<Option<StoredFileRevision>, PersistError> {
         self.run(move |conn| repo::current_revision(conn, acquisition_id))
+            .await
+    }
+
+    pub async fn get_revision(
+        &self,
+        revision_id: i64,
+    ) -> Result<Option<StoredFileRevision>, PersistError> {
+        self.run(move |conn| repo::get_revision(conn, revision_id))
+            .await
+    }
+
+    pub async fn revisions_for_acquisition(
+        &self,
+        acquisition_id: i64,
+    ) -> Result<Vec<StoredFileRevision>, PersistError> {
+        self.run(move |conn| repo::revisions_for_acquisition(conn, acquisition_id))
+            .await
+    }
+
+    pub async fn clear_revision_local_path(
+        &self,
+        revision_id: i64,
+    ) -> Result<bool, PersistError> {
+        self.run(move |conn| repo::clear_revision_local_path(conn, revision_id))
             .await
     }
 
