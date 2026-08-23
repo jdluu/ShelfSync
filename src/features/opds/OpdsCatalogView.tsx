@@ -1,0 +1,157 @@
+import { Book, RefreshCw } from "lucide-react";
+import type React from "react";
+import { useMemo } from "react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import type { Catalog, NavigationLink } from "@/types/opds";
+import { OpdsPublicationCard } from "./OpdsPublicationCard";
+
+interface OpdsCatalogViewProps {
+  catalog: Catalog | undefined;
+  loading: boolean;
+  error: string | null;
+  page: number;
+  onPageChange: (page: number) => void;
+  onRetry?: () => void;
+}
+
+export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
+  catalog,
+  loading,
+  error,
+  page,
+  onPageChange,
+  onRetry,
+}) => {
+  const navigationLinks = useMemo(() => {
+    if (!catalog?.links) return [];
+    return catalog.links.filter(
+      (link: NavigationLink) => link.rel !== "self" && link.rel !== "previous",
+    );
+  }, [catalog?.links]);
+
+  const isLoading = loading && !catalog;
+
+  const loadingKeys = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => `load-${i}`);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-2xl font-bold" aria-live="polite">
+          Loading catalog...
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {loadingKeys.map((key) => (
+            <SkeletonCard key={key} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4" role="alert">
+        <div className="alert alert-error mb-4">
+          <div className="flex-1">
+            <h3 className="font-bold">Unable to load catalog</h3>
+            <p className="text-sm">{error}</p>
+          </div>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="btn btn-sm btn-outline btn-error">
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Retry
+            </button>
+          )}
+        </div>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="btn btn-outline w-full sm:w-auto">
+            Try Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!catalog) {
+    return (
+      <EmptyState
+        icon={Book}
+        title="No Catalog Loaded"
+        description="Connect to an OPDS catalog to begin browsing."
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-2">
+        <h2 className="text-2xl font-bold">{catalog.title}</h2>
+        {catalog.updated && (
+          <p className="text-sm text-base-content/60">
+            Last updated: {new Date(catalog.updated).toLocaleDateString()}
+          </p>
+        )}
+        {catalog.authors && catalog.authors.length > 0 && (
+          <p className="text-sm text-base-content/60">By: {catalog.authors.join(", ")}</p>
+        )}
+        {catalog.links && catalog.links.length > 0 && (
+          <nav className="flex flex-wrap gap-2 mt-2" aria-label="Catalog navigation">
+            {navigationLinks.map((link: NavigationLink) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="badge badge-sm badge-outline badge-secondary"
+              >
+                {link.title || link.rel || link.href}
+              </a>
+            ))}
+          </nav>
+        )}
+      </header>
+
+      <section aria-label="Publications">
+        {catalog.publications.length === 0 ? (
+          <EmptyState
+            icon={Book}
+            title="No Publications Found"
+            description="This catalog has no publications available on this page."
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {catalog.publications.map((publication) => (
+              <OpdsPublicationCard key={publication.id} publication={publication} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {catalog.pagination && (
+        <nav className="flex justify-center gap-2" aria-label="Pagination">
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            className="btn btn-sm btn-outline"
+          >
+            Previous
+          </button>
+          <span className="badge badge-sm badge-ghost" aria-live="polite">
+            Page {page}
+            {catalog.pagination.total ? ` of ${Math.ceil(catalog.pagination.total)}` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={!catalog.pagination.next}
+            className="btn btn-sm btn-outline"
+          >
+            Next
+          </button>
+        </nav>
+      )}
+    </div>
+  );
+};
