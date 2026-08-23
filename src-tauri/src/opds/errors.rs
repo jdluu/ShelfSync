@@ -41,6 +41,39 @@ pub enum OpdsTransportError {
 
     #[error("Network error")]
     NetworkError,
+
+    #[error("Missing acquisition URL")]
+    MissingAcquisitionUrl,
+
+    #[error("Cross-origin acquisition URL: {0}")]
+    CrossOriginAcquisitionUrl(String),
+}
+
+#[derive(Debug, Error, Serialize)]
+pub enum AcquisitionError {
+    #[error("No supported acquisition found")]
+    NoSupportedAcquisition,
+
+    #[error("Unsupported media type: {0}")]
+    UnsupportedMediaType(String),
+
+    #[error("Path traversal detected in filename for: {0}")]
+    PathTraversal(String),
+
+    #[error("Destination path escapes content root: {0}")]
+    PathEscaped(String),
+
+    #[error("Invalid content root: {0}")]
+    InvalidContentRoot(String),
+
+    #[error("No content root provided")]
+    MissingContentRoot,
+}
+
+impl From<AcquisitionError> for String {
+    fn from(err: AcquisitionError) -> Self {
+        err.to_string()
+    }
 }
 
 impl From<OpdsTransportError> for String {
