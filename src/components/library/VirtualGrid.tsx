@@ -29,7 +29,8 @@ const VirtualGridItem = <T,>({
   ItemComponent,
   keyExtractor,
 }: VirtualGridItemProps<T>) => (
-  <div key={keyExtractor(item)} style={{ width: "100%" }}>
+  // biome-ignore lint/a11y/useSemanticElements: virtualized rows are absolutely positioned; ARIA list semantics required
+  <div key={keyExtractor(item)} style={{ width: "100%" }} role="listitem">
     <ItemComponent item={item} index={index} />
   </div>
 );
@@ -102,8 +103,10 @@ export function VirtualGrid<T>({
 
   return (
     <div className="w-full">
+      {/* biome-ignore lint/a11y/useSemanticElements: virtualizer container needs explicit positioning styles; ARIA list semantics required */}
       <div
         ref={scrollRef}
+        role="list"
         style={{
           height: `${virtualizer.getTotalSize()}px`,
           width: "100%",
