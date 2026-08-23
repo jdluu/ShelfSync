@@ -70,35 +70,124 @@ pub(super) fn decode_html_entities(input: &str) -> String {
     result
 }
 
-pub(super) fn clean_html_description(text: &str) -> String {
-    let clean = text
-        .replace("<br>", "\n")
-        .replace("<br/>", "\n")
-        .replace("<br />", "\n")
-        .replace("<p>", "\n")
-        .replace("</p>", "\n")
-        .replace("<div>", "\n")
-        .replace("</div>", "\n")
-        .replace("<li>", "\n- ")
-        .replace("</li>", "");
+/// What [`scan_tag`] found at a `<`.
+enum TagScan {
+    /// Not a real tag (stray `<`, or an unterminated tag at EOF); the caller
+    /// must emit the `<` as literal text instead of consuming it.
+    Literal,
+    /// A well-formed tag ending at the given byte offset (relative to the
+    /// start of the `<`), with an optional textual replacement.
+    Tag {
+        end: usize,
+        replacement: Option<&'static str>,
+    },
+}
 
-    let mut result = String::new();
-    let mut inside_tag = false;
-    for ch in clean.chars() {
-        if ch == '<' {
-            inside_tag = true;
-        } else if ch == '>' {
-            inside_tag = false;
-        } else if !inside_tag {
-            result.push(ch);
+/// Maps a parsed tag to its textual replacement, mirroring the original
+/// `.replace()` conventions: `br` becomes a newline, block containers
+/// (`p`/`div`) become newlines, and list items become `- ` bullets.
+fn tag_replacement(closing: bool, name: &str) -> Option<&'static str> {
+    match (name, closing) {
+        ("br", _) => Some("\n"),
+        ("p", _) | ("div", _) => Some("\n"),
+        ("li", false) => Some("\n- "),
+        _ => None,
+    }
+}
+
+/// Scans a candidate tag starting with `<` and returns how much of the input
+/// it consumes. The scan is case-insensitive, tolerates attributes and
+/// self-closing slashes, ignores `>` characters inside quoted attribute
+/// values, and degrades to literal text on malformed input so nothing is
+/// silently swallowed.
+fn scan_tag(tag: &str) -> TagScan {
+    let bytes = tag.as_bytes();
+    let mut pos = 1;
+    let closing = bytes.get(1) == Some(&b'/');
+    if closing {
+        pos += 1;
+    }
+
+    match bytes.get(pos) {
+        Some(c) if c.is_ascii_alphabetic() => {}
+        _ => return TagScan::Literal,
+    }
+
+    let name_start = pos;
+    while pos < bytes.len()
+        && (bytes[pos].is_ascii_alphanumeric() || bytes[pos] == b'-' || bytes[pos] == b':')
+    {
+        pos += 1;
+    }
+    let name = tag[name_start..pos].to_ascii_lowercase();
+
+    let mut quote: Option<u8> = None;
+    while pos < bytes.len() {
+        let c = bytes[pos];
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == b'"' || c == b'\'' => quote = Some(c),
+            None if c == b'>' => {
+                return TagScan::Tag {
+                    end: pos + 1,
+                    replacement: tag_replacement(closing, &name),
+                };
+            }
+            None => {}
+        }
+        pos += 1;
+    }
+
+    // No closing `>` before EOF: treat as literal text rather than eating
+    // the remainder of the description.
+    TagScan::Literal
+}
+
+pub(super) fn clean_html_description(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut raw = String::with_capacity(text.len());
+    let mut i = 0;
+
+    while i < text.len() {
+        if bytes[i] != b'<' {
+            let end = text[i..]
+                .find('<')
+                .map_or(text.len(), |offset| i + offset);
+            raw.push_str(&text[i..end]);
+            i = end;
+            continue;
+        }
+
+        // Comments are dropped entirely; an unterminated comment consumes
+        // the rest of the input (matching HTML5 semantics).
+        if text[i..].starts_with("<!--") {
+            match text[i + 4..].find("-->") {
+                Some(offset) => i += 4 + offset + 3,
+                None => break,
+            }
+            continue;
+        }
+
+        match scan_tag(&text[i..]) {
+            TagScan::Literal => {
+                raw.push('<');
+                i += 1;
+            }
+            TagScan::Tag { end, replacement } => {
+                if let Some(replacement) = replacement {
+                    raw.push_str(replacement);
+                }
+                i += end;
+            }
         }
     }
 
     // Collapse multiple newlines and trim
-    let decoded = decode_html_entities(&result);
-    let mut final_res = String::new();
+    let decoded = decode_html_entities(raw.trim());
+    let mut final_res = String::with_capacity(decoded.len());
     let mut last_was_newline = false;
-    for c in decoded.trim().chars() {
+    for c in decoded.chars() {
         if c == '\n' {
             if !last_was_newline {
                 final_res.push(c);
@@ -215,5 +304,94 @@ mod tests {
             ),
             "Intro & summary\n- one\n- two"
         );
+    }
+
+    #[test]
+    fn handles_nested_inline_tags() {
+        assert_eq!(clean_html_description("<p><b>bold</b></p>"), "bold");
+        assert_eq!(
+            clean_html_description("<ul><li><em>big</em> item</li></ul>"),
+            "- big item"
+        );
+    }
+
+    #[test]
+    fn handles_br_variants() {
+        assert_eq!(clean_html_description("a<br>b"), "a\nb");
+        assert_eq!(clean_html_description("a<br/>b"), "a\nb");
+        assert_eq!(clean_html_description("a<br />b"), "a\nb");
+        assert_eq!(clean_html_description("a<br\nclear=\"all\"/>b"), "a\nb");
+        assert_eq!(clean_html_description("a<BR>b"), "a\nb");
+        assert_eq!(clean_html_description("a<Br/>b"), "a\nb");
+    }
+
+    #[test]
+    fn handles_uppercase_block_tags() {
+        assert_eq!(clean_html_description("<P>x</P>"), "x");
+        assert_eq!(clean_html_description("<DIV>y</DIV>"), "y");
+        assert_eq!(clean_html_description("<LI>one</LI>"), "- one");
+    }
+
+    #[test]
+    fn handles_tags_with_attributes() {
+        assert_eq!(
+            clean_html_description("<p class=\"lead\">styled</p>"),
+            "styled"
+        );
+        assert_eq!(
+            clean_html_description("<li class=\"i\">one</li><li data-x='2'>two</li>"),
+            "- one\n- two"
+        );
+    }
+
+    #[test]
+    fn keeps_gt_inside_quoted_attributes() {
+        assert_eq!(
+            clean_html_description("<a title=\"a>b\">link</a>"),
+            "link"
+        );
+        assert_eq!(
+            clean_html_description("<span data-s='x>y'>z</span>"),
+            "z"
+        );
+    }
+
+    #[test]
+    fn removes_comments_including_angle_brackets_inside() {
+        assert_eq!(clean_html_description("A<!-- hidden > note -->B"), "AB");
+        assert_eq!(
+            clean_html_description("keep<!-- <p>not a para</p> -->me"),
+            "keepme"
+        );
+    }
+
+    #[test]
+    fn unterminated_comment_drops_remainder() {
+        assert_eq!(clean_html_description("A<!-- never closed"), "A");
+    }
+
+    #[test]
+    fn keeps_stray_less_than_as_text() {
+        assert_eq!(clean_html_description("5 < 6"), "5 < 6");
+        assert_eq!(
+            clean_html_description("rated <3 by readers <b>x</b>"),
+            "rated <3 by readers x"
+        );
+    }
+
+    #[test]
+    fn unterminated_tag_at_eof_is_kept_as_text() {
+        assert_eq!(clean_html_description("<b>bold text"), "bold text");
+        assert_eq!(clean_html_description("ends with <"), "ends with <");
+    }
+
+    #[test]
+    fn decodes_hex_entities_with_uppercase_marker() {
+        assert_eq!(decode_html_entities("&#X27;quote&#x27;"), "'quote'");
+    }
+
+    #[test]
+    fn leaves_surrogate_code_points_untouched() {
+        assert_eq!(decode_html_entities("bad &#xD800; ref"), "bad &#xD800; ref");
     }
 }
