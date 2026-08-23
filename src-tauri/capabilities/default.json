@@ -12,7 +12,6 @@
     "store:default",
     "dialog:default",
     "notification:default",
-    "http:default",
     "updater:default",
     "core:tray:default",
     "process:default",

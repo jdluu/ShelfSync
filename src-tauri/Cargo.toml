@@ -45,7 +45,6 @@ zip = "8.2.0"
 reqwest = { version = "0.13.2", default-features = false, features = ["stream", "json", "rustls"] }
 rustls = { version = "0.23", features = ["ring"] }
 tauri-plugin-notification = "2"
-tauri-plugin-http = "2"
 futures-util = "0.3"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
 tauri-plugin-updater = "2.10.0"
