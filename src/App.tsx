@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { PinModal } from "@/components/ui/PinModal";
+import { StorageChoiceModal } from "@/components/ui/StorageChoiceModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { RoleSelection } from "@/features/role-selection/RoleSelection";
 import { useUpdater } from "@/hooks/useUpdater";
@@ -161,6 +162,7 @@ function App() {
       <LazyMotion features={domAnimation}>
         <MotionConfig reducedMotion={eInkMode ? "always" : "user"}>
           <AppContent />
+          <StorageChoiceModal />
           <ToastContainer />
         </MotionConfig>
       </LazyMotion>
