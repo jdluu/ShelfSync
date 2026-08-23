@@ -1,7 +1,73 @@
 use crate::error::AppError;
-use crate::opds::{Catalog, CatalogConfig, ClientPagination, OpdsClient};
-use tauri::command;
+use crate::opds::{
+    download_file, plan_download_destination, Catalog, CatalogConfig, ClientPagination,
+    DownloadContext, DownloadError, OpdsClient, Publication,
+};
+use serde::Serialize;
+use tauri::{command, AppHandle, Emitter};
 use url::Url;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OpdsDownloadProgress {
+    pub publication_id: String,
+    pub title: String,
+    pub bytes_received: u64,
+    pub total_bytes: Option<u64>,
+    pub status: DownloadStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DownloadStatus {
+    Starting,
+    Downloading,
+    Completed,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DownloadResult {
+    pub local_path: String,
+    pub media_type: String,
+}
+
+fn sanitize_error_message(err: &DownloadError) -> String {
+    match err {
+        DownloadError::Transport(msg) => {
+            if msg.contains("credentials")
+                || msg.contains("auth")
+                || msg.contains("password")
+                || msg.contains("user")
+            {
+                "Authentication failed".to_string()
+            } else if msg.contains("origin") || msg.contains("cross") || msg.contains("redirect") {
+                "Cross-origin download rejected".to_string()
+            } else if msg.contains("status") || msg.contains("HTTP") {
+                "Download failed".to_string()
+            } else {
+                "Download failed".to_string()
+            }
+        }
+        DownloadError::ContentTypeMismatch(_, _) => "Content type mismatch".to_string(),
+        DownloadError::SizeExceeded(_, _) => "Download too large".to_string(),
+        DownloadError::InvalidDestination(_) => "Invalid download destination".to_string(),
+        DownloadError::IoError => "IO error during download".to_string(),
+        DownloadError::IncompleteDownload => "Download incomplete".to_string(),
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn validate_download_params(url: &Url) -> Result<(), String> {
+    if url.scheme() != "http" && url.scheme() != "https" {
+        return Err("Invalid URL: only HTTP and HTTPS schemes are allowed".to_string());
+    }
+
+    if !url.username().is_empty() {
+        return Err("Invalid URL: credentials must not be embedded in URL".to_string());
+    }
+
+    Ok(())
+}
 
 #[command]
 pub async fn fetch_opds_catalog(
@@ -43,6 +109,107 @@ pub async fn fetch_opds_catalog(
 
         Ok(catalog)
     }
+}
+
+#[command]
+pub async fn download_opds_publication(
+    catalog_url: String,
+    username: String,
+    password: String,
+    publication: Publication,
+    content_root: String,
+    app: AppHandle,
+) -> Result<DownloadResult, AppError> {
+    let parsed_url = Url::parse(&catalog_url)
+        .map_err(|_| AppError::OpdsTransport("Invalid URL: unable to parse".to_string()))?;
+
+    if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
+        return Err(AppError::OpdsTransport(
+            "Invalid URL: only HTTP and HTTPS schemes are allowed".to_string(),
+        ));
+    }
+
+    if !parsed_url.username().is_empty() {
+        return Err(AppError::OpdsTransport(
+            "Invalid URL: credentials must not be embedded in URL".to_string(),
+        ));
+    }
+
+    let config = CatalogConfig::new("download", parsed_url.clone(), username, password)?;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
+        .use_rustls_tls()
+        .build()
+        .map_err(|e| AppError::OpdsTransport(format!("Failed to build HTTP client: {}", e)))?;
+
+    let context = DownloadContext::new(client, config.clone());
+
+    let content_root_path = std::path::Path::new(&content_root);
+    let plan = plan_download_destination(
+        content_root_path,
+        &publication,
+        &config.origin(),
+        &parsed_url,
+    )
+    .map_err(|e| AppError::OpdsTransport(e.to_string()))?;
+
+    let publication_id_orig = publication.id.clone();
+    let title_orig = publication.title.clone();
+
+    let app_clone = app.clone();
+    let pub_id_for_cb = publication_id_orig.clone();
+    let title_for_cb = title_orig.clone();
+    let progress_callback: Option<Box<dyn Fn(u64, Option<u64>) + Send + Sync>> =
+        Some(Box::new(move |bytes_received, total_bytes| {
+            let status = if bytes_received > 0 {
+                DownloadStatus::Downloading
+            } else {
+                DownloadStatus::Starting
+            };
+
+            let payload = OpdsDownloadProgress {
+                publication_id: pub_id_for_cb.clone(),
+                title: title_for_cb.clone(),
+                bytes_received,
+                total_bytes,
+                status,
+            };
+
+            let _ = app_clone.emit("opds-download-progress", payload);
+        }));
+
+    let result = download_file(&plan, &context, content_root_path, progress_callback).await;
+
+    if let Ok(local_path) = result {
+        let final_path = local_path.to_string_lossy().to_string();
+        let payload = OpdsDownloadProgress {
+            publication_id: publication_id_orig.clone(),
+            title: title_orig.clone(),
+            bytes_received: 0,
+            total_bytes: None,
+            status: DownloadStatus::Completed,
+        };
+        let _ = app.emit("opds-download-progress", payload);
+
+        return Ok(DownloadResult {
+            local_path: final_path,
+            media_type: plan.media_type,
+        });
+    }
+
+    let err = result.unwrap_err();
+    let payload = OpdsDownloadProgress {
+        publication_id: publication_id_orig.clone(),
+        title: title_orig.clone(),
+        bytes_received: 0,
+        total_bytes: None,
+        status: DownloadStatus::Failed,
+    };
+    let _ = app.emit("opds-download-progress", payload);
+
+    Err(AppError::OpdsTransport(sanitize_error_message(&err)))
 }
 
 #[cfg(test)]
@@ -293,5 +460,74 @@ mod tests {
         assert!(result.is_ok());
         let catalog = result.unwrap();
         assert_eq!(catalog.title, "OPDS Catalog");
+    }
+
+    #[test]
+    fn test_validate_download_params_valid_http() {
+        let url = Url::parse("http://example.com/opds").unwrap();
+        let result = validate_download_params(&url);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_download_params_valid_https() {
+        let url = Url::parse("https://example.com/opds").unwrap();
+        let result = validate_download_params(&url);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_download_params_invalid_scheme() {
+        let url = Url::parse("ftp://example.com/opds").unwrap();
+        let result = validate_download_params(&url);
+        assert!(result.is_err());
+        if let Err(msg) = result {
+            assert!(msg.contains("HTTP") || msg.contains("HTTPS"));
+        }
+    }
+
+    #[test]
+    fn test_validate_download_params_credentials_in_url() {
+        let url = Url::parse("https://user:pass@example.com/opds").unwrap();
+        let result = validate_download_params(&url);
+        assert!(result.is_err());
+        if let Err(msg) = result {
+            assert!(msg.contains("credentials") || msg.contains("embedded"));
+        }
+    }
+
+    #[test]
+    fn test_sanitize_error_message_no_credential_exposure() {
+        use crate::opds::DownloadError;
+
+        let err =
+            DownloadError::Transport("credentials in URL: user=secret, pass=hidden".to_string());
+        let msg = sanitize_error_message(&err);
+        assert!(!msg.contains("secret"));
+        assert!(!msg.contains("hidden"));
+        assert!(msg.contains("Authentication") || msg.contains("failed"));
+    }
+
+    #[test]
+    fn test_sanitize_error_message_content_type() {
+        use crate::opds::DownloadError;
+
+        let err = DownloadError::ContentTypeMismatch(
+            "application/epub+zip".to_string(),
+            "text/html".to_string(),
+        );
+        let msg = sanitize_error_message(&err);
+        assert!(msg.contains("Content type"));
+    }
+
+    #[test]
+    fn test_sanitize_error_message_cross_origin() {
+        use crate::opds::DownloadError;
+
+        let err = DownloadError::Transport(
+            "cross-origin download from https://evil.com rejected".to_string(),
+        );
+        let msg = sanitize_error_message(&err);
+        assert!(!msg.contains("evil.com"));
     }
 }

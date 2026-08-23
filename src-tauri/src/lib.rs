@@ -252,7 +252,8 @@ pub fn run() {
             crate::commands::local_db::update_local_read_status,
             crate::commands::local_db::get_local_books,
             crate::commands::local_db::delete_local_book,
-            crate::commands::opds::fetch_opds_catalog
+            crate::commands::opds::fetch_opds_catalog,
+            crate::commands::opds::download_opds_publication
         ]);
 
     builder

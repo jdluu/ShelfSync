@@ -10,6 +10,8 @@ use uuid::Uuid;
 pub const DEFAULT_DOWNLOAD_TIMEOUT_SECS: u64 = 30;
 pub const DEFAULT_MAX_DOWNLOAD_SIZE: u64 = 50 * 1024 * 1024;
 
+pub type ProgressCallback = Box<dyn Fn(u64, Option<u64>) + Send + Sync>;
+
 pub struct DownloadContext {
     pub client: reqwest::Client,
     pub config: CatalogConfig,
@@ -74,6 +76,7 @@ pub async fn download_file(
     plan: &DownloadPlan,
     context: &DownloadContext,
     dest_root: &Path,
+    progress_callback: Option<ProgressCallback>,
 ) -> Result<PathBuf, DownloadError> {
     let url = &plan.url;
 
@@ -108,6 +111,8 @@ pub async fn download_file(
         )));
     }
 
+    let total_bytes = response.content_length();
+
     if let Some(content_type) = response.headers().get(CONTENT_TYPE) {
         let ct_str = content_type.to_str().unwrap_or("");
         if !is_accepted_content_type(ct_str, &plan.media_type) {
@@ -120,16 +125,13 @@ pub async fn download_file(
 
     let dest_path = validate_and_join_path(dest_root, &plan.destination)?;
 
-    let parent = dest_path
-        .parent()
-        .ok_or_else(|| DownloadError::InvalidDestination("Failed to get parent directory".to_string()))?;
+    let parent = dest_path.parent().ok_or_else(|| {
+        DownloadError::InvalidDestination("Failed to get parent directory".to_string())
+    })?;
 
     if !parent.exists() {
         std::fs::create_dir_all(&parent).map_err(|e| {
-            DownloadError::InvalidDestination(format!(
-                "Failed to create parent directory: {}",
-                e
-            ))
+            DownloadError::InvalidDestination(format!("Failed to create parent directory: {}", e))
         })?;
     }
 
@@ -157,17 +159,22 @@ pub async fn download_file(
         let _ = std::fs::remove_file(&part_path);
     }
 
-    let result = stream_to_file(response, &part_path, context.max_size).await;
+    let result = stream_to_file(
+        response,
+        &part_path,
+        context.max_size,
+        &progress_callback,
+        total_bytes,
+    )
+    .await;
 
     match result {
-        Ok(_) => {
-            std::fs::rename(&part_path, &dest_path)
-                .map_err(|e| {
-                    let _ = std::fs::remove_file(&part_path);
-                    DownloadError::InvalidDestination(e.to_string())
-                })
-                .map(|_| dest_path)
-        }
+        Ok(_) => std::fs::rename(&part_path, &dest_path)
+            .map_err(|e| {
+                let _ = std::fs::remove_file(&part_path);
+                DownloadError::InvalidDestination(e.to_string())
+            })
+            .map(|_| dest_path),
         Err(e) => {
             let _ = std::fs::remove_file(&part_path);
             if !pre_existing {
@@ -229,6 +236,8 @@ async fn stream_to_file(
     response: reqwest::Response,
     part_path: &Path,
     max_size: u64,
+    progress_callback: &Option<ProgressCallback>,
+    total_bytes: Option<u64>,
 ) -> Result<(), DownloadError> {
     use tokio::io::AsyncWriteExt;
 
@@ -237,6 +246,10 @@ async fn stream_to_file(
 
     let mut received: u64 = 0;
     let mut stream = response.bytes_stream();
+
+    if let Some(cb) = progress_callback {
+        cb(0, total_bytes);
+    }
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk
@@ -250,6 +263,10 @@ async fn stream_to_file(
         received += chunk_len;
 
         writer.write_all(&chunk).await?;
+
+        if let Some(cb) = progress_callback {
+            cb(received, total_bytes);
+        }
     }
 
     writer.flush().await?;
@@ -334,7 +351,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
 
         assert!(result.is_ok());
         let downloaded = result.unwrap();
@@ -375,7 +392,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_ok(), "Download should succeed with valid auth");
     }
 
@@ -395,7 +412,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(matches!(result, Err(DownloadError::Transport(_))));
     }
 
@@ -434,7 +451,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(matches!(result, Err(DownloadError::SizeExceeded(_, _))));
     }
 
@@ -460,7 +477,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(matches!(
             result,
             Err(DownloadError::ContentTypeMismatch(_, _))
@@ -488,7 +505,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_ok());
 
         let downloaded_content = std::fs::read(existing_path).unwrap();
@@ -511,7 +528,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_err());
 
         let part_files: Vec<_> = temp_dir
@@ -544,7 +561,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_err());
 
         let current_content = std::fs::read(&existing_path).unwrap();
@@ -579,7 +596,7 @@ mod tests {
         let plan = make_test_plan(download_url, "test.epub", MEDIA_TYPE_EPUB);
         let dest_root = temp_dir.path();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_ok());
     }
 
@@ -672,7 +689,7 @@ mod tests {
         let plan =
             plan_download_destination(dest_root, &publ, &config.origin(), &config.url).unwrap();
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(result.is_ok(), "Download should succeed");
 
         let downloaded = result.unwrap();
@@ -721,7 +738,7 @@ mod tests {
             media_type: MEDIA_TYPE_EPUB.to_string(),
         };
 
-        let result = download_file(&plan, &context, dest_root).await;
+        let result = download_file(&plan, &context, dest_root, None).await;
         assert!(
             result.is_ok(),
             "Download should succeed for multi-dot filename"
@@ -774,7 +791,7 @@ mod tests {
             media_type: MEDIA_TYPE_EPUB.to_string(),
         };
 
-        let result = download_file(&plan, &context, temp_dir.path()).await;
+        let result = download_file(&plan, &context, temp_dir.path(), None).await;
         assert!(matches!(result, Err(DownloadError::Transport(_))));
     }
 }
