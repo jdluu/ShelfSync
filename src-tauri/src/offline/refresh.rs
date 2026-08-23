@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use crate::opds::{
-    Acquisition, CatalogConfig, MEDIA_TYPE_EPUB, MEDIA_TYPE_PDF, OpdsClient, Publication,
-    origin_matches, resolve_link, validate_download_url,
+    MEDIA_TYPE_EPUB, MEDIA_TYPE_PDF, OpdsClient, Publication, origin_matches, resolve_link,
+    validate_download_url,
 };
 use crate::persist::{AcquisitionInput, LibraryStore, PersistError};
 

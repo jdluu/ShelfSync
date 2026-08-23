@@ -29,7 +29,7 @@ pub fn available_disk_bytes(path: &Path) -> io::Result<u64> {
     if rc != 0 {
         return Err(io::Error::last_os_error());
     }
-    Ok(u64::from(stat.f_bavail) * u64::from(stat.f_bsize))
+    Ok(stat.f_bavail as u64 * stat.f_bsize as u64)
 }
 
 #[cfg(not(unix))]
@@ -88,9 +88,8 @@ pub fn cleanup_stale_part_files(root: &Path) -> io::Result<Vec<PathBuf>> {
             if !is_part_file(&name) {
                 continue;
             }
-            match safe_remove_within_root(root, &path) {
-                Ok(true) => removed.push(path),
-                _ => {}
+            if let Ok(true) = safe_remove_within_root(root, &path) {
+                removed.push(path);
             }
         }
     }

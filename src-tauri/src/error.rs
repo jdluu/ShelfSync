@@ -18,8 +18,17 @@ pub enum AppError {
     #[error("OPDS transport error: {0}")]
     OpdsTransport(String),
 
+    #[error("Offline library error: {0}")]
+    OfflineLibrary(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
+}
+
+impl From<crate::persist::PersistError> for AppError {
+    fn from(err: crate::persist::PersistError) -> Self {
+        AppError::OfflineLibrary(err.to_string())
+    }
 }
 
 /// Safely acquires a `Mutex` lock, returning `AppError::LockPoisoned` on failure.

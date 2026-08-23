@@ -3,14 +3,11 @@ pub mod core;
 pub mod error;
 pub mod http;
 pub mod models;
+pub mod offline;
 pub mod opds;
 pub mod persist;
 
-use crate::{
-    commands::{library, network},
-    core::db,
-    models::ConnectionInfo,
-};
+use crate::{commands::{library, network}, core::db, models::ConnectionInfo};
 use log::{error, info};
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -25,6 +22,12 @@ pub struct AppState {
     pub discovery: Arc<DiscoveryState>,
     pub sync_manager: Mutex<Option<crate::core::sync::SyncManager>>,
     pub search_engine: Mutex<Option<crate::core::search::SearchEngine>>,
+}
+
+fn offline_state_new(
+    content_root: std::path::PathBuf,
+) -> crate::commands::offline::OfflineLibraryState {
+    crate::commands::offline::OfflineLibraryState::new(content_root)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -207,6 +210,43 @@ pub fn run() {
                 Err(e) => error!("Failed to init sync manager: {}", e),
             }
 
+            // 4b. Init offline library state (store opens asynchronously below).
+            let offline_content_root = app_data_dir.join("offline-library").join("content");
+            if let Err(e) = std::fs::create_dir_all(&offline_content_root) {
+                error!("Failed to create offline content root: {}", e);
+            }
+            let offline_state = offline_state_new(offline_content_root.clone());
+            handle.manage(offline_state);
+            let offline_store_slot = app
+                .state::<crate::commands::offline::OfflineLibraryState>()
+                .store_slot
+                .clone();
+            let store_path = app_data_dir.join("offline-library").join("client.db");
+            tauri::async_runtime::spawn(async move {
+                let store = match persist::LibraryStore::open(&store_path).await {
+                    Ok(store) => store,
+                    Err(e) => {
+                        error!("Failed to open offline library store: {}", e);
+                        return;
+                    }
+                };
+                match crate::offline::restore_library_on_startup(&store, &offline_content_root)
+                    .await
+                {
+                    Ok(recovery) => {
+                        if recovery.recovered_jobs > 0 || !recovery.removed_part_files.is_empty() {
+                            info!(
+                                "Offline library startup recovery: {} jobs interrupted, {} stale part files removed",
+                                recovery.recovered_jobs,
+                                recovery.removed_part_files.len()
+                            );
+                        }
+                    }
+                    Err(e) => error!("Offline library startup recovery failed: {}", e),
+                }
+                let _ = offline_store_slot.set(std::sync::Arc::new(store));
+            });
+
             // 5. Spawn server task and get bound port
             let state_clone = app_state.server.clone();
             let server_handle = app.handle().clone();
@@ -254,7 +294,11 @@ pub fn run() {
             crate::commands::local_db::get_local_books,
             crate::commands::local_db::delete_local_book,
             crate::commands::opds::fetch_opds_catalog,
-            crate::commands::opds::download_opds_publication
+            crate::commands::opds::download_opds_publication,
+            crate::commands::offline::list_offline_library,
+            crate::commands::offline::refresh_offline_library,
+            crate::commands::offline::delete_offline_content,
+            crate::commands::offline::check_download_space
         ]);
 
     builder
