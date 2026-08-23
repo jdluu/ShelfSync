@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { opdsClient } from "@/services/opdsClient";
 import type { DownloadConfig, DownloadProgress, MediaType, Publication } from "@/types/opds";
-import { isTauri } from "@/utils/tauri";
+import { isTauri, safeInvoke } from "@/utils/tauri";
 
 export type DownloadStatus = "idle" | "downloading" | "completed" | "failed";
 
@@ -93,13 +93,22 @@ export function useOpdsDownload() {
   );
 
   const cancelDownload = useCallback(() => {
+    const publicationId = currentPublicationIdRef.current;
+
     if (cleanupRef.current) {
       cleanupRef.current();
       cleanupRef.current = null;
     }
-    if (currentPublicationIdRef.current) {
-      currentPublicationIdRef.current = null;
+    currentPublicationIdRef.current = null;
+
+    // Ask the backend to stop streaming the response. The UI resets to idle
+    // immediately; a cancelled transfer reports no false completion.
+    if (publicationId && isTauri()) {
+      void safeInvoke<boolean>("opds_cancel_download", { publication_id: publicationId }, false).catch(
+        () => {},
+      );
     }
+
     setStatus("idle");
     setProgress(null);
     setError(null);

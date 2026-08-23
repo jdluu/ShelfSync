@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod core;
+pub mod credentials;
 pub mod error;
 pub mod http;
 pub mod models;
@@ -7,7 +8,11 @@ pub mod offline;
 pub mod opds;
 pub mod persist;
 
-use crate::{commands::{library, network}, core::db, models::ConnectionInfo};
+use crate::{
+    commands::{library, network},
+    core::db,
+    models::ConnectionInfo,
+};
 use log::{error, info};
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -300,6 +305,7 @@ pub fn run() {
             crate::commands::local_db::delete_local_book,
             crate::commands::opds::fetch_opds_catalog,
             crate::commands::opds::download_opds_publication,
+            crate::commands::opds::opds_cancel_download,
             crate::commands::offline::list_offline_library,
             crate::commands::offline::refresh_offline_library,
             crate::commands::offline::delete_offline_content,

@@ -13,6 +13,7 @@ vi.mock("@/services/opdsClient", () => ({
 
 vi.mock("@/utils/tauri", () => ({
   isTauri: vi.fn(() => true),
+  safeInvoke: vi.fn(() => Promise.resolve(false)),
 }));
 
 describe("useOpdsDownload", () => {
