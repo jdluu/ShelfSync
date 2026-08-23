@@ -26,9 +26,9 @@ pub use install::{
 pub use parser::parse_catalog;
 pub use parser::parse_catalog_from_str;
 pub use transport::{
-    is_local_address, is_safe_origin, parse_origin, resolve_link, validate_same_origin,
-    validate_url_scheme, CatalogConfig, ParsedOrigin, ResolvedUrl, DEFAULT_HTTPS_PORT,
-    DEFAULT_HTTP_PORT, DEFAULT_PAGE_SIZE, MAX_FEED_SIZE, MAX_PAGE_SIZE,
+    is_local_address, is_safe_origin, origin_matches, parse_origin, resolve_link,
+    validate_same_origin, validate_url_scheme, CatalogConfig, ParsedOrigin, ResolvedUrl,
+    DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT, DEFAULT_PAGE_SIZE, MAX_FEED_SIZE, MAX_PAGE_SIZE,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

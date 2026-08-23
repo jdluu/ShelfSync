@@ -5623,6 +5623,7 @@ dependencies = [
  "hostname",
  "image",
  "jni 0.21.1",
+ "libc",
  "local-ip-address",
  "log",
  "mdns-sd",
