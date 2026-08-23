@@ -18,6 +18,8 @@ interface LibraryState {
   offlineStoragePath: string;
   localBooks: Book[];
   eInkMode: boolean;
+  /** Mobile-only: the two-option "where should downloads go?" choice is on screen. */
+  storageChoiceOpen: boolean;
 
   setAppMode: (mode: AppMode) => Promise<void>;
   setLibraryPath: (path: string) => Promise<void>;
@@ -28,6 +30,11 @@ interface LibraryState {
   loadSettings: () => Promise<void>;
   selectLibraryFolder: () => Promise<void>;
   selectOfflineStorageFolder: () => Promise<void>;
+  /** Mobile option 1: use the platform-recommended location from the backend. */
+  chooseRecommendedStorage: () => Promise<void>;
+  /** Mobile option 2 (advanced): pick a folder via the device file browser fallback. */
+  browseForStorage: () => Promise<void>;
+  dismissStorageChoice: () => void;
   toggleReadStatus: (book: Book, connectedHost?: Host | null, token?: string) => Promise<void>;
   deleteLocalBook: (book: Book) => Promise<void>;
 }
@@ -38,6 +45,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   offlineStoragePath: "",
   localBooks: [],
   eInkMode: false,
+  storageChoiceOpen: false,
 
   setEInkMode: async (enabled) => {
     set({ eInkMode: enabled });
@@ -172,6 +180,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
     const toast = useToastStore.getState();
 
+    // Mobile has no native directory chooser in Tauri v2, so present an
+    // explicit choice instead of silently falling back to a placeholder file.
+    if (isMobile()) {
+      set({ storageChoiceOpen: true });
+      return;
+    }
+
     try {
       let selected: string | string[] | null = null;
 
@@ -182,39 +197,67 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           title: "Select Offline Storage Folder",
         });
       } catch (e) {
-        console.warn("[Storage] Standard folder picker failed, trying save hack:", e);
-      }
-
-      if (!selected && isMobile()) {
-        toast.addToast("Pick a location by confirming a placeholder filename.", "info");
-
-        selected = await save({
-          defaultPath: "SHELF_SYNC_TARGET.txt",
-          title: "Pick Storage Location",
-        });
-
-        if (selected && typeof selected === "string") {
-          selected = await dirname(selected);
-        }
+        console.warn("[Storage] Standard folder picker failed:", e);
       }
 
       if (selected && typeof selected === "string") {
         await get().setOfflineStoragePath(selected);
-        toast.addToast("Storage location updated!", "success");
+        toast.addToast(`Storage location updated: ${selected}`, "success");
       }
     } catch (error) {
-      if (String(error).includes("not implemented on mobile") || isMobile()) {
-        const defaultPath = await invoke<string>("get_default_storage_path");
-        if (defaultPath) {
-          await get().setOfflineStoragePath(defaultPath);
-          toast.addToast("Using recommended system storage.", "info");
-        }
-      } else {
-        toast.addToast("Failed to select folder.", "error");
-        console.error(error);
-      }
+      toast.addToast("Failed to select folder.", "error");
+      console.error(error);
     }
   },
+
+  chooseRecommendedStorage: async () => {
+    const toast = useToastStore.getState();
+
+    try {
+      const defaultPath = await invoke<string>("get_default_storage_path");
+      if (!defaultPath) {
+        toast.addToast("No recommended location is available on this device.", "error");
+        return;
+      }
+      await get().setOfflineStoragePath(defaultPath);
+      set({ storageChoiceOpen: false });
+      toast.addToast(`Downloads will be saved to ${defaultPath}`, "success");
+    } catch (_) {
+      toast.addToast("Couldn't get the recommended location. Try browsing instead.", "error");
+    }
+  },
+
+  browseForStorage: async () => {
+    const toast = useToastStore.getState();
+
+    try {
+      // Android has no native folder picker in Tauri v2. The device file
+      // browser opens with a placeholder file; confirming it in a folder
+      // selects that folder.
+      toast.addToast(
+        "In your file browser, confirm the suggested file inside the folder you want to use.",
+        "info",
+      );
+
+      const selected = await save({
+        defaultPath: "SHELF_SYNC_TARGET.txt",
+        title: "Pick Storage Location",
+      });
+
+      if (!selected) return; // Cancelled — keep the choice open.
+
+      const folder = await dirname(selected);
+      if (!folder) return;
+
+      await get().setOfflineStoragePath(folder);
+      set({ storageChoiceOpen: false });
+      toast.addToast(`Downloads will be saved to ${folder}`, "success");
+    } catch (_) {
+      toast.addToast("Couldn't browse for a folder.", "error");
+    }
+  },
+
+  dismissStorageChoice: () => set({ storageChoiceOpen: false }),
 
   toggleReadStatus: async (book, connectedHost, token) => {
     const current = book.read_status || "unread";
