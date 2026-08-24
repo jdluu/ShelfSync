@@ -3,18 +3,10 @@ import { AnimatePresence, domAnimation, LazyMotion, m } from "motion/react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { deriveSyncSummary } from "@/store/syncStore";
-
-interface SyncItem {
-  book_id: number;
-  title: string;
-  status: string;
-  progress: number;
-  batch_current: number;
-  batch_total: number;
-}
+import type { SyncProgress } from "@/types/library";
 
 interface QueueOverlayProps {
-  progress: Record<number, SyncItem>;
+  progress: Record<number, SyncProgress>;
   onClose?: () => void;
 }
 
@@ -22,7 +14,7 @@ const SETTLE_HIDE_DELAY_MS = 5000;
 
 export const QueueOverlay: React.FC<QueueOverlayProps> = ({ progress }) => {
   // Get all active or recently completed items
-  const items = Object.values(progress).filter((p) => p.status !== "idle");
+  const items = Object.values(progress);
 
   // Sort to show active first (consistent comparator keeps insertion order otherwise)
   const rank = (status: string) => (status === "downloading" ? 0 : 1);

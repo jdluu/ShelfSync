@@ -34,7 +34,7 @@ describe("VirtualGrid a11y", () => {
     const listitems = screen.getAllByRole("listitem");
     expect(listitems).toHaveLength(books.length);
     for (let i = 0; i < books.length; i++) {
-      expect(listitems[i].textContent).toBe(books[i].title);
+      expect(listitems[i]?.textContent).toBe(books[i]?.title);
     }
   });
 
