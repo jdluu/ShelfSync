@@ -84,6 +84,13 @@ emulator smoke test.
 
 Secrets are managed with Infisical CLI (`infisical login`, then `pnpm secrets:fetch`).
 
+Android cross-compilation is verified with the NDK:
+```bash
+export ANDROID_NDK_HOME=/path/to/android-ndk-r27c
+cargo check --target aarch64-linux-android --lib --manifest-path src-tauri/Cargo.toml
+```
+A runtime smoke test still needs an attached device or emulator.
+
 ## Workflow expectations
 
 - Work happens on feature branches merged via PRs to `main`; issues track work.
