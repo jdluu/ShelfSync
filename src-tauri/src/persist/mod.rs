@@ -4,6 +4,9 @@ mod repo;
 mod schema;
 mod store;
 
+pub mod grouping;
+pub mod queries;
+
 #[cfg(test)]
 mod tests;
 

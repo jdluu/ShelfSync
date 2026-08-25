@@ -1,24 +1,19 @@
 use std::path::{Component, Path};
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::Connection;
 
 use super::error::PersistError;
+use super::grouping;
 use super::model::{
-    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, LibraryRecord, LibrarySection,
-    LibrarySnapshot, PublicationInput, PublicationUpsert, RevisionInput, StoredAcquisition,
-    StoredDownloadJob, StoredFileRevision, StoredPublication,
+    AcquisitionInput, AcquisitionUpsert, CatalogAccount, JobState, LibrarySection, LibrarySnapshot,
+    PublicationInput, PublicationUpsert, RevisionInput, StoredAcquisition, StoredDownloadJob,
+    StoredFileRevision, StoredPublication,
 };
+use super::queries;
+
+pub use queries::now_unix;
 
 const MAX_METADATA_JSON_BYTES: usize = 256 * 1024;
-const ACTIVE_JOB_STATES: &str = "('queued', 'running')";
-const TERMINAL_JOB_STATES: &str = "('completed', 'failed', 'cancelled', 'interrupted')";
-
-pub fn now_unix() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
-}
 
 fn require_non_empty(field: &str, value: &str) -> Result<(), PersistError> {
     if value.trim().is_empty() {
@@ -105,56 +100,20 @@ pub fn ensure_catalog_account(
     let normalized_url = normalize_canonical_url(base_url)?;
     require_non_empty("username", username)?;
 
-    conn.execute(
-        "INSERT INTO catalog_account (provider, base_url, username, created_at)
-         VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT (provider, base_url, username) DO NOTHING",
-        params![provider.trim(), normalized_url, username.trim(), now_unix()],
+    queries::insert_catalog_account_if_absent(
+        conn,
+        provider.trim(),
+        &normalized_url,
+        username.trim(),
     )?;
-    let account = conn.query_row(
-        "SELECT id, provider, base_url, username FROM catalog_account
-         WHERE provider = ?1 AND base_url = ?2 AND username = ?3",
-        params![provider.trim(), normalized_url, username.trim()],
-        |row| {
-            Ok(CatalogAccount {
-                id: row.get(0)?,
-                provider: row.get(1)?,
-                base_url: row.get(2)?,
-                username: row.get(3)?,
-            })
-        },
-    )?;
-    Ok(account)
+    queries::get_catalog_account(conn, provider.trim(), &normalized_url, username.trim())
 }
-
-fn publication_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredPublication> {
-    Ok(StoredPublication {
-        id: row.get(0)?,
-        account_id: row.get(1)?,
-        provider: row.get(2)?,
-        canonical_id: row.get(3)?,
-        metadata_json: row.get(4)?,
-        available: row.get::<_, i64>(5)? != 0,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-    })
-}
-
-const PUBLICATION_COLUMNS: &str =
-    "id, account_id, provider, canonical_id, metadata_json, available, created_at, updated_at";
 
 pub fn get_publication(
     conn: &Connection,
     publication_id: i64,
 ) -> Result<Option<StoredPublication>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!("SELECT {PUBLICATION_COLUMNS} FROM publication WHERE id = ?1"),
-            params![publication_id],
-            publication_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::get_publication(conn, publication_id)
 }
 
 pub fn find_publication(
@@ -163,17 +122,7 @@ pub fn find_publication(
     provider: &str,
     canonical_id: &str,
 ) -> Result<Option<StoredPublication>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!(
-                "SELECT {PUBLICATION_COLUMNS} FROM publication
-                 WHERE account_id = ?1 AND provider = ?2 AND canonical_id = ?3"
-            ),
-            params![account_id, provider, canonical_id],
-            publication_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::find_publication(conn, account_id, provider, canonical_id)
 }
 
 pub fn upsert_publication(
@@ -183,7 +132,7 @@ pub fn upsert_publication(
     require_non_empty("provider", &input.provider)?;
     require_non_empty("canonical id", &input.canonical_id)?;
     let metadata_json = normalize_metadata_json(&input.metadata_json)?;
-    let existing = find_publication(
+    let existing = queries::find_publication(
         conn,
         input.account_id,
         input.provider.trim(),
@@ -193,15 +142,10 @@ pub fn upsert_publication(
     let tx = conn.transaction()?;
     let created = existing.is_none();
     if let Some(current) = &existing {
-        tx.execute(
-            "UPDATE publication
-             SET metadata_json = ?1, available = 1, updated_at = ?2
-             WHERE id = ?3",
-            params![metadata_json, now_unix(), current.id],
-        )?;
+        queries::update_publication_metadata(&tx, current.id, &metadata_json)?;
         let id = current.id;
         tx.commit()?;
-        let publication = get_publication(conn, id)?.ok_or_else(|| {
+        let publication = queries::get_publication(conn, id)?.ok_or_else(|| {
             PersistError::Invalid(format!("publication {id} vanished after update"))
         })?;
         return Ok(PublicationUpsert {
@@ -210,20 +154,15 @@ pub fn upsert_publication(
         });
     }
 
-    tx.execute(
-        "INSERT INTO publication (account_id, provider, canonical_id, metadata_json, available, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 1, ?5, ?5)",
-        params![
-            input.account_id,
-            input.provider.trim(),
-            input.canonical_id.trim(),
-            metadata_json,
-            now_unix()
-        ],
+    let id = queries::insert_publication(
+        &tx,
+        input.account_id,
+        input.provider.trim(),
+        input.canonical_id.trim(),
+        &metadata_json,
     )?;
-    let id = tx.last_insert_rowid();
     tx.commit()?;
-    let publication = get_publication(conn, id)?.ok_or_else(|| {
+    let publication = queries::get_publication(conn, id)?.ok_or_else(|| {
         PersistError::Invalid(format!("publication {id} vanished after insert"))
     })?;
     Ok(PublicationUpsert {
@@ -237,55 +176,21 @@ pub fn set_publication_available(
     publication_id: i64,
     available: bool,
 ) -> Result<bool, PersistError> {
-    let changed = conn.execute(
-        "UPDATE publication SET available = ?1, updated_at = ?2 WHERE id = ?3",
-        params![available as i64, now_unix(), publication_id],
-    )?;
-    Ok(changed == 1)
+    queries::set_publication_available(conn, publication_id, available)
 }
 
 pub fn list_publications_for_account(
     conn: &Connection,
     account_id: i64,
 ) -> Result<Vec<StoredPublication>, PersistError> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {PUBLICATION_COLUMNS} FROM publication
-         WHERE account_id = ?1 ORDER BY id"
-    ))?;
-    let rows = stmt.query_map(params![account_id], publication_from_row)?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row?);
-    }
-    Ok(out)
+    queries::list_publications_for_account(conn, account_id)
 }
-
-fn acquisition_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAcquisition> {
-    Ok(StoredAcquisition {
-        id: row.get(0)?,
-        publication_id: row.get(1)?,
-        media_type: row.get(2)?,
-        canonical_url: row.get(3)?,
-        created_at: row.get(4)?,
-        updated_at: row.get(5)?,
-    })
-}
-
-const ACQUISITION_COLUMNS: &str = "id, publication_id, media_type, canonical_url, created_at, updated_at";
 
 pub fn list_acquisitions(
     conn: &Connection,
     publication_id: i64,
 ) -> Result<Vec<StoredAcquisition>, PersistError> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {ACQUISITION_COLUMNS} FROM acquisition WHERE publication_id = ?1 ORDER BY id"
-    ))?;
-    let rows = stmt.query_map(params![publication_id], acquisition_from_row)?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row?);
-    }
-    Ok(out)
+    queries::list_acquisitions(conn, publication_id)
 }
 
 pub fn upsert_acquisition(
@@ -296,60 +201,25 @@ pub fn upsert_acquisition(
     let canonical_url = normalize_canonical_url(&input.canonical_url)?;
 
     let tx = conn.transaction()?;
-    let existing: Option<i64> = tx
-        .query_row(
-            "SELECT id FROM acquisition WHERE publication_id = ?1 AND media_type = ?2",
-            params![input.publication_id, input.media_type.trim()],
-            |row| row.get(0),
-        )
-        .optional()?;
+    let existing = queries::find_acquisition_id(&tx, input.publication_id, input.media_type.trim())?;
     let created = existing.is_none();
     let id = match existing {
         Some(id) => {
-            tx.execute(
-                "UPDATE acquisition SET canonical_url = ?1, updated_at = ?2 WHERE id = ?3",
-                params![canonical_url, now_unix(), id],
-            )?;
+            queries::update_acquisition_url(&tx, id, &canonical_url)?;
             id
         }
         None => {
-            tx.execute(
-                "INSERT INTO acquisition (publication_id, media_type, canonical_url, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?4)",
-                params![input.publication_id, input.media_type.trim(), canonical_url, now_unix()],
-            )?;
-            tx.last_insert_rowid()
+            queries::insert_acquisition(&tx, input.publication_id, input.media_type.trim(), &canonical_url)?
         }
     };
     tx.commit()?;
 
-    let acquisition = conn
-        .query_row(
-            &format!("SELECT {ACQUISITION_COLUMNS} FROM acquisition WHERE id = ?1"),
-            params![id],
-            acquisition_from_row,
-        )?;
+    let acquisition = queries::get_acquisition(conn, id)?;
     Ok(AcquisitionUpsert {
         acquisition,
         created,
     })
 }
-
-fn revision_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredFileRevision> {
-    Ok(StoredFileRevision {
-        id: row.get(0)?,
-        acquisition_id: row.get(1)?,
-        expected_length: row.get(2)?,
-        expected_hash: row.get(3)?,
-        hash_algorithm: row.get(4)?,
-        local_relative_path: row.get(5)?,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-    })
-}
-
-const REVISION_COLUMNS: &str =
-    "id, acquisition_id, expected_length, expected_hash, hash_algorithm, local_relative_path, created_at, updated_at";
 
 pub fn create_file_revision(
     conn: &mut Connection,
@@ -369,40 +239,15 @@ pub fn create_file_revision(
         None => None,
     };
 
-    let exists: Option<i64> = conn
-        .query_row(
-            "SELECT id FROM acquisition WHERE id = ?1",
-            params![input.acquisition_id],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if exists.is_none() {
+    if !queries::acquisition_exists(conn, input.acquisition_id)? {
         return Err(PersistError::Invalid(format!(
             "acquisition {} does not exist",
             input.acquisition_id
         )));
     }
 
-    let now = now_unix();
-    conn.execute(
-        "INSERT INTO file_revision (acquisition_id, expected_length, expected_hash, hash_algorithm, local_relative_path, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-        params![
-            input.acquisition_id,
-            input.expected_length,
-            input.expected_hash,
-            input.hash_algorithm,
-            local_relative_path,
-            now
-        ],
-    )?;
-    let id = conn.last_insert_rowid();
-    let revision = conn.query_row(
-        &format!("SELECT {REVISION_COLUMNS} FROM file_revision WHERE id = ?1"),
-        params![id],
-        revision_from_row,
-    )?;
-    Ok(revision)
+    let id = queries::insert_file_revision(conn, input, local_relative_path.as_deref())?;
+    queries::required_revision(conn, id)
 }
 
 pub fn attach_revision_local_path(
@@ -411,138 +256,49 @@ pub fn attach_revision_local_path(
     relative_path: &str,
 ) -> Result<bool, PersistError> {
     let normalized = validate_relative_path(relative_path)?;
-    let changed = conn.execute(
-        "UPDATE file_revision SET local_relative_path = ?1, updated_at = ?2 WHERE id = ?3",
-        params![normalized, now_unix(), revision_id],
-    )?;
-    Ok(changed == 1)
+    queries::set_revision_local_path(conn, revision_id, &normalized)
 }
 
 pub fn current_revision(
     conn: &Connection,
     acquisition_id: i64,
 ) -> Result<Option<StoredFileRevision>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!(
-                "SELECT {REVISION_COLUMNS} FROM file_revision
-                 WHERE acquisition_id = ?1 ORDER BY id DESC LIMIT 1"
-            ),
-            params![acquisition_id],
-            revision_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::current_revision(conn, acquisition_id)
 }
 
 pub fn get_revision(
     conn: &Connection,
     revision_id: i64,
 ) -> Result<Option<StoredFileRevision>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!("SELECT {REVISION_COLUMNS} FROM file_revision WHERE id = ?1"),
-            params![revision_id],
-            revision_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::get_revision(conn, revision_id)
 }
 
 pub fn revisions_for_acquisition(
     conn: &Connection,
     acquisition_id: i64,
 ) -> Result<Vec<StoredFileRevision>, PersistError> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {REVISION_COLUMNS} FROM file_revision
-         WHERE acquisition_id = ?1 ORDER BY id"
-    ))?;
-    let rows = stmt.query_map(params![acquisition_id], revision_from_row)?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row?);
-    }
-    Ok(out)
+    queries::revisions_for_acquisition(conn, acquisition_id)
 }
 
 pub fn clear_revision_local_path(
     conn: &Connection,
     revision_id: i64,
 ) -> Result<bool, PersistError> {
-    let changed = conn.execute(
-        "UPDATE file_revision SET local_relative_path = NULL, updated_at = ?1 WHERE id = ?2",
-        params![now_unix(), revision_id],
-    )?;
-    Ok(changed == 1)
+    queries::clear_revision_local_path(conn, revision_id)
 }
-
-fn job_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredDownloadJob> {
-    let state_raw: String = row.get(2)?;
-    let state = JobState::parse(&state_raw).ok_or_else(|| {
-        rusqlite::Error::FromSqlConversionFailure(
-            2,
-            rusqlite::types::Type::Text,
-            format!("unknown download job state '{state_raw}'").into(),
-        )
-    })?;
-    Ok(StoredDownloadJob {
-        id: row.get(0)?,
-        revision_id: row.get(1)?,
-        state,
-        error: row.get(3)?,
-        created_at: row.get(4)?,
-        updated_at: row.get(5)?,
-        started_at: row.get(6)?,
-        finished_at: row.get(7)?,
-    })
-}
-
-const JOB_COLUMNS: &str =
-    "id, revision_id, state, error, created_at, updated_at, started_at, finished_at";
 
 pub fn get_job(
     conn: &Connection,
     job_id: i64,
 ) -> Result<Option<StoredDownloadJob>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!("SELECT {JOB_COLUMNS} FROM download_job WHERE id = ?1"),
-            params![job_id],
-            job_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::get_job(conn, job_id)
 }
 
 pub fn create_download_job(
     conn: &Connection,
     revision_id: i64,
 ) -> Result<StoredDownloadJob, PersistError> {
-    let exists: Option<i64> = conn
-        .query_row(
-            "SELECT id FROM file_revision WHERE id = ?1",
-            params![revision_id],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if exists.is_none() {
-        return Err(PersistError::Invalid(format!(
-            "file revision {revision_id} does not exist"
-        )));
-    }
-    let now = now_unix();
-    conn.execute(
-        "INSERT INTO download_job (revision_id, state, created_at, updated_at)
-         VALUES (?1, 'queued', ?2, ?2)",
-        params![revision_id, now],
-    )?;
-    let id = conn.last_insert_rowid();
-    let job = conn.query_row(
-        &format!("SELECT {JOB_COLUMNS} FROM download_job WHERE id = ?1"),
-        params![id],
-        job_from_row,
-    )?;
-    Ok(job)
+    queries::create_download_job(conn, revision_id)
 }
 
 pub fn set_job_state(
@@ -551,18 +307,7 @@ pub fn set_job_state(
     to: JobState,
     error: Option<&str>,
 ) -> Result<bool, PersistError> {
-    let now = now_unix();
-    let sql = format!(
-        "UPDATE download_job
-         SET state = ?2,
-             updated_at = ?3,
-             started_at = COALESCE(started_at, CASE WHEN ?2 = 'running' THEN ?3 END),
-             finished_at = CASE WHEN ?2 IN {TERMINAL_JOB_STATES} THEN ?3 ELSE finished_at END,
-             error = COALESCE(?4, error)
-         WHERE id = ?1 AND state IN {ACTIVE_JOB_STATES}"
-    );
-    let changed = conn.execute(&sql, params![job_id, to.as_str(), now, error])?;
-    Ok(changed == 1)
+    queries::set_job_state(conn, job_id, to, error)
 }
 
 pub fn complete_download(
@@ -573,22 +318,19 @@ pub fn complete_download(
 ) -> Result<StoredDownloadJob, PersistError> {
     let normalized = validate_relative_path(relative_path)?;
     let tx = conn.transaction()?;
-    let changed = tx.execute(
-        "UPDATE file_revision SET local_relative_path = ?1, updated_at = ?2 WHERE id = ?3",
-        params![normalized, now_unix(), revision_id],
-    )?;
-    if changed != 1 {
+    let changed = queries::set_revision_local_path(&tx, revision_id, &normalized)?;
+    if !changed {
         return Err(PersistError::Invalid(format!(
             "file revision {revision_id} does not exist"
         )));
     }
-    let completed = set_job_state(&tx, job_id, JobState::Completed, None)?;
+    let completed = queries::set_job_state(&tx, job_id, JobState::Completed, None)?;
     if !completed {
         return Err(PersistError::Invalid(format!(
             "download job {job_id} is not active and cannot be completed"
         )));
     }
-    let job = get_job(&tx, job_id)?.ok_or_else(|| {
+    let job = queries::get_job(&tx, job_id)?.ok_or_else(|| {
         PersistError::Invalid(format!("download job {job_id} vanished after update"))
     })?;
     tx.commit()?;
@@ -596,74 +338,22 @@ pub fn complete_download(
 }
 
 pub fn active_jobs(conn: &Connection) -> Result<Vec<StoredDownloadJob>, PersistError> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {JOB_COLUMNS} FROM download_job WHERE state IN {ACTIVE_JOB_STATES} ORDER BY id"
-    ))?;
-    let rows = stmt.query_map([], job_from_row)?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row?);
-    }
-    Ok(out)
+    queries::active_jobs(conn)
 }
 
 pub fn jobs_for_revision(
     conn: &Connection,
     revision_id: i64,
 ) -> Result<Vec<StoredDownloadJob>, PersistError> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {JOB_COLUMNS} FROM download_job WHERE revision_id = ?1 ORDER BY id"
-    ))?;
-    let rows = stmt.query_map(params![revision_id], job_from_row)?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row?);
-    }
-    Ok(out)
+    queries::jobs_for_revision(conn, revision_id)
 }
 
 pub fn recover_interrupted_jobs(conn: &Connection) -> Result<usize, PersistError> {
-    let now = now_unix();
-    let changed = conn.execute(
-        &format!(
-            "UPDATE download_job
-             SET state = 'interrupted',
-                 updated_at = ?1,
-                 finished_at = COALESCE(finished_at, ?1),
-                 error = COALESCE(error, 'interrupted by application restart')
-             WHERE state IN {ACTIVE_JOB_STATES}"
-        ),
-        params![now],
-    )?;
-    Ok(changed)
+    queries::recover_interrupted_jobs(conn)
 }
 
 pub fn purge_stale_jobs(conn: &Connection, older_than_unix: i64) -> Result<usize, PersistError> {
-    let removed = conn.execute(
-        &format!(
-            "DELETE FROM download_job
-             WHERE state IN {TERMINAL_JOB_STATES} AND updated_at < ?1"
-        ),
-        params![older_than_unix],
-    )?;
-    Ok(removed)
-}
-
-fn latest_job_for_revision(
-    conn: &Connection,
-    revision_id: i64,
-) -> Result<Option<StoredDownloadJob>, PersistError> {
-    let found = conn
-        .query_row(
-            &format!(
-                "SELECT {JOB_COLUMNS} FROM download_job
-                 WHERE revision_id = ?1 ORDER BY id DESC LIMIT 1"
-            ),
-            params![revision_id],
-            job_from_row,
-        )
-        .optional()?;
-    Ok(found)
+    queries::purge_stale_jobs(conn, older_than_unix)
 }
 
 pub fn classify_library_record(
@@ -672,96 +362,14 @@ pub fn classify_library_record(
     has_local_file: bool,
     latest_job_state: Option<JobState>,
 ) -> Option<LibrarySection> {
-    if !is_current_revision && has_local_file {
-        return Some(LibrarySection::Superseded);
-    }
-    if !publication_available {
-        return Some(LibrarySection::Unavailable);
-    }
-    match latest_job_state {
-        Some(JobState::Queued | JobState::Running) => Some(LibrarySection::Downloading),
-        Some(JobState::Failed | JobState::Interrupted | JobState::Cancelled) => {
-            Some(LibrarySection::Failed)
-        }
-        _ if has_local_file => Some(LibrarySection::Complete),
-        _ => None,
-    }
-}
-
-fn record_from_parts(
-    publication: &StoredPublication,
-    acquisition: &StoredAcquisition,
-    revision: &StoredFileRevision,
-    is_current_revision: bool,
-    latest_job: Option<&StoredDownloadJob>,
-) -> LibraryRecord {
-    LibraryRecord {
-        publication_id: publication.id,
-        account_id: publication.account_id,
-        provider: publication.provider.clone(),
-        canonical_id: publication.canonical_id.clone(),
-        metadata_json: publication.metadata_json.clone(),
-        publication_available: publication.available,
-        acquisition_id: acquisition.id,
-        media_type: acquisition.media_type.clone(),
-        canonical_url: acquisition.canonical_url.clone(),
-        revision_id: revision.id,
+    grouping::classify_library_record(
+        publication_available,
         is_current_revision,
-        local_relative_path: revision.local_relative_path.clone(),
-        expected_length: revision.expected_length,
-        job_state: latest_job.map(|job| job.state),
-        job_error: latest_job.and_then(|job| job.error.clone()),
-        updated_at: revision.updated_at,
-    }
-}
-
-fn push_record(snapshot: &mut LibrarySnapshot, section: LibrarySection, record: LibraryRecord) {
-    match section {
-        LibrarySection::Complete => snapshot.complete.push(record),
-        LibrarySection::Downloading => snapshot.downloading.push(record),
-        LibrarySection::Failed => snapshot.failed.push(record),
-        LibrarySection::Unavailable => snapshot.unavailable.push(record),
-        LibrarySection::Superseded => snapshot.superseded.push(record),
-    }
+        has_local_file,
+        latest_job_state,
+    )
 }
 
 pub fn library_snapshot(conn: &Connection) -> Result<LibrarySnapshot, PersistError> {
-    let mut snapshot = LibrarySnapshot::default();
-    let mut account_stmt =
-        conn.prepare("SELECT id FROM catalog_account ORDER BY id")?;
-    let account_ids: Vec<i64> = account_stmt
-        .query_map([], |row| row.get(0))?
-        .collect::<Result<Vec<_>, _>>()?;
-    drop(account_stmt);
-
-    for account_id in account_ids {
-        for publication in list_publications_for_account(conn, account_id)? {
-            for acquisition in list_acquisitions(conn, publication.id)? {
-                let revisions = revisions_for_acquisition(conn, acquisition.id)?;
-                let current_revision_id = revisions.iter().map(|r| r.id).max();
-                for revision in &revisions {
-                    let is_current = current_revision_id == Some(revision.id);
-                    let latest_job = latest_job_for_revision(conn, revision.id)?;
-                    let section = classify_library_record(
-                        publication.available,
-                        is_current,
-                        revision.local_relative_path.is_some(),
-                        latest_job.as_ref().map(|job| job.state),
-                    );
-                    let Some(section) = section else {
-                        continue;
-                    };
-                    let record = record_from_parts(
-                        &publication,
-                        &acquisition,
-                        revision,
-                        is_current,
-                        latest_job.as_ref(),
-                    );
-                    push_record(&mut snapshot, section, record);
-                }
-            }
-        }
-    }
-    Ok(snapshot)
+    grouping::library_snapshot(conn)
 }
