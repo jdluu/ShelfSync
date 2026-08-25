@@ -4,6 +4,7 @@ import { BrandLogo } from "@/components/ui/BrandLogo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { StorageChoiceModal } from "@/components/ui/StorageChoiceModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
+import { Header } from "@/components/layout/Header";
 import { useUpdater } from "@/hooks/useUpdater";
 import { useLibraryStore } from "@/store/libraryStore";
 
@@ -52,11 +53,14 @@ function AppContent() {
   if (appLoading) return <InitializingView />;
 
   return (
-    <main id="main-content" className="h-screen w-screen flex flex-col bg-base-100 font-sans">
-      <Suspense fallback={<InitializingView />}>
-        <OpdsCatalogScreenContainer />
-      </Suspense>
-    </main>
+    <div className="h-screen w-screen flex flex-col bg-base-100 font-sans">
+      <Header title="OPDS Catalog" />
+      <main id="main-content" className="flex-1 overflow-y-auto">
+        <Suspense fallback={<InitializingView />}>
+          <OpdsCatalogScreenContainer />
+        </Suspense>
+      </main>
+    </div>
   );
 }
 

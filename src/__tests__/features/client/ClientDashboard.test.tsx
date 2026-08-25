@@ -55,7 +55,7 @@ describe("ClientDashboard Integration", () => {
 
   beforeEach(() => {
     (useLibraryStore as unknown as Mock).mockReturnValue({
-      appMode: "client",
+      
       offlineStoragePath: "/test/path",
       localBooks: [],
       toggleReadStatus: vi.fn(),

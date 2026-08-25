@@ -1,5 +1,3 @@
-export type AppMode = "unselected" | "host" | "client";
-
 export interface SyncProgress {
   book_id: number;
   title: string;
