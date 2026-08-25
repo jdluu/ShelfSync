@@ -28,6 +28,7 @@ test-results/
 # =========================
 keys/
 *.jks
+.env.infisical
 *.keystore
 *.local
 
