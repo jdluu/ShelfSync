@@ -1,6 +1,6 @@
 import { KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   CategorizedLibraryRecord,
   OfflineRefreshReport,
@@ -86,6 +86,17 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [refreshingLibrary, setRefreshingLibrary] = useState(false);
   const [refreshSummary, setRefreshSummary] = useState<string | null>(null);
+  const contentRegionRef = useRef<HTMLDivElement | null>(null);
+  const previousPageRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!connected || loading || !catalog) return;
+    const previousPage = previousPageRef.current;
+    previousPageRef.current = page;
+    if (previousPage !== null && previousPage !== page) {
+      contentRegionRef.current?.focus({ preventScroll: true });
+    }
+  }, [catalog, connected, loading, page]);
 
   const handleRefreshLibrary = async () => {
     if (!onRefreshLibrary || refreshingLibrary) return;
@@ -144,6 +155,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
       {!connected && (
         <form
           aria-label="OPDS catalog connection"
+          aria-busy={loading}
           className="card bg-base-100/80 border border-base-content/10"
           onSubmit={(e) => {
             e.preventDefault();
@@ -280,27 +292,37 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
             )}
           </div>
 
-          <OpdsCatalogView
-            catalog={catalog}
-            loading={loading}
-            error={error}
-            page={page}
-            onPageChange={onPageChange}
-            downloadConfig={{
-              catalogUrl: url.trim(),
-              transientUsername: username,
-              transientPassword: password,
-              contentRoot,
-            }}
-            onDownload={onDownload}
-            downloadStatuses={downloadStatuses}
-            downloadErrors={downloadErrors}
-            downloadLocalPaths={downloadLocalPaths}
-            downloadProgress={downloadProgress}
-            libraryInfoByPublicationId={libraryInfoByPublicationId}
-            deletingRevisionId={deletingRevisionId}
-            onDeleteLocal={onDeleteLocal}
-          />
+          {catalog && (
+            <p className="sr-only" role="status" aria-live="polite">
+              {`${catalog.title}: page ${page}, ${catalog.publications.length} publication${
+                catalog.publications.length === 1 ? "" : "s"
+              }`}
+            </p>
+          )}
+
+          <div ref={contentRegionRef} tabIndex={-1} className="outline-none">
+            <OpdsCatalogView
+              catalog={catalog}
+              loading={loading}
+              error={error}
+              page={page}
+              onPageChange={onPageChange}
+              downloadConfig={{
+                catalogUrl: url.trim(),
+                transientUsername: username,
+                transientPassword: password,
+                contentRoot,
+              }}
+              onDownload={onDownload}
+              downloadStatuses={downloadStatuses}
+              downloadErrors={downloadErrors}
+              downloadLocalPaths={downloadLocalPaths}
+              downloadProgress={downloadProgress}
+              libraryInfoByPublicationId={libraryInfoByPublicationId}
+              deletingRevisionId={deletingRevisionId}
+              onDeleteLocal={onDeleteLocal}
+            />
+          </div>
         </>
       )}
     </div>

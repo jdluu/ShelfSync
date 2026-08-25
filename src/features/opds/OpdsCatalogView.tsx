@@ -199,6 +199,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
             className="btn btn-sm btn-outline"
+            aria-label="Previous page"
           >
             Previous
           </button>
@@ -211,6 +212,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
             onClick={() => onPageChange(page + 1)}
             disabled={!catalog.pagination.next}
             className="btn btn-sm btn-outline"
+            aria-label="Next page"
           >
             Next
           </button>

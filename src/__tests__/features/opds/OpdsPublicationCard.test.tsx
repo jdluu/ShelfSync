@@ -294,7 +294,7 @@ describe("OpdsPublicationCard with download props", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select download format" }));
     fireEvent.click(screen.getByRole("option", { name: "EPUB" }));
 
-    expect(screen.getByRole("button", { name: "Download as EPUB" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Download Test Book as EPUB" })).not.toBeNull();
   });
 
   it("calls onDownload when download button clicked", async () => {
@@ -318,7 +318,7 @@ describe("OpdsPublicationCard with download props", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Select download format" }));
     fireEvent.click(screen.getByRole("option", { name: "EPUB" }));
-    fireEvent.click(screen.getByRole("button", { name: "Download as EPUB" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download Test Book as EPUB" }));
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -341,7 +341,7 @@ describe("OpdsPublicationCard with download props", () => {
       />,
     );
 
-    const button = screen.getByRole("button", { name: "Select download format" });
+    const button = screen.getByRole("button", { name: "Downloading Test Book" });
     expect(button.hasAttribute("disabled")).toBe(true);
   });
 
@@ -545,7 +545,7 @@ describe("OpdsPublicationCard format dropdown dismissal", () => {
     fireEvent.mouseDown(option);
     fireEvent.click(option);
 
-    expect(screen.getByRole("button", { name: "Download as EPUB" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Download Dropdown Book as EPUB" })).not.toBeNull();
     expect(screen.queryByRole("option", { name: "EPUB" })).toBeNull();
   });
 });
