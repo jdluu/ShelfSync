@@ -41,11 +41,19 @@ export const StorageChoiceModal: React.FC = () => {
           </p>
         )}
 
-        <button type="button" className="btn btn-primary w-full" onClick={() => void chooseRecommendedStorage()}>
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          onClick={() => void chooseRecommendedStorage()}
+        >
           <FolderDown className="w-4 h-4" aria-hidden="true" />
           Use Recommended Location
         </button>
-        <button type="button" className="btn btn-outline w-full" onClick={() => void browseForStorage()}>
+        <button
+          type="button"
+          className="btn btn-outline w-full"
+          onClick={() => void browseForStorage()}
+        >
           <Search className="w-4 h-4" aria-hidden="true" />
           Browse for a Folder
         </button>
@@ -55,7 +63,11 @@ export const StorageChoiceModal: React.FC = () => {
           want to use.
         </p>
 
-        <button type="button" className="btn btn-ghost btn-sm w-full" onClick={dismissStorageChoice}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm w-full"
+          onClick={dismissStorageChoice}
+        >
           Cancel
         </button>
       </div>

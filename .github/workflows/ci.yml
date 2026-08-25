@@ -26,7 +26,10 @@ jobs:
       - name: install dependencies
         run: pnpm install --frozen-lockfile
       - name: lint
-        run: pnpm lint
+        # Invoke the biome binary directly: the pnpm wrapper has been observed
+        # to crash ("Linter process terminated abnormally") while still exiting
+        # 0, which would let a broken lint gate pass vacuously.
+        run: pnpm exec biome check .
       - name: typecheck and build
         run: pnpm build
       - name: test

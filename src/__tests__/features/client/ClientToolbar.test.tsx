@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientToolbar } from "@/features/client/ClientToolbar";
-import type { SyncBatchSummary } from "@/store/syncStore";
 import type { GroupByOption } from "@/features/client/useBookFilters";
+import type { SyncBatchSummary } from "@/store/syncStore";
 
 const baseProps = {
   refresh: vi.fn(),
@@ -33,9 +33,7 @@ describe("ClientToolbar", () => {
     };
     render(<ClientToolbar {...baseProps} syncSummary={syncSummary} />);
     expect(screen.getByText("2/5")).toBeDefined();
-    expect(
-      screen.getByLabelText("Syncing: 2 of 5 books synced"),
-    ).toBeDefined();
+    expect(screen.getByLabelText("Syncing: 2 of 5 books synced")).toBeDefined();
   });
 
   it("hides the sync indicator when no batch is active", () => {

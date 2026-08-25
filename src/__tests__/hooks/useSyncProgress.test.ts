@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(async (_event: string, handler: (e: { payload: SyncProgress }) => Promise<void>) => {
-    mocks.listenHandler = handler;
-    return () => {};
-  }),
+  listen: vi.fn(
+    async (_event: string, handler: (e: { payload: SyncProgress }) => Promise<void>) => {
+      mocks.listenHandler = handler;
+      return () => {};
+    },
+  ),
 }));
 
 vi.mock("@tauri-apps/api/path", () => ({

@@ -130,22 +130,12 @@ describe("OPDS catalog change announcements", () => {
 
   it("moves focus to the catalog content after the page changes", () => {
     const { rerender } = render(
-      <OpdsCatalogScreen
-        {...baseProps}
-        catalog={makeCatalog()}
-        page={1}
-      />,
+      <OpdsCatalogScreen {...baseProps} catalog={makeCatalog()} page={1} />,
     );
 
     expect(document.activeElement).toBe(document.body);
 
-    rerender(
-      <OpdsCatalogScreen
-        {...baseProps}
-        catalog={makeCatalog()}
-        page={2}
-      />,
-    );
+    rerender(<OpdsCatalogScreen {...baseProps} catalog={makeCatalog()} page={2} />);
 
     const focused = document.activeElement as HTMLElement | null;
     expect(focused).not.toBe(document.body);
@@ -155,20 +145,10 @@ describe("OPDS catalog change announcements", () => {
 
   it("does not move focus when rerendering without a page change", () => {
     const { rerender } = render(
-      <OpdsCatalogScreen
-        {...baseProps}
-        catalog={makeCatalog()}
-        page={1}
-      />,
+      <OpdsCatalogScreen {...baseProps} catalog={makeCatalog()} page={1} />,
     );
 
-    rerender(
-      <OpdsCatalogScreen
-        {...baseProps}
-        catalog={makeCatalog()}
-        page={1}
-      />,
-    );
+    rerender(<OpdsCatalogScreen {...baseProps} catalog={makeCatalog()} page={1} />);
 
     expect(document.activeElement).toBe(document.body);
   });
@@ -195,7 +175,9 @@ describe("publication card download aria-labels", () => {
   });
 
   it("announces downloading state with title and percent complete", () => {
-    render(<OpdsPublicationCard {...baseCardProps} downloadStatus="downloading" downloadProgress={45} />);
+    render(
+      <OpdsPublicationCard {...baseCardProps} downloadStatus="downloading" downloadProgress={45} />,
+    );
 
     expect(screen.getByRole("button", { name: "Downloading Dune 45%" })).not.toBeNull();
     expect(screen.getByRole("progressbar", { name: "Downloading Dune" })).not.toBeNull();
@@ -325,17 +307,13 @@ describe("publication format menu roles", () => {
   });
 
   it("reflects the chosen format in aria-selected and the trigger label", () => {
-    render(
-      <MenuHarness selectedFormat="application/pdf" />,
-    );
+    render(<MenuHarness selectedFormat="application/pdf" />);
     const trigger = screen.getByRole("button", {
       name: "Selected format: PDF, change format",
     });
     fireEvent.click(trigger);
 
-    expect(screen.getByRole("option", { name: "PDF" }).getAttribute("aria-selected")).toBe(
-      "true",
-    );
+    expect(screen.getByRole("option", { name: "PDF" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("option", { name: "EPUB" }).getAttribute("aria-selected")).toBe(
       "false",
     );

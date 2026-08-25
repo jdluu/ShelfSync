@@ -1,14 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  LibraryStateBadge,
-  librarySectionLabel,
-} from "@/features/opds/LibraryStateBadge";
+import { LibraryStateBadge, librarySectionLabel } from "@/features/opds/LibraryStateBadge";
 import { OpdsPublicationCard } from "@/features/opds/OpdsPublicationCard";
-import type {
-  CategorizedLibraryRecord,
-  PublicationLibraryInfo,
-} from "@/types/offline";
+import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { Publication } from "@/types/opds";
 
 const createMockPublication = (overrides?: Partial<Publication>): Publication => {
@@ -20,9 +14,7 @@ const createMockPublication = (overrides?: Partial<Publication>): Publication =>
     categories: [],
     relations: [],
     descriptions: [],
-    links: [
-      { href: "/download/book-1.epub", media_type: "application/epub+zip" },
-    ],
+    links: [{ href: "/download/book-1.epub", media_type: "application/epub+zip" }],
     identifiers: {},
     ...overrides,
   };
@@ -110,9 +102,7 @@ describe("OpdsPublicationCard offline library states", () => {
 
     expect(screen.getByText("Removed from server")).not.toBeNull();
     expect(screen.getByText("local copy kept on device")).not.toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Delete local copy of Dune" }),
-    ).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Delete local copy of Dune" })).not.toBeNull();
   });
 
   it("shows retry action for failed records", async () => {

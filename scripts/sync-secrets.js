@@ -21,7 +21,9 @@ function run(cmd) {
 /** Build infisical command with project context for machine identity auth */
 function infisicalCmd(baseCmd) {
   // If INFISICAL_TOKEN is set in env (machine identity), add --projectId
-  const tokenFlag = process.env.INFISICAL_TOKEN ? ` --token ${process.env.INFISICAL_TOKEN} --projectId ${PROJECT_ID}` : "";
+  const tokenFlag = process.env.INFISICAL_TOKEN
+    ? ` --token ${process.env.INFISICAL_TOKEN} --projectId ${PROJECT_ID}`
+    : "";
   return `${baseCmd}${tokenFlag}`;
 }
 

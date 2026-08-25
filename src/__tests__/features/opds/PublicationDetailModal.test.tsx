@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { Publication } from "@/types/opds";
 import { PublicationDetailModal } from "@/features/opds/PublicationDetailModal";
+import type { Publication } from "@/types/opds";
 
 vi.mock("@/utils/tauri", () => ({
   isTauri: () => false,
@@ -50,7 +50,9 @@ describe("PublicationDetailModal", () => {
   });
 
   it("renders a download button per acquisition format and calls onDownload", async () => {
-    const onDownload = vi.fn().mockResolvedValue({ localPath: "/x.epub", mediaType: "application/epub+zip" });
+    const onDownload = vi
+      .fn()
+      .mockResolvedValue({ localPath: "/x.epub", mediaType: "application/epub+zip" });
     render(
       <PublicationDetailModal
         publication={makePublication()}
