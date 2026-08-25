@@ -38,6 +38,23 @@ the division of responsibility between the two apps.
 ## Layout map
 
 ```
+agent_docs/  Agent/internal documentation: BRAND.md (design system v2),
+             FEATURE_FREEZE.md (scope boundary), android-hardening.md.
+             Not user-facing; do not link from README.
+docs/        User-facing docs only: app-boundaries.md, screenshots.
+```
+
+## Workflow (enforced)
+
+- All changes land via PR from a `feat/`, `fix/`, `chore/`, or `docs/`
+  branch referencing a GitHub Issue; squash-merge to `main`; delete branch.
+- Scope is governed by `agent_docs/FEATURE_FREEZE.md` — no new features
+  without a tagged exception issue.
+- Never commit roadmap/planning docs, credentials, or `.env` files.
+
+### Source layout
+
+```
 src-tauri/src/
   commands/   Tauri IPC command layer (incl. commands/opds/ with IPC
               sub-modules: transport, auth, catalog, download)
@@ -57,7 +74,7 @@ mock_library/ Test fixture library
 scripts/      Dev scripts
 ```
 
-compile and start only under `#[cfg(desktop)]`. Android builds run no peer
+Desktop-only peers compile and start only under `#[cfg(desktop)]`. Android builds run no peer
 services; legacy peer permissions/services were removed (see commit history:
 BLE, multicast lock, external storage, foreground service all stripped;
 only `INTERNET` + `ACCESS_NETWORK_STATE` remain).
@@ -69,7 +86,7 @@ pnpm install
 pnpm tauri dev            # desktop dev
 pnpm vitest run           # frontend tests
 pnpm lint                 # Biome
-cargo test --manifest-path src-tauri/Cargo.toml     # Rust tests (~200)
+cargo test --manifest-path src-tauri/Cargo.toml     # Rust tests (~230)
 pnpm build:android        # Android release build (needs NDK + Infisical secrets: pnpm secrets:fetch)
 ```
 
