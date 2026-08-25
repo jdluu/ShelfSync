@@ -1,7 +1,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::opds::{safe_remove_within_root, safe_join};
+use crate::opds::{safe_join, safe_remove_within_root};
 use crate::persist::{validate_relative_path, LibraryStore, PersistError};
 
 const PART_FILE_MARKER: &str = ".part";
@@ -113,8 +113,7 @@ pub async fn restore_library_on_startup(
     content_root: &Path,
 ) -> Result<StartupRecovery, PersistError> {
     let recovered_jobs = store.recover_interrupted_jobs().await?;
-    let removed_part_files =
-        cleanup_stale_part_files(content_root).map_err(PersistError::Io)?;
+    let removed_part_files = cleanup_stale_part_files(content_root).map_err(PersistError::Io)?;
     Ok(StartupRecovery {
         recovered_jobs,
         removed_part_files,
@@ -466,7 +465,10 @@ mod tests {
             matches!(err, DeleteLocalError::Persist(PersistError::UnsafePath(_))),
             "unexpected error: {err:?}"
         );
-        assert!(victim.exists(), "files outside the root must not be deleted");
+        assert!(
+            victim.exists(),
+            "files outside the root must not be deleted"
+        );
 
         // An absolute path recorded in the row must also be refused.
         {
@@ -481,7 +483,10 @@ mod tests {
         let err = delete_local_content(&store, &content_root, revision.id)
             .await
             .unwrap_err();
-        assert!(matches!(err, DeleteLocalError::Persist(PersistError::UnsafePath(_))));
+        assert!(matches!(
+            err,
+            DeleteLocalError::Persist(PersistError::UnsafePath(_))
+        ));
         assert!(victim.exists());
 
         let cleared = store.get_revision(revision.id).await.unwrap().unwrap();

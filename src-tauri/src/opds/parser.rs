@@ -1,6 +1,6 @@
 use super::{
-    Acquisition, Catalog, NavigationLink, OpdsError, Pagination, Publication,
-    RepresentativeLink, Series,
+    Acquisition, Catalog, NavigationLink, OpdsError, Pagination, Publication, RepresentativeLink,
+    Series,
 };
 use quick_xml::escape;
 use quick_xml::events::Event;
@@ -65,7 +65,9 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                                 "totalresults" | "totalResults" => {
                                     pending_total = true;
                                 }
-                                "link" | "opensearch:itemsperpage" | "opensearch:startindex"
+                                "link"
+                                | "opensearch:itemsperpage"
+                                | "opensearch:startindex"
                                 | "opensearch:query" => {}
                                 _ => {}
                             }
@@ -311,7 +313,8 @@ fn handle_publication_element(
             } else if !acq.href.is_empty() {
                 if acq.rel.as_deref() == Some("acquisition")
                     || acq.rel.as_deref() == Some("http://opds-spec.org/acquisition")
-                    || acq.rel
+                    || acq
+                        .rel
                         .as_deref()
                         .unwrap_or("")
                         .starts_with("http://opds-spec.org/acquisition")
@@ -567,6 +570,7 @@ struct PublicationBuilder {
     representative: Option<RepresentativeLink>,
     pending_collection: bool,
     pending_position_refines: Option<String>,
+    #[allow(dead_code)] // reserved: OPDS 1.2 series refines attribute
     series_refines_id: Option<String>,
 }
 
@@ -727,10 +731,7 @@ mod tests {
         let book = &result.publications[0];
         assert_eq!(book.title, "Blackflame");
         assert_eq!(book.authors, vec!["Will Wight"]);
-        assert_eq!(
-            book.publisher.as_deref(),
-            Some("Hidden Gnome Publishing")
-        );
+        assert_eq!(book.publisher.as_deref(), Some("Hidden Gnome Publishing"));
         assert!(book.languages.contains(&"en".to_string()));
         assert!(book.categories.contains(&"Fantasy".to_string()));
         assert!(book.categories.contains(&"Adventure".to_string()));
@@ -762,10 +763,7 @@ mod tests {
         let result = parse_catalog(feed).expect("Should parse");
         let pagination = result.pagination.expect("pagination present");
         assert_eq!(pagination.total, Some(481));
-        assert_eq!(
-            pagination.next.as_deref(),
-            Some("/catalog?page=2&size=50")
-        );
+        assert_eq!(pagination.next.as_deref(), Some("/catalog?page=2&size=50"));
     }
 
     #[test]

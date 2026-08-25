@@ -2,24 +2,16 @@ pub mod commands;
 pub mod core;
 pub mod credentials;
 pub mod error;
-pub mod models;
 pub mod offline;
 pub mod opds;
 pub mod persist;
 
-use crate::commands::library;
-use crate::core::db;
 use log::{error, info};
 use std::sync::Mutex;
 use tauri::Manager;
 
 pub struct AppState {
     pub app_data_dir: Mutex<Option<std::path::PathBuf>>,
-    pub library_path: Mutex<Option<String>>,
-    pub db_pool: tokio::sync::RwLock<Option<deadpool_sqlite::Pool>>,
-    pub books: Mutex<Vec<crate::models::Book>>,
-    pub sync_manager: Mutex<Option<crate::core::sync::SyncManager>>,
-    pub search_engine: Mutex<Option<crate::core::search::SearchEngine>>,
 }
 
 fn offline_state_new(
@@ -48,11 +40,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             app_data_dir: Mutex::new(None),
-            library_path: Mutex::new(None),
-            db_pool: tokio::sync::RwLock::new(None),
-            books: Mutex::new(Vec::new()),
-            sync_manager: Mutex::new(None),
-            search_engine: Mutex::new(None),
         })
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -69,80 +56,7 @@ pub fn run() {
                 *lock = Some(app_data_dir.clone());
             }
 
-            // Init Search Engine
-            let search_dir = app_data_dir.join("tantivy_index");
-            if let Ok(search_engine) = crate::core::search::SearchEngine::new(search_dir) {
-                if let Ok(mut lock) = app_state.search_engine.lock() {
-                    *lock = Some(search_engine);
-                }
-            } else {
-                error!("Failed to initialize Tantivy Search Engine");
-            }
-
-            // 1. Load Settings from persistent store (Async)
-            let handle_for_load = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                use tauri_plugin_store::StoreExt;
-                match handle_for_load.store("shelfsync_settings.json") {
-                    Ok(store_handle) => {
-                        if let Some(path) = store_handle
-                            .get("library_path")
-                            .and_then(|v| v.as_str().map(|s| s.to_string()))
-                        {
-                            let db_path = std::path::Path::new(&path).join("metadata.db");
-                            if db_path.exists() {
-                                let mut cfg = deadpool_sqlite::Config::new(&db_path);
-                                let mut pool_config = deadpool_sqlite::PoolConfig::default();
-                                pool_config.max_size = 16;
-                                cfg.pool = Some(pool_config);
-                                if let Ok(pool) = cfg
-                                    .builder(deadpool_sqlite::Runtime::Tokio1)
-                                    .unwrap()
-                                    .build()
-                                {
-                                    match db::get_calibre_metadata(&pool).await {
-                                        Ok(books) => {
-                                            let state = handle_for_load.state::<AppState>();
-                                            if let Ok(mut path_lock) = state.library_path.lock() {
-                                                *path_lock = Some(path.to_string());
-                                            }
-
-                                            if let Ok(mut books_lock) = state.books.lock() {
-                                                *books_lock = books;
-                                            }
-
-                                            let mut pool_lock = state.db_pool.write().await;
-                                            *pool_lock = Some(pool);
-                                        }
-                                        Err(e) => {
-                                            log::error!(
-                                                "[AUTO-LOAD] Failed to load metadata: {:?}",
-                                                e
-                                            );
-                                        }
-                                    }
-                                } else {
-                                    log::error!("[AUTO-LOAD] Failed to build deadpool sqlite pool");
-                                }
-                            } else {
-                                log::error!("[AUTO-LOAD] metadata.db not found at {:?}", db_path);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("[AUTO-LOAD] Failed to open settings store: {:?}", e);
-                    }
-                }
-            });
-
-            // 2. Init Sync Manager
-            let sync_mgr = crate::core::sync::SyncManager::new(handle.clone());
-            match app_state.sync_manager.lock() {
-                Ok(mut sm_lock) => *sm_lock = Some(sync_mgr),
-                Err(e) => error!("Failed to init sync manager: {}", e),
-            }
-
-            // 2b. Init offline library state (store opens asynchronously below).
+            // Init offline library state (store opens asynchronously below).
             let offline_content_root = app_data_dir.join("offline-library").join("content");
             if let Err(e) = std::fs::create_dir_all(&offline_content_root) {
                 error!("Failed to create offline content root: {}", e);
@@ -179,7 +93,7 @@ pub fn run() {
                 let _ = offline_store_slot.set(std::sync::Arc::new(store));
             });
 
-            // 2c. Init secure OPDS credential store.
+            // Init secure OPDS credential store.
             // Desktop: session-only in-memory store. Android: encrypted file
             // store keyed by an Android Keystore AES/GCM key.
             handle.manage(commands::credentials::build_shared_store(&app_data_dir));
@@ -187,16 +101,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            library::get_books,
-            library::set_library_path,
-            library::get_default_storage_path,
-            library::start_bulk_sync,
-            library::search_contents,
-            crate::commands::local_db::init_local_db,
-            crate::commands::local_db::save_local_book,
-            crate::commands::local_db::update_local_read_status,
-            crate::commands::local_db::get_local_books,
-            crate::commands::local_db::delete_local_book,
             crate::commands::opds::catalog::fetch_opds_catalog,
             crate::commands::opds::download::download_opds_publication,
             crate::commands::opds::download::opds_cancel_download,

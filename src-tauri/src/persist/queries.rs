@@ -176,7 +176,8 @@ fn acquisition_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAcqui
     })
 }
 
-const ACQUISITION_COLUMNS: &str = "id, publication_id, media_type, canonical_url, created_at, updated_at";
+const ACQUISITION_COLUMNS: &str =
+    "id, publication_id, media_type, canonical_url, created_at, updated_at";
 
 pub fn list_acquisitions(
     conn: &Connection,
@@ -399,10 +400,7 @@ fn job_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredDownloadJob> 
 const JOB_COLUMNS: &str =
     "id, revision_id, state, error, created_at, updated_at, started_at, finished_at";
 
-pub fn get_job(
-    conn: &Connection,
-    job_id: i64,
-) -> Result<Option<StoredDownloadJob>, PersistError> {
+pub fn get_job(conn: &Connection, job_id: i64) -> Result<Option<StoredDownloadJob>, PersistError> {
     let found = conn
         .query_row(
             &format!("SELECT {JOB_COLUMNS} FROM download_job WHERE id = ?1"),
