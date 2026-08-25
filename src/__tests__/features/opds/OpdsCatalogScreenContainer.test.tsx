@@ -11,7 +11,9 @@ const tauriState = vi.hoisted(() => ({ enabled: false }));
 vi.mock("@/utils/tauri", () => ({
   isTauri: () => tauriState.enabled,
   isMobile: () => false,
-  safeInvoke: vi.fn(),
+  // Resolve with sensible defaults so consumers awaiting these (e.g.
+  // savedCatalogsService.list()) never receive `undefined`.
+  safeInvoke: vi.fn().mockResolvedValue([]),
   safeStoreLoad: vi.fn(),
 }));
 
