@@ -6,8 +6,6 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://github.com/jdluu/ShelfSync/blob/main/LICENSE)
 
-[![Add to Obtainium](https://img.shields.io/badge/Add%20to-Obtainium-blue?logo=android)](https://obtainium.imranr.dev/add/https%3A%2F%2Fgithub.com%2Fjdluu%2FShelfSync)
-
 **ShelfSync** is a cross-platform app for browsing, downloading, and managing
 your e-book library from a remote catalog. Connect to an OPDS-compatible
 server (such as [Grimmory](https://github.com/jdluu/Grimmory)), download
@@ -52,7 +50,7 @@ progress, and offline library states:
 
 ### Android (Obtainium)
 
-[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](obtainium://add/github.com/jdluu/ShelfSync)
+[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](https://obtainium.imranr.dev/add/https%3A%2F%2Fgithub.com%2Fjdluu%2FShelfSync)
 
 Tap the badge on your Android device with [Obtainium](https://obtainium.imranr.dev/)
 installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
