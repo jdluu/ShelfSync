@@ -156,17 +156,22 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
         <form
           aria-label="OPDS catalog connection"
           aria-busy={loading}
-          className="card bg-base-100/80 border border-base-content/10"
+          className="card bg-base-200 border border-base-300 max-w-xl mx-auto w-full mt-6"
           onSubmit={(e) => {
             e.preventDefault();
             handleConnect();
           }}
         >
-          <div className="card-body gap-4">
-            <h2 className="card-title text-lg">Connect to OPDS catalog</h2>
-            <p className="text-sm text-base-content/60">
-              Credentials are kept in memory only and are never saved.
-            </p>
+          <div className="card-body gap-5 p-6 sm:p-8">
+            <div className="flex flex-col gap-1.5 mb-1">
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
+                Connect your shelf
+              </h2>
+              <p className="text-sm text-base-content/60">
+                Point ShelfSync at your OPDS catalog. Credentials stay in memory
+                and are never saved.
+              </p>
+            </div>
 
             <label className="form-control w-full" htmlFor="opds-catalog-url">
               <span className="label-text mb-1 font-medium">Catalog URL</span>

@@ -20,14 +20,14 @@ export const Header: React.FC<HeaderProps> = ({ title, onChangeRole, actions }) 
         style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 0.75rem)" }}
       >
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <BrandLogo size="md" className="shrink-0" />
-            <span className="text-xl sm:text-2xl font-bold tracking-tight hidden xs:block">
+            <span className="font-display text-xl sm:text-2xl font-semibold tracking-tight hidden xs:block">
               ShelfSync
             </span>
           </div>
-          <div className="h-8 w-px bg-base-300 mx-2 hidden sm:block"></div>
-          <span className="text-lg font-medium text-base-content/80 hidden sm:block">{title}</span>
+          <div className="h-6 w-px bg-base-300 mx-1 hidden sm:block"></div>
+          <span className="text-sm font-medium text-base-content/60 hidden sm:block">{title}</span>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-3">

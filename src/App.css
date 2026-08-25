@@ -6,6 +6,10 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Brand fonts (docs/design/BRAND.md) */
+  --font-ui: "Outfit", system-ui, -apple-system, sans-serif;
+  --font-display: "Source Serif 4", Georgia, serif;
 }
 
 html,
@@ -18,7 +22,7 @@ body,
 
 body {
   min-height: 100dvh;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-ui);
   transition:
     background-color 0.3s ease,
     color 0.3s ease,
@@ -27,9 +31,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom font utility classes */
+/* Display font: book titles and the wordmark ONLY (never UI chrome) */
 .font-display {
-  font-family: "Outfit", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-display);
 }
 
 /* Ensure smooth transitions for all elements that use theme-based colors */
@@ -83,92 +87,100 @@ html.e-ink .shadow-2xl {
   border: 1px solid #000000;
 }
 
+/*
+ * Theme: "paper" (light) — a warm reading room in daylight.
+ * Paper neutrals, ink text, lamplight-amber accent. See docs/design/BRAND.md.
+ */
 @plugin "daisyui/theme" {
-  name: "light";
+  name: "paper";
   default: true;
   prefersdark: false;
   color-scheme: light;
 
-  --color-base-100: #eceff4; /* nord6 */
-  --color-base-200: #e5e9f0; /* nord5 */
-  --color-base-300: #d8dee9; /* nord4 */
-  --color-base-content: #2e3440; /* nord0 */
+  --color-base-100: #faf7f2; /* page */
+  --color-base-200: #f2ede4; /* cards */
+  --color-base-300: #e4dccc; /* wells, borders */
+  --color-base-content: #2b2620; /* ink */
 
-  --color-primary: #4c6b94; /* darkened nord10 for contrast against nord6 */
-  --color-primary-content: #eceff4; /* nord6 */
+  --color-primary: #c88a3d; /* lamplight amber */
+  --color-primary-content: #fffdf9;
 
-  --color-secondary: #6e8fae; /* darkened nord9 */
-  --color-secondary-content: #2e3440; /* nord0 */
+  --color-secondary: #7a6a54; /* leather */
+  --color-secondary-content: #faf7f2;
 
-  --color-accent: #6fabbf; /* darkened nord8 */
-  --color-accent-content: #2e3440; /* nord0 */
+  --color-accent: #a87838; /* deeper amber for small interactive elements */
+  --color-accent-content: #fffdf9;
 
-  --color-neutral: #4c566a; /* nord3 */
-  --color-neutral-content: #d8dee9; /* nord4 */
+  --color-neutral: #57503f;
+  --color-neutral-content: #f2ede4;
 
-  --color-info: #88c0d0; /* nord8 */
-  --color-info-content: #2e3440; /* nord0 */
+  --color-info: #5b7d9e;
+  --color-info-content: #faf7f2;
 
-  --color-success: #a3be8c; /* nord14 */
-  --color-success-content: #2e3440; /* nord0 */
+  --color-success: #6a8f5f;
+  --color-success-content: #faf7f2;
 
-  --color-warning: #ebcb8b; /* nord13 */
-  --color-warning-content: #2e3440; /* nord0 */
+  --color-warning: #b08a3e;
+  --color-warning-content: #fffdf9;
 
-  --color-error: #bf616a; /* nord11 */
-  --color-error-content: #eceff4; /* nord6 */
+  --color-error: #b0563f;
+  --color-error-content: #faf7f2;
 
-  --radius-selector: 0.5rem;
-  --radius-field: 0.3rem;
-  --radius-box: 0.5rem;
+  --radius-selector: 0.75rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
-  --depth: 1;
+  --depth: 0;
   --noise: 0;
 }
 
+/*
+ * Theme: "lamplight" (dark) — the same reading room at night.
+ * Warm near-black surfaces, cream ink, brighter amber accent.
+ */
 @plugin "daisyui/theme" {
-  name: "dark";
+  name: "lamplight";
   default: false;
   prefersdark: true;
   color-scheme: dark;
 
-  --color-base-100: #2e3440; /* nord0 */
-  --color-base-200: #3b4252; /* nord1 */
-  --color-base-300: #434c5e; /* nord2 */
-  --color-base-content: #eceff4; /* nord6 */
+  --color-base-100: #191714; /* page */
+  --color-base-200: #211e1a; /* cards */
+  --color-base-300: #2b2722; /* wells, borders */
+  --color-base-content: #ece5d8; /* cream ink */
 
-  --color-primary: #9ed1e0; /* lightened nord8 for contrast against nord0 */
-  --color-primary-content: #2e3440; /* nord0 */
+  --color-primary: #e0a458; /* brighter lamplight amber */
+  --color-primary-content: #1c1712;
 
-  --color-secondary: #99b6d3; /* lightened nord9 */
-  --color-secondary-content: #2e3440; /* nord0 */
+  --color-secondary: #b3a184;
+  --color-secondary-content: #1c1712;
 
-  --color-accent: #7899c4; /* lightened nord10 */
-  --color-accent-content: #eceff4; /* nord6 */
+  --color-accent: #e0a458;
+  --color-accent-content: #1c1712;
 
-  --color-neutral: #4c566a; /* nord3 */
-  --color-neutral-content: #d8dee9; /* nord4 */
+  --color-neutral: #3a352c;
+  --color-neutral-content: #ece5d8;
 
-  --color-info: #88c0d0; /* nord8 */
-  --color-info-content: #2e3440; /* nord0 */
+  --color-info: #8fb0cc;
+  --color-info-content: #1c1712;
 
-  --color-success: #a3be8c; /* nord14 */
-  --color-success-content: #2e3440; /* nord0 */
+  --color-success: #93b886;
+  --color-success-content: #1c1712;
 
-  --color-warning: #ebcb8b; /* nord13 */
-  --color-warning-content: #2e3440; /* nord0 */
+  --color-warning: #d4b06a;
+  --color-warning-content: #1c1712;
 
-  --color-error: #bf616a; /* nord11 */
-  --color-error-content: #eceff4; /* nord6 */
+  --color-error: #d98a72;
+  --color-error-content: #1c1712;
 
-  --radius-selector: 0.5rem;
-  --radius-field: 0.3rem;
-  --radius-box: 0.5rem;
+  --radius-selector: 0.75rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
-  --depth: 1;
+  --depth: 0;
   --noise: 0;
 }

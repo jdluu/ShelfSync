@@ -111,29 +111,29 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
 
   return (
     <article
-      className="card bg-base-100/80 backdrop-blur-sm border border-base-content/10 hover:shadow-md transition-shadow duration-200"
+      className="card bg-base-200 border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200"
       aria-labelledby={`pub-title-${publication.id}`}
     >
       <div className="card-body p-4 flex flex-col gap-2">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-16 bg-base-300/50 rounded-xl flex items-center justify-center flex-shrink-0">
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-28 bg-base-300 rounded-lg shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
             {hasCover ? (
               <img
                 src={publication.representative?.href}
                 alt={`Cover of ${publication.title}`}
-                className="w-full h-full object-cover rounded-xl"
+                className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
             ) : (
-              <BookIcon className="w-6 h-6 text-base-content/40" aria-hidden="true" />
+              <BookIcon className="w-8 h-8 text-base-content/30" aria-hidden="true" />
             )}
           </div>
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <h3
               id={`pub-title-${publication.id}`}
-              className="text-sm font-bold text-base-content leading-tight truncate"
+              className="font-display text-base font-semibold text-base-content leading-snug line-clamp-2"
               title={publication.title}
             >
               {publication.title}
@@ -148,7 +148,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
             )}
             {publication.series && (
               <p
-                className="text-[10px] text-accent truncate"
+                className="text-[10px] text-secondary truncate"
                 title={`${publication.series.name}${publication.series.index ? ` #${publication.series.index}` : ""}`}
               >
                 {publication.series.name}

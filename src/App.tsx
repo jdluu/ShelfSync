@@ -20,14 +20,11 @@ function InitializingView() {
       }}
     >
       <div className="flex flex-col items-center gap-6 animate-in fade-in duration-500">
-        <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-xl animate-pulse" />
-          <BrandLogo size="lg" className="relative shadow-xl rounded-3xl" />
-        </div>
+        <BrandLogo size="xl" />
         <div className="flex flex-col items-center gap-2">
-          <span className="loading loading-spinner loading-md text-primary opacity-80" />
-          <p className="text-sm font-medium text-base-content/60 tracking-wide uppercase">
-            Initializing ShelfSync
+          <span className="loading loading-spinner loading-sm text-primary" />
+          <p className="text-xs font-medium text-base-content/50 tracking-widest uppercase">
+            Opening your shelf
           </p>
         </div>
       </div>

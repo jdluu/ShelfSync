@@ -9,12 +9,21 @@ import { useEffect, useState } from "react";
  * Updates the `data-theme` attribute on `<html>` and the `theme-color` meta tag
  * for mobile status bar integration.
  */
-const applyTheme = (t: "light" | "dark" | "system") => {
-  let effectiveTheme: "light" | "dark";
+const THEMES = {
+  light: "paper",
+  dark: "lamplight",
+} as const;
+
+type ThemePref = "light" | "dark" | "system";
+
+const applyTheme = (t: ThemePref) => {
+  let effectiveTheme: string;
   if (t === "system") {
-    effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    effectiveTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? THEMES.dark
+      : THEMES.light;
   } else {
-    effectiveTheme = t;
+    effectiveTheme = THEMES[t];
   }
   const documentElement = document.documentElement;
   documentElement.setAttribute("data-theme", effectiveTheme);
@@ -22,7 +31,10 @@ const applyTheme = (t: "light" | "dark" | "system") => {
 
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    metaThemeColor.setAttribute("content", effectiveTheme === "dark" ? "#1d232a" : "#ffffff");
+    metaThemeColor.setAttribute(
+      "content",
+      effectiveTheme === THEMES.dark ? "#191714" : "#faf7f2",
+    );
   }
 };
 
@@ -55,9 +67,13 @@ export const ThemeSwitcher: React.FC = () => {
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      const currentTheme = document.documentElement.getAttribute("data-theme") as "light" | "dark";
-      if (theme !== "system" && currentTheme && currentTheme !== theme) {
-        setTheme(currentTheme);
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      const themeByValue = Object.entries(THEMES).find(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ([, value]) => value === currentTheme,
+      )?.[0] as ThemePref | undefined;
+      if (theme !== "system" && themeByValue && themeByValue !== theme) {
+        setTheme(themeByValue);
       }
     });
 
