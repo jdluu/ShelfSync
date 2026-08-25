@@ -3,29 +3,41 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { useStorageStore } from "@/store/storageStore";
 import { useToastStore } from "@/store/toastStore";
+import { safeStoreLoad } from "@/utils/tauri";
 
 const mocks = vi.hoisted(() => ({
   isTauri: true,
   isMobile: false,
   storeData: new Map<string, unknown>(),
+  storeLoadPaths: [] as string[],
+  storeSets: [] as Array<[string, unknown]>,
+  storeSaves: 0,
+  failStoreLoad: false,
 }));
 
 vi.mock("@/utils/tauri", () => ({
   isTauri: vi.fn(() => mocks.isTauri),
   isMobile: vi.fn(() => mocks.isMobile),
   safeInvoke: vi.fn(async () => undefined),
-  safeStoreLoad: vi.fn(async () => ({
-    get: async <T>(key: string): Promise<T | null> => (mocks.storeData.get(key) as T) ?? null,
-    set: async (key: string, value: unknown) => {
-      mocks.storeData.set(key, value);
-    },
-    save: async () => {},
-    clear: async () => {
-      mocks.storeData.clear();
-    },
-    onKeyChange: () => () => {},
-    onChange: () => () => {},
-  })),
+  safeStoreLoad: vi.fn(async (path: string) => {
+    mocks.storeLoadPaths.push(path);
+    if (mocks.failStoreLoad) throw new Error("settings store unavailable");
+    return {
+      get: async <T>(key: string): Promise<T | null> => (mocks.storeData.get(key) as T) ?? null,
+      set: async (key: string, value: unknown) => {
+        mocks.storeData.set(key, value);
+        mocks.storeSets.push([key, value]);
+      },
+      save: async () => {
+        mocks.storeSaves += 1;
+      },
+      clear: async () => {
+        mocks.storeData.clear();
+      },
+      onKeyChange: () => () => {},
+      onChange: () => () => {},
+    };
+  }),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -52,10 +64,15 @@ describe("offline storage folder selection (#13)", () => {
     mocks.isTauri = true;
     mocks.isMobile = false;
     mocks.storeData.clear();
+    mocks.storeLoadPaths.length = 0;
+    mocks.storeSets.length = 0;
+    mocks.storeSaves = 0;
+    mocks.failStoreLoad = false;
     vi.mocked(invoke).mockResolvedValue(DEFAULT_PATH);
     vi.mocked(open).mockResolvedValue(null);
     vi.mocked(save).mockResolvedValue(null);
     useStorageStore.setState({
+      libraryPath: "",
       offlineStoragePath: "",
       storageChoiceOpen: false,
     });
@@ -177,5 +194,109 @@ describe("offline storage folder selection (#13)", () => {
       expect(invoke).not.toHaveBeenCalled();
       expect(save).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("setOfflineStoragePath persistence (#33)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isTauri = true;
+    mocks.isMobile = false;
+    mocks.storeData.clear();
+    mocks.storeLoadPaths.length = 0;
+    mocks.storeSets.length = 0;
+    mocks.storeSaves = 0;
+    mocks.failStoreLoad = false;
+    useStorageStore.setState({
+      libraryPath: "",
+      offlineStoragePath: "",
+      storageChoiceOpen: false,
+    });
+    useToastStore.setState({ toasts: [] });
+  });
+
+  it("persists the path through the settings store and saves it", async () => {
+    await useStorageStore.getState().setOfflineStoragePath("/data/downloads");
+
+    expect(useStorageStore.getState().offlineStoragePath).toBe("/data/downloads");
+    expect(vi.mocked(safeStoreLoad)).toHaveBeenCalledWith("shelfsync_settings.json");
+    expect(mocks.storeSets).toContainEqual(["offline_storage_path", "/data/downloads"]);
+    expect(mocks.storeSaves).toBeGreaterThan(0);
+  });
+
+  it("keeps the in-memory path but reports an error when persistence fails", async () => {
+    mocks.failStoreLoad = true;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      await useStorageStore.getState().setOfflineStoragePath("/data/downloads");
+      expect(errorSpy).toHaveBeenCalledWith(
+        "[Settings Error] Failed to save offline storage path.",
+      );
+    } finally {
+      errorSpy.mockRestore();
+    }
+
+    expect(useStorageStore.getState().offlineStoragePath).toBe("/data/downloads");
+    expect(mocks.storeSaves).toBe(0);
+  });
+});
+
+describe("storageChoiceOpen lifecycle (#33)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isTauri = true;
+    mocks.isMobile = true;
+    mocks.storeData.clear();
+    vi.mocked(invoke).mockResolvedValue(DEFAULT_PATH);
+    vi.mocked(open).mockResolvedValue(null);
+    vi.mocked(save).mockResolvedValue(null);
+    useStorageStore.setState({
+      libraryPath: "",
+      offlineStoragePath: "",
+      storageChoiceOpen: false,
+    });
+    useToastStore.setState({ toasts: [] });
+  });
+
+  it("walks open → resolve via recommendation → reopen → dismiss", async () => {
+    await store().selectOfflineStorageFolder();
+    expect(store().storageChoiceOpen).toBe(true);
+
+    await store().chooseRecommendedStorage();
+    expect(store().storageChoiceOpen).toBe(false);
+    expect(store().offlineStoragePath).toBe(DEFAULT_PATH);
+
+    // The choice can be presented again later (e.g. user clears the path)
+    useStorageStore.setState({ offlineStoragePath: "" });
+    await store().selectOfflineStorageFolder();
+    expect(store().storageChoiceOpen).toBe(true);
+
+    store().dismissStorageChoice();
+    expect(store().storageChoiceOpen).toBe(false);
+    expect(store().offlineStoragePath).toBe("");
+  });
+
+  it("never opens the choice modal during a successful desktop pick", async () => {
+    mocks.isMobile = false;
+    vi.mocked(open).mockResolvedValue("/home/user/books");
+
+    await store().selectOfflineStorageFolder();
+
+    expect(store().storageChoiceOpen).toBe(false);
+    expect(store().offlineStoragePath).toBe("/home/user/books");
+  });
+
+  it("stays open across a cancelled browse until another option resolves", async () => {
+    await store().selectOfflineStorageFolder();
+    expect(store().storageChoiceOpen).toBe(true);
+
+    await store().browseForStorage(); // save dialog cancelled
+    expect(store().storageChoiceOpen).toBe(true);
+
+    vi.mocked(save).mockResolvedValue("/sdcard/Books/SHELF_SYNC_TARGET.txt");
+    await store().browseForStorage();
+    expect(store().storageChoiceOpen).toBe(false);
+    expect(store().offlineStoragePath).toBe("/sdcard/Books");
   });
 });
