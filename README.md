@@ -4,7 +4,9 @@
 ![Tauri](https://img.shields.io/badge/Tauri-021021?style=for-the-badge&logo=tauri&logoColor=24C8DB)
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://github.com/jdluu/ShelfSync/blob/main/LICENSE)
+
+[![Add to Obtainium](https://img.shields.io/badge/Add%20to-Obtainium-blue?logo=android)](https://obtainium.imranr.dev/add/https%3A%2F%2Fgithub.com%2Fjdluu%2FShelfSync)
 
 **ShelfSync** is a cross-platform app for browsing, downloading, and managing
 your e-book library from a remote catalog. Connect to an OPDS-compatible
