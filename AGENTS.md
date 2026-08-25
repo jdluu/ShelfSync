@@ -39,10 +39,9 @@ the division of responsibility between the two apps.
 
 ```
 src-tauri/src/
-  commands/   Tauri IPC command layer (incl. commands/opds.rs with transport
-              error sanitizing — auth failures map to fixed messages)
+  commands/   Tauri IPC command layer (incl. commands/opds/ with IPC
+              sub-modules: transport, auth, catalog, download)
   core/       Domain logic, Calibre SQLite (legacy compatibility layer)
-  http/       Axum HTTP server (desktop host role only)
   opds/       OPDS parser, transport, downloader (.part + hash verify +
               atomic rename), acquisition, install, errors, HTTP client
   offline/    Offline maintenance + catalog refresh reconciliation
@@ -58,7 +57,6 @@ mock_library/ Test fixture library
 scripts/      Dev scripts
 ```
 
-Desktop-only behavior: the Axum server, mDNS discovery, tray, and BLE modules
 compile and start only under `#[cfg(desktop)]`. Android builds run no peer
 services; legacy peer permissions/services were removed (see commit history:
 BLE, multicast lock, external storage, foreground service all stripped;
