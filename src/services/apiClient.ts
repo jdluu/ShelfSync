@@ -1,7 +1,7 @@
-import type { Book, ConnectionInfo, Host } from "@/types/core";
-import { BookSchema, ConnectionInfoSchema } from "@/types/schemas";
+import type { Book, Host } from "@/types/core";
+import { BookSchema } from "@/types/schemas";
 import { safeInvoke } from "@/utils/tauri";
-import { MOCK_BOOKS, MOCK_CONNECTION_INFO, MOCK_HOST } from "./mockData";
+import { MOCK_BOOKS, MOCK_HOST } from "./mockData";
 
 const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
@@ -39,38 +39,6 @@ export const api = {
      * Triggers a bulk synchronization for the specified book IDs.
      */
     startBulkSync: (bookIds: number[]) => safeInvoke<void>("start_bulk_sync", { bookIds }),
-  },
-  /**
-   * Network and discovery commands.
-   */
-  network: {
-    /**
-     * Retrieves the host's local connection information (IP/Port).
-     */
-    getConnectionInfo: () => {
-      if (MOCK_MODE) return Promise.resolve(MOCK_CONNECTION_INFO);
-      return safeInvoke<ConnectionInfo>("get_connection_info", undefined, {
-        ip: "127.0.0.1",
-        port: 1420,
-        hostname: "Browser",
-        pin: "0000",
-      }).then((res) => ConnectionInfoSchema.parse(res));
-    },
-
-    /**
-     * Discovers other active ShelfSync hosts on the local network.
-     */
-    discoverHosts: () => {
-      if (MOCK_MODE) return Promise.resolve([MOCK_CONNECTION_INFO]);
-      return safeInvoke<ConnectionInfo[]>("discover_hosts", undefined, []).then((res) =>
-        ConnectionInfoSchema.array().parse(res),
-      );
-    },
-
-    /**
-     * Clears the discovered hosts cache and triggers a fresh mDNS scan.
-     */
-    refreshDiscovery: () => safeInvoke<void>("refresh_discovery"),
   },
 };
 

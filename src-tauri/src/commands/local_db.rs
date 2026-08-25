@@ -9,7 +9,7 @@ use tauri::State;
 /// Acquires the `app_data_dir` lock, constructs the DB path, and returns an open connection.
 fn open_client_db(state: &AppState) -> Result<Connection, AppError> {
     let app_data_dir = {
-        let guard = lock_or_err(&state.server.app_data_dir)?;
+        let guard = lock_or_err(&state.app_data_dir)?;
         guard
             .clone()
             .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?
@@ -213,7 +213,7 @@ pub fn update_local_read_status(
 #[tauri::command]
 pub fn get_local_books(state: State<'_, AppState>) -> Result<Vec<Book>, AppError> {
     let app_data_dir = {
-        let guard = lock_or_err(&state.server.app_data_dir)?;
+        let guard = lock_or_err(&state.app_data_dir)?;
         guard
             .clone()
             .ok_or_else(|| AppError::Unknown("App data dir not set".to_string()))?

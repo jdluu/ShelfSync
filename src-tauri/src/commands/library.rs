@@ -44,21 +44,19 @@ pub async fn get_books(
 
     {
         let mut path_lock = state
-            .server
             .library_path
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock library path".to_string()))?;
         *path_lock = Some(library_path.clone());
 
         let mut books_lock = state
-            .server
             .books
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books.clone();
     }
 
-    let mut pool_lock = state.server.db_pool.write().await;
+    let mut pool_lock = state.db_pool.write().await;
     *pool_lock = Some(pool);
 
     Ok(books)
@@ -90,21 +88,19 @@ pub async fn set_library_path(
     // 3. Update State
     {
         let mut lib_path = state
-            .server
             .library_path
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock library path".to_string()))?;
         *lib_path = Some(path);
 
         let mut books_lock = state
-            .server
             .books
             .lock()
             .map_err(|_| AppError::Unknown("Failed to lock books cache".to_string()))?;
         *books_lock = books;
     }
 
-    let mut pool_lock = state.server.db_pool.write().await;
+    let mut pool_lock = state.db_pool.write().await;
     *pool_lock = Some(pool);
 
     Ok(())

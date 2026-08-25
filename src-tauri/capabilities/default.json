@@ -13,7 +13,6 @@
     "dialog:default",
     "notification:default",
     "updater:default",
-    "core:tray:default",
     "process:default",
     {
       "identifier": "fs:scope",

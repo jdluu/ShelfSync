@@ -18,11 +18,3 @@ pub struct Book {
     pub language: Option<String>,
     pub published_date: Option<String>,
 }
-
-#[derive(Serialize, Clone, Debug)]
-pub struct ConnectionInfo {
-    pub ip: String,
-    pub port: u16,
-    pub hostname: String,
-    pub pin: Option<String>,
-}

@@ -1,11 +1,11 @@
 import { openPath } from "@tauri-apps/plugin-opener";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteHostManifest } from "@/hooks/useLibraryQuery";
 import { useSyncProgress } from "@/hooks/useSyncProgress";
-import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 import { useToastStore } from "@/store/toastStore";
+import type { Host } from "@/types/core";
 import { isTauri } from "@/utils/tauri";
 import { useBookFilters } from "./useBookFilters";
 import { useBookSelection } from "./useBookSelection";
@@ -20,12 +20,13 @@ export function useClientDashboard() {
     selectOfflineStorageFolder,
     deleteLocalBook,
   } = useLibraryStore();
-  const { connectedHost, authTokens, setAuthRequired, setPairingHost, connect, disconnect } =
-    useAuthStore();
   const { syncProgress, manualError, clearError } = useSyncStore();
 
-  const hostKey = connectedHost ? `${connectedHost.ip}:${connectedHost.port}` : "";
-  const token = authTokens[hostKey];
+  const [connectedHost, setConnectedHost] = useState<Host | null>(null);
+  const token: string | undefined = undefined;
+
+  const connect = useCallback((host: Host) => setConnectedHost(host), []);
+  const disconnect = useCallback(() => setConnectedHost(null), []);
 
   const remoteQuery = useInfiniteHostManifest(connectedHost, token, appMode === "client");
 
@@ -34,9 +35,7 @@ export function useClientDashboard() {
   const lastVersionRef = useRef<string | undefined>(undefined);
 
   const loading = remoteQuery.isLoading;
-  const error =
-    manualError ||
-    (remoteQuery.error?.message !== "Unauthorized" ? remoteQuery.error?.message : null);
+  const error = manualError || remoteQuery.error?.message;
 
   useEffect(() => {
     if (libraryVersion && lastVersionRef.current && libraryVersion !== lastVersionRef.current) {
@@ -53,15 +52,6 @@ export function useClientDashboard() {
   }, [books]);
 
   useSyncProgress(booksRef, offlineStoragePath, setLocalBooks);
-
-  useEffect(() => {
-    if (remoteQuery.error?.message === "Unauthorized") {
-      setAuthRequired(true);
-      setPairingHost(connectedHost);
-    } else {
-      setAuthRequired(false);
-    }
-  }, [remoteQuery.error, connectedHost, setAuthRequired, setPairingHost]);
 
   const refresh = async () => {
     await remoteQuery.refetch();

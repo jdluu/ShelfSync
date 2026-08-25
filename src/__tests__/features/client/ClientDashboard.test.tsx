@@ -1,8 +1,7 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { useHostManifest, useInfiniteHostManifest } from "@/hooks/useLibraryQuery";
-import { useAuthStore } from "@/store/authStore";
 import { useLibraryStore } from "@/store/libraryStore";
 import { useSyncStore } from "@/store/syncStore";
 
@@ -33,23 +32,6 @@ beforeEach(() => {
   });
 });
 
-// Mock child components to isolate behavior
-vi.mock("@/features/discovery/Discovery", () => ({
-  Discovery: ({ onConnect }: { onConnect: (host: unknown) => void }) => (
-    <button
-      type="button"
-      onClick={() => onConnect({ ip: "127.0.0.1", port: 1420 })}
-      data-testid="mock-discover"
-    >
-      Connect Host
-    </button>
-  ),
-}));
-
-vi.mock("@/store/authStore", () => ({
-  useAuthStore: vi.fn(),
-}));
-
 vi.mock("@/store/libraryStore", () => ({
   useLibraryStore: vi.fn(),
 }));
@@ -72,15 +54,6 @@ describe("ClientDashboard Integration", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
-    (useAuthStore as unknown as Mock).mockReturnValue({
-      connectedHost: null,
-      authTokens: {},
-      setAuthRequired: vi.fn(),
-      setPairingHost: vi.fn(),
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-    });
-
     (useLibraryStore as unknown as Mock).mockReturnValue({
       appMode: "client",
       offlineStoragePath: "/test/path",
@@ -114,40 +87,14 @@ describe("ClientDashboard Integration", () => {
     });
   });
 
-  it("shows discovery view when no host is connected", () => {
+  it("shows an empty state when no host is connected", () => {
     render(<ClientDashboard onChangeRole={vi.fn()} />);
-    expect(screen.getByTestId("mock-discover")).toBeDefined();
+    expect(screen.getByText("No host connected")).toBeDefined();
     expect(screen.getByText("Client Dashboard")).toBeDefined();
   });
 
-  it("calls connect when discovery view triggers connect", () => {
-    const handleConnect = vi.fn();
-    (useAuthStore as unknown as Mock).mockReturnValue({
-      connectedHost: null,
-      authTokens: {},
-      setAuthRequired: vi.fn(),
-      setPairingHost: vi.fn(),
-      connect: handleConnect,
-      disconnect: vi.fn(),
-    });
-
+  it("renders the explore tab with no remote books available", () => {
     render(<ClientDashboard onChangeRole={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("mock-discover"));
-    expect(handleConnect).toHaveBeenCalledWith({ ip: "127.0.0.1", port: 1420 });
-  });
-
-  it("shows library view when a host is connected", () => {
-    (useAuthStore as unknown as Mock).mockReturnValue({
-      connectedHost: { ip: "10.0.0.5", port: 1420, hostname: "Desktop" },
-      authTokens: {},
-      setAuthRequired: vi.fn(),
-      setPairingHost: vi.fn(),
-      connect: vi.fn(),
-      disconnect: vi.fn(),
-    });
-
-    render(<ClientDashboard onChangeRole={vi.fn()} />);
-    expect(screen.getAllByText("Live Sync").length).toBeGreaterThan(0);
-    expect(screen.queryByTestId("mock-discover")).toBeNull();
+    expect(screen.getByText("Explore")).toBeDefined();
   });
 });
