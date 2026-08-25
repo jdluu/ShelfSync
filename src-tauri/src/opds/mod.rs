@@ -7,6 +7,7 @@ mod errors;
 mod http_client;
 mod http_client_tests;
 mod install;
+#[cfg(test)]
 mod live_grimmory_tests;
 mod parser;
 mod transport;

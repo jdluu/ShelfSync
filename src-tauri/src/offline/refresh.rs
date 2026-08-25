@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use crate::opds::{
-    MEDIA_TYPE_EPUB, MEDIA_TYPE_PDF, OpdsClient, Publication, origin_matches, resolve_link,
-    validate_download_url,
+    origin_matches, resolve_link, validate_download_url, OpdsClient, Publication, MEDIA_TYPE_EPUB,
+    MEDIA_TYPE_PDF,
 };
 use crate::persist::{AcquisitionInput, LibraryStore, PersistError};
 
@@ -72,9 +72,9 @@ fn acquisition_set_changed(
     if existing.len() != incoming.len() {
         return true;
     }
-    incoming.iter().any(|(media_type, url)| {
-        existing.get(*media_type) != Some(&url.as_str().to_string())
-    })
+    incoming
+        .iter()
+        .any(|(media_type, url)| existing.get(*media_type) != Some(&url.as_str().to_string()))
 }
 
 /// Compares two metadata snapshots semantically. Stored snapshots are
@@ -324,11 +324,7 @@ mod tests {
         // it from CatalogConfig::base_url (always trailing slash).
         let account_base = format!("{}/", catalog_url.as_str().trim_end_matches('/'));
         let account = store
-            .ensure_catalog_account(
-                "grimmory".to_string(),
-                account_base,
-                "alice".to_string(),
-            )
+            .ensure_catalog_account("grimmory".to_string(), account_base, "alice".to_string())
             .await
             .unwrap();
         let content_root = dir.path().join("content");
@@ -399,11 +395,7 @@ mod tests {
         let book_old = publication("book-old", "Vanishing Book");
         let book1_new = publication("book-1", "First Book Renamed");
         let book_new = publication("book-new", "Fresh Arrival");
-        let old_feed = feed_for(
-            "Catalog v1",
-            &[book1_old.clone(), book_old.clone()],
-            None,
-        );
+        let old_feed = feed_for("Catalog v1", &[book1_old.clone(), book_old.clone()], None);
         let new_feed = feed_for("Catalog v2", &[book1_new, book_new], None);
 
         let hits = Arc::new(AtomicUsize::new(0));
@@ -567,8 +559,14 @@ mod tests {
             .unwrap();
         assert_eq!(report.removed, vec!["book-2".to_string()]);
 
-        assert!(old_path.exists(), "server removal must never delete local files");
-        assert!(current_path.exists(), "server removal must never delete local files");
+        assert!(
+            old_path.exists(),
+            "server removal must never delete local files"
+        );
+        assert!(
+            current_path.exists(),
+            "server removal must never delete local files"
+        );
 
         let snapshot = env.store.library_snapshot().await.unwrap();
         assert_eq!(snapshot.complete.len(), 0);
@@ -628,7 +626,9 @@ mod tests {
         let app = Router::new().route(
             "/opds",
             get(
-                move |axum::extract::Query(query): axum::extract::Query<std::collections::HashMap<String, String>>| {
+                move |axum::extract::Query(query): axum::extract::Query<
+                    std::collections::HashMap<String, String>,
+                >| {
                     let page_one = page_one.clone();
                     let page_two = page_two.clone();
                     async move {
@@ -727,7 +727,11 @@ mod tests {
         same_origin.links.push(mobi);
 
         let resolved = feed_acquisitions(&same_origin, &base, "https://books.example.com");
-        assert_eq!(resolved.len(), 1, "cross-origin and unsupported links are skipped");
+        assert_eq!(
+            resolved.len(),
+            1,
+            "cross-origin and unsupported links are skipped"
+        );
         assert_eq!(resolved[0].0, MEDIA_TYPE_EPUB);
         assert_eq!(
             resolved[0].1.as_str(),
@@ -746,10 +750,11 @@ mod tests {
         )]);
         assert!(acquisition_set_changed(&moved, &resolved));
 
-        assert_eq!(supported_media_type(Some(MEDIA_TYPE_EPUB)), Some(MEDIA_TYPE_EPUB));
+        assert_eq!(
+            supported_media_type(Some(MEDIA_TYPE_EPUB)),
+            Some(MEDIA_TYPE_EPUB)
+        );
         assert_eq!(supported_media_type(Some("application/x-mobi")), None);
         assert_eq!(supported_media_type(None), None);
     }
 }
-
-

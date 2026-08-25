@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
 use tauri::command;
 use tauri_plugin_store::StoreExt;
 use uuid::Uuid;
@@ -20,16 +19,12 @@ struct CatalogStoreData {
 
 /// List all saved OPDS catalog metadata (credentials excluded).
 #[command]
-pub fn opds_list_saved_catalogs(
-    app: tauri::AppHandle,
-) -> Result<Vec<SavedCatalog>, String> {
+pub fn opds_list_saved_catalogs(app: tauri::AppHandle) -> Result<Vec<SavedCatalog>, String> {
     match app.store("shelfsync_settings.json") {
         Ok(store) => {
             let data = store
                 .get("saved_catalogs")
-                .and_then(|v| {
-                    serde_json::from_value::<CatalogStoreData>(v.clone()).ok()
-                })
+                .and_then(|v| serde_json::from_value::<CatalogStoreData>(v.clone()).ok())
                 .unwrap_or(CatalogStoreData { catalogs: vec![] });
             Ok(data.catalogs)
         }
@@ -56,13 +51,9 @@ pub fn opds_save_catalog(
     Ok(catalog)
 }
 
-
 /// Delete a catalog by id.
 #[command]
-pub fn opds_delete_catalog(
-    app: tauri::AppHandle,
-    id: String,
-) -> Result<bool, String> {
+pub fn opds_delete_catalog(app: tauri::AppHandle, id: String) -> Result<bool, String> {
     let store = app
         .store("shelfsync_settings.json")
         .map_err(|e| format!("Failed to open store: {}", e))?;
@@ -74,8 +65,7 @@ pub fn opds_delete_catalog(
     data.catalogs.retain(|c| c.id != id);
     let removed = data.catalogs.len() < len_before;
     if removed {
-        let json = serde_json::to_value(&data)
-            .map_err(|e| format!("Serialize error: {}", e))?;
+        let json = serde_json::to_value(&data).map_err(|e| format!("Serialize error: {}", e))?;
         store.set("saved_catalogs", json);
         store.save().map_err(|e| format!("Save error: {}", e))?;
     }
@@ -91,8 +81,7 @@ fn persist_catalog(app: &tauri::AppHandle, catalog: SavedCatalog) -> Result<(), 
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or(CatalogStoreData { catalogs: vec![] });
     data.catalogs.push(catalog);
-    let json = serde_json::to_value(&data)
-        .map_err(|e| format!("Serialize error: {}", e))?;
+    let json = serde_json::to_value(&data).map_err(|e| format!("Serialize error: {}", e))?;
     store.set("saved_catalogs", json);
     store.save().map_err(|e| format!("Save error: {}", e))?;
     Ok(())

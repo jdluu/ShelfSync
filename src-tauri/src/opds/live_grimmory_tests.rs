@@ -22,7 +22,10 @@ fn live_grimmory_feed_exposes_pagination() {
     let pagination = catalog.pagination.expect("Grimmory paginates");
     assert_eq!(pagination.total, Some(481));
     assert!(pagination.next.is_some(), "page 1 has a next link");
-    assert!(catalog.links.iter().any(|l| l.rel.as_deref() == Some("next")));
+    assert!(catalog
+        .links
+        .iter()
+        .any(|l| l.rel.as_deref() == Some("next")));
 }
 
 #[test]
@@ -59,7 +62,10 @@ fn live_grimmory_entries_have_full_metadata() {
         .iter()
         .find(|b| b.title == "Blackflame")
         .expect("fixture includes Blackflame");
-    assert_eq!(blackflame.publisher.as_deref(), Some("Hidden Gnome Publishing"));
+    assert_eq!(
+        blackflame.publisher.as_deref(),
+        Some("Hidden Gnome Publishing")
+    );
     assert!(blackflame.categories.contains(&"Fantasy".to_string()));
     let series = blackflame.series.as_ref().unwrap();
     assert_eq!(series.name, "Cradle");

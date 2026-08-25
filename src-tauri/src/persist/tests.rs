@@ -26,8 +26,10 @@ fn publication_input(account_id: i64, canonical_id: &str, title: &str) -> Public
 }
 
 fn count(conn: &Connection, table: &str) -> i64 {
-    conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))
-        .unwrap()
+    conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+        row.get(0)
+    })
+    .unwrap()
 }
 
 #[test]
@@ -37,37 +39,40 @@ fn duplicate_publications_dedupe_by_provider_scoped_identity() {
         repo::ensure_catalog_account(&conn, "grimmory", "https://books.example.com", "alice")
             .unwrap();
 
-    let first = repo::upsert_publication(&mut conn, &publication_input(account.id, "book-1", "First"))
-        .unwrap();
+    let first =
+        repo::upsert_publication(&mut conn, &publication_input(account.id, "book-1", "First"))
+            .unwrap();
     assert!(first.created);
     assert_eq!(first.publication.provider, "grimmory");
     assert_eq!(first.publication.canonical_id, "book-1");
 
-    let second =
-        repo::upsert_publication(&mut conn, &publication_input(account.id, "book-1", "First v2"))
-            .unwrap();
+    let second = repo::upsert_publication(
+        &mut conn,
+        &publication_input(account.id, "book-1", "First v2"),
+    )
+    .unwrap();
     assert!(!second.created);
     assert_eq!(second.publication.id, first.publication.id);
     assert!(second.publication.metadata_json.contains("First v2"));
     assert!(second.publication.updated_at >= first.publication.updated_at);
 
-    let other_book =
-        repo::upsert_publication(&mut conn, &publication_input(account.id, "book-2", "Second"))
-            .unwrap();
+    let other_book = repo::upsert_publication(
+        &mut conn,
+        &publication_input(account.id, "book-2", "Second"),
+    )
+    .unwrap();
     assert!(other_book.created);
     assert_ne!(other_book.publication.id, first.publication.id);
 
-    let other_account = repo::ensure_catalog_account(
-        &conn,
-        "grimmory",
-        "https://mirror.example.com",
-        "alice",
+    let other_account =
+        repo::ensure_catalog_account(&conn, "grimmory", "https://mirror.example.com", "alice")
+            .unwrap();
+    assert_ne!(other_account.id, account.id);
+    let mirrored = repo::upsert_publication(
+        &mut conn,
+        &publication_input(other_account.id, "book-1", "First"),
     )
     .unwrap();
-    assert_ne!(other_account.id, account.id);
-    let mirrored =
-        repo::upsert_publication(&mut conn, &publication_input(other_account.id, "book-1", "First"))
-            .unwrap();
     assert!(mirrored.created);
     assert_ne!(mirrored.publication.id, first.publication.id);
 
@@ -236,7 +241,11 @@ fn restart_marks_active_jobs_interrupted() {
     let job = repo::create_download_job(&conn, revision.id).unwrap();
     assert_eq!(job.state, JobState::Queued);
     assert!(repo::set_job_state(&conn, job.id, JobState::Running, None).unwrap());
-    assert!(repo::get_job(&conn, job.id).unwrap().unwrap().started_at.is_some());
+    assert!(repo::get_job(&conn, job.id)
+        .unwrap()
+        .unwrap()
+        .started_at
+        .is_some());
 
     drop(conn);
 
@@ -258,9 +267,7 @@ fn restart_marks_active_jobs_interrupted() {
 
     let retry = repo::create_download_job(&conn, revision.id).unwrap();
     assert!(repo::set_job_state(&conn, retry.id, JobState::Running, None).unwrap());
-    assert!(
-        repo::set_job_state(&conn, retry.id, JobState::Completed, None).unwrap()
-    );
+    assert!(repo::set_job_state(&conn, retry.id, JobState::Completed, None).unwrap());
     let completed = repo::get_job(&conn, retry.id).unwrap().unwrap();
     assert_eq!(completed.state, JobState::Completed);
     assert!(completed.finished_at.is_some());
@@ -331,7 +338,10 @@ fn stale_terminal_jobs_are_purged() {
     assert!(remaining_ids.contains(&recent_completed.id));
     assert!(remaining_ids.contains(&still_running.id));
     assert_eq!(
-        repo::get_job(&conn, still_running.id).unwrap().unwrap().state,
+        repo::get_job(&conn, still_running.id)
+            .unwrap()
+            .unwrap()
+            .state,
         JobState::Running
     );
 }
@@ -502,9 +512,7 @@ fn library_snapshot_groups_records_by_state() {
     assert_eq!(snapshot.downloading[0].job_state, Some(JobState::Running));
 
     // Failing the job moves it into the failed section.
-    assert!(
-        repo::set_job_state(&fixture.conn, job.id, JobState::Failed, Some("boom")).unwrap()
-    );
+    assert!(repo::set_job_state(&fixture.conn, job.id, JobState::Failed, Some("boom")).unwrap());
     let snapshot = repo::library_snapshot(&fixture.conn).unwrap();
     assert!(snapshot.downloading.is_empty());
     assert_eq!(snapshot.failed.len(), 1);
@@ -621,7 +629,15 @@ async fn migration_preserves_legacy_rows_as_unavailable() {
             .query_row(
                 "SELECT id, title, authors, remote_id, local_path FROM books WHERE id = 1",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
             )
             .unwrap();
         assert_eq!(legacy_row.0, 1);
@@ -631,7 +647,9 @@ async fn migration_preserves_legacy_rows_as_unavailable() {
         assert_eq!(legacy_row.4.as_deref(), Some("/library/legacy-one.epub"));
 
         let status: String = conn
-            .query_row("SELECT read_status FROM books WHERE id = 2", [], |row| row.get(0))
+            .query_row("SELECT read_status FROM books WHERE id = 2", [], |row| {
+                row.get(0)
+            })
             .unwrap();
         assert_eq!(status, "read");
 

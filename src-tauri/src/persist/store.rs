@@ -52,7 +52,11 @@ impl LibraryStore {
         F: FnOnce(&mut Connection) -> Result<T, PersistError> + Send + 'static,
         T: Send + 'static,
     {
-        let conn = self.pool.get().await.map_err(|e| PersistError::Pool(e.to_string()))?;
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| PersistError::Pool(e.to_string()))?;
         let result = conn
             .interact(f)
             .await
@@ -84,10 +88,8 @@ impl LibraryStore {
         provider: String,
         canonical_id: String,
     ) -> Result<Option<StoredPublication>, PersistError> {
-        self.run(
-            move |conn| repo::find_publication(conn, account_id, &provider, &canonical_id),
-        )
-        .await
+        self.run(move |conn| repo::find_publication(conn, account_id, &provider, &canonical_id))
+            .await
     }
 
     pub async fn get_publication(
@@ -148,10 +150,8 @@ impl LibraryStore {
         revision_id: i64,
         relative_path: String,
     ) -> Result<bool, PersistError> {
-        self.run(move |conn| {
-            repo::attach_revision_local_path(conn, revision_id, &relative_path)
-        })
-        .await
+        self.run(move |conn| repo::attach_revision_local_path(conn, revision_id, &relative_path))
+            .await
     }
 
     pub async fn current_revision(
@@ -178,10 +178,7 @@ impl LibraryStore {
             .await
     }
 
-    pub async fn clear_revision_local_path(
-        &self,
-        revision_id: i64,
-    ) -> Result<bool, PersistError> {
+    pub async fn clear_revision_local_path(&self, revision_id: i64) -> Result<bool, PersistError> {
         self.run(move |conn| repo::clear_revision_local_path(conn, revision_id))
             .await
     }

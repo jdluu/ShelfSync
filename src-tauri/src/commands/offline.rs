@@ -5,8 +5,8 @@ use tauri::command;
 
 use crate::error::AppError;
 use crate::offline::{
-    check_disk_space, delete_local_content, refresh_library_metadata, DeletedContent,
-    DeleteLocalError, DiskSpaceStatus, RefreshReport,
+    check_disk_space, delete_local_content, refresh_library_metadata, DeleteLocalError,
+    DeletedContent, DiskSpaceStatus, RefreshReport,
 };
 use crate::opds::{CatalogConfig, OpdsClient};
 use crate::persist::{LibrarySnapshot, LibraryStore};
@@ -61,10 +61,8 @@ pub async fn refresh_offline_library(
     password: String,
     provider: Option<String>,
 ) -> Result<RefreshReport, AppError> {
-    let parsed_url =
-        url::Url::parse(catalog_url.trim()).map_err(|_| {
-            AppError::OpdsTransport("Invalid URL: unable to parse".to_string())
-        })?;
+    let parsed_url = url::Url::parse(catalog_url.trim())
+        .map_err(|_| AppError::OpdsTransport("Invalid URL: unable to parse".to_string()))?;
     if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
         return Err(AppError::OpdsTransport(
             "Invalid URL: only HTTP and HTTPS schemes are allowed".to_string(),
@@ -83,15 +81,16 @@ pub async fn refresh_offline_library(
         password,
     )
     .map_err(|e| AppError::OpdsTransport(e.to_string()))?;
-    let client = OpdsClient::new(config)
-        .map_err(|e| AppError::OpdsTransport(e.to_string()))?;
+    let client = OpdsClient::new(config).map_err(|e| AppError::OpdsTransport(e.to_string()))?;
 
     let store = state.store()?;
     let provider_for_refresh = client.config().provider.clone();
     let report = refresh_library_metadata(&store, &client, &provider_for_refresh)
         .await
         .map_err(|e| match e {
-            crate::offline::RefreshError::Transport(inner) => AppError::OpdsTransport(inner.to_string()),
+            crate::offline::RefreshError::Transport(inner) => {
+                AppError::OpdsTransport(inner.to_string())
+            }
             crate::offline::RefreshError::Persist(inner) => AppError::from(inner),
         })?;
     Ok(report)
@@ -116,7 +115,6 @@ pub async fn check_download_space(
     state: tauri::State<'_, OfflineLibraryState>,
     required_bytes: u64,
 ) -> Result<DiskSpaceStatus, AppError> {
-    check_disk_space(&state.content_root, required_bytes).map_err(|e| {
-        AppError::OfflineLibrary(format!("disk space check failed: {e}"))
-    })
+    check_disk_space(&state.content_root, required_bytes)
+        .map_err(|e| AppError::OfflineLibrary(format!("disk space check failed: {e}")))
 }

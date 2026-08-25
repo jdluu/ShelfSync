@@ -28,15 +28,14 @@ fn normalize_metadata_json(raw: &str) -> Result<String, PersistError> {
             "metadata snapshot exceeds {MAX_METADATA_JSON_BYTES} bytes"
         )));
     }
-    let value: serde_json::Value = serde_json::from_str(raw)
-        .map_err(|e| PersistError::InvalidMetadata(e.to_string()))?;
+    let value: serde_json::Value =
+        serde_json::from_str(raw).map_err(|e| PersistError::InvalidMetadata(e.to_string()))?;
     serde_json::to_string(&value).map_err(|e| PersistError::InvalidMetadata(e.to_string()))
 }
 
 fn normalize_canonical_url(raw: &str) -> Result<String, PersistError> {
     let trimmed = raw.trim();
-    let parsed =
-        url::Url::parse(trimmed).map_err(|_| PersistError::InvalidUrl(raw.to_string()))?;
+    let parsed = url::Url::parse(trimmed).map_err(|_| PersistError::InvalidUrl(raw.to_string()))?;
     match parsed.scheme() {
         "http" | "https" => Ok(parsed.as_str().to_string()),
         _ => Err(PersistError::InvalidUrl(raw.to_string())),
@@ -162,9 +161,8 @@ pub fn upsert_publication(
         &metadata_json,
     )?;
     tx.commit()?;
-    let publication = queries::get_publication(conn, id)?.ok_or_else(|| {
-        PersistError::Invalid(format!("publication {id} vanished after insert"))
-    })?;
+    let publication = queries::get_publication(conn, id)?
+        .ok_or_else(|| PersistError::Invalid(format!("publication {id} vanished after insert")))?;
     Ok(PublicationUpsert {
         publication,
         created,
@@ -201,16 +199,20 @@ pub fn upsert_acquisition(
     let canonical_url = normalize_canonical_url(&input.canonical_url)?;
 
     let tx = conn.transaction()?;
-    let existing = queries::find_acquisition_id(&tx, input.publication_id, input.media_type.trim())?;
+    let existing =
+        queries::find_acquisition_id(&tx, input.publication_id, input.media_type.trim())?;
     let created = existing.is_none();
     let id = match existing {
         Some(id) => {
             queries::update_acquisition_url(&tx, id, &canonical_url)?;
             id
         }
-        None => {
-            queries::insert_acquisition(&tx, input.publication_id, input.media_type.trim(), &canonical_url)?
-        }
+        None => queries::insert_acquisition(
+            &tx,
+            input.publication_id,
+            input.media_type.trim(),
+            &canonical_url,
+        )?,
     };
     tx.commit()?;
 
@@ -287,10 +289,7 @@ pub fn clear_revision_local_path(
     queries::clear_revision_local_path(conn, revision_id)
 }
 
-pub fn get_job(
-    conn: &Connection,
-    job_id: i64,
-) -> Result<Option<StoredDownloadJob>, PersistError> {
+pub fn get_job(conn: &Connection, job_id: i64) -> Result<Option<StoredDownloadJob>, PersistError> {
     queries::get_job(conn, job_id)
 }
 
