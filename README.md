@@ -35,11 +35,19 @@ Open them with your favorite reading app (we recommend
 
 ## Installation
 
+### Android (Obtainium)
+
+[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](obtainium://add/github.com/jdluu/ShelfSync)
+
+Tap the badge on your Android device with [Obtainium](https://obtainium.imranr.dev/)
+installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
+
+### Desktop
+
 Download the latest release for your platform from the
 [Releases page](https://github.com/jdluu/ShelfSync/releases):
 
 - **Windows / Linux:** installers under `src-tauri/target/release/bundle`.
-- **Android:** universal APK.
 
 No special permissions are required on Android beyond network access;
 downloads live in the app's private storage (you can point them at your
