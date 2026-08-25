@@ -68,13 +68,6 @@ infisical login
 pnpm secrets:fetch
 ```
 
-## Contributing
-
-Contributions are welcome! Please open an issue describing the change before
-submitting a pull request. Developer documentation lives in
-[AGENTS.md](AGENTS.md); the app-boundary contract with Leafline is in
-[docs/app-boundaries.md](docs/app-boundaries.md).
-
 ## License
 
 [MIT](LICENSE)
