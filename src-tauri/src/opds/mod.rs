@@ -7,6 +7,7 @@ mod errors;
 mod http_client;
 mod http_client_tests;
 mod install;
+mod live_grimmory_tests;
 mod parser;
 mod transport;
 
@@ -56,9 +57,11 @@ pub struct Publication {
     pub title: String,
     pub authors: Vec<String>,
     pub pubdate: Option<String>,
+    pub publisher: Option<String>,
     pub identifiers: HashMap<String, String>,
     pub series: Option<Series>,
     pub languages: Vec<String>,
+    pub categories: Vec<String>,
     pub relations: Vec<Relation>,
     pub descriptions: Vec<String>,
     pub links: Vec<Acquisition>,
@@ -196,6 +199,8 @@ mod tests {
             title: "Test Book".to_string(),
             authors: vec!["Author One".to_string(), "Author Two".to_string()],
             pubdate: Some("2024-01-01".to_string()),
+            publisher: None,
+            categories: Vec::new(),
             identifiers: HashMap::from([
                 ("isbn".to_string(), "978-1234567890".to_string()),
                 ("grimmory".to_string(), "42".to_string()),

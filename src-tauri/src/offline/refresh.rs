@@ -250,6 +250,8 @@ mod tests {
             title: title.to_string(),
             authors: vec![],
             pubdate: None,
+            publisher: None,
+            categories: Vec::new(),
             identifiers: Default::default(),
             series: None,
             languages: vec![],

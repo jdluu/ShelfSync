@@ -1,4 +1,4 @@
-import { KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "lucide-react";
+import { BookMarked, KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
@@ -50,6 +50,9 @@ interface OpdsCatalogScreenProps {
   deletingRevisionId?: number | null;
   onDeleteLocal?: (publicationId: string, record: CategorizedLibraryRecord) => void;
   onRefreshLibrary?: () => Promise<OfflineRefreshReport | null>;
+  onViewDetails?: (publication: Publication) => void;
+  onSaveCatalog?: () => void | Promise<void>;
+  savedCatalogs?: React.ReactNode;
 }
 
 export const isValidOpdsCatalogUrl = (value: string): boolean => {
@@ -82,6 +85,9 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   deletingRevisionId = null,
   onDeleteLocal,
   onRefreshLibrary,
+  onViewDetails,
+  onSaveCatalog,
+  savedCatalogs,
 }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [refreshingLibrary, setRefreshingLibrary] = useState(false);
@@ -109,9 +115,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
         if (report.added.length > 0) parts.push(`${report.added.length} new`);
         if (report.changed.length > 0) parts.push(`${report.changed.length} changed`);
         if (report.removed.length > 0)
-          parts.push(
-            `${report.removed.length} removed from server (kept locally)`,
-          );
+          parts.push(`${report.removed.length} removed from server (kept locally)`);
         if (report.truncated) parts.push("listing incomplete");
         setRefreshSummary(parts.join(", "));
       }
@@ -168,8 +172,8 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                 Connect your shelf
               </h2>
               <p className="text-sm text-base-content/60">
-                Point ShelfSync at your OPDS catalog. Credentials stay in memory
-                and are never saved.
+                Point ShelfSync at your OPDS catalog. Credentials stay in memory and are never
+                saved.
               </p>
             </div>
 
@@ -225,7 +229,18 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               </label>
             </div>
 
-            <div className="card-actions justify-end">
+            <div className="card-actions justify-between items-center">
+              {onSaveCatalog && (
+                <button
+                  type="button"
+                  onClick={() => void onSaveCatalog()}
+                  className="btn btn-ghost btn-sm gap-1.5"
+                  aria-label="Save this catalog for quick access"
+                >
+                  <BookMarked className="h-4 w-4" aria-hidden="true" />
+                  Save catalog
+                </button>
+              )}
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 <PlugZap className="h-4 w-4" aria-hidden="true" />
                 Connect
@@ -234,6 +249,8 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
           </div>
         </form>
       )}
+
+      {!connected && savedCatalogs}
 
       {connected && (
         <>
@@ -326,6 +343,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               libraryInfoByPublicationId={libraryInfoByPublicationId}
               deletingRevisionId={deletingRevisionId}
               onDeleteLocal={onDeleteLocal}
+              onViewDetails={onViewDetails}
             />
           </div>
         </>

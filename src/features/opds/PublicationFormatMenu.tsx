@@ -63,10 +63,7 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
     };
   }, [isOpen, onOpenChange]);
 
-  const handleOptionKeyDown = (
-    event: React.KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
+  const handleOptionKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key === "Tab") {
       onOpenChange(false);
       return;
@@ -74,8 +71,7 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
     if (formats.length === 0) return;
     let nextIndex: number | null = null;
     if (event.key === "ArrowDown") nextIndex = (index + 1) % formats.length;
-    else if (event.key === "ArrowUp")
-      nextIndex = (index - 1 + formats.length) % formats.length;
+    else if (event.key === "ArrowUp") nextIndex = (index - 1 + formats.length) % formats.length;
     else if (event.key === "Home") nextIndex = 0;
     else if (event.key === "End") nextIndex = formats.length - 1;
     if (nextIndex === null) return;

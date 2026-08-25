@@ -206,7 +206,10 @@ pub fn run() {
             crate::commands::offline::check_download_space,
             crate::commands::credentials::opds_save_credential,
             crate::commands::credentials::opds_load_credential,
-            crate::commands::credentials::opds_delete_credential
+            crate::commands::credentials::opds_delete_credential,
+            crate::commands::saved_catalogs::opds_list_saved_catalogs,
+            crate::commands::saved_catalogs::opds_save_catalog,
+            crate::commands::saved_catalogs::opds_delete_catalog
         ]);
 
     builder

@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/a11y/noNoninteractiveTabindex: publication card opens details */
 import {
   AlertCircle as AlertCircleIcon,
   Book as BookIcon,
@@ -36,6 +37,7 @@ interface OpdsPublicationCardProps {
   libraryInfo?: PublicationLibraryInfo | null;
   deletingRevisionId?: number | null;
   onDeleteLocal?: (record: CategorizedLibraryRecord) => void;
+  onViewDetails?: (publication: Publication) => void;
 }
 
 function getMediaTypeLabelForBadge(mediaType: string): string {
@@ -71,6 +73,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
   libraryInfo,
   deletingRevisionId = null,
   onDeleteLocal,
+  onViewDetails,
 }) => {
   const hasCover = publication.representative?.href;
 
@@ -111,8 +114,17 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
 
   return (
     <article
-      className="card bg-base-200 border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200"
+      className="card bg-base-200 border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200 cursor-pointer"
       aria-labelledby={`pub-title-${publication.id}`}
+      onClick={() => onViewDetails?.(publication)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onViewDetails?.(publication);
+        }
+      }}
+      tabIndex={0}
+      aria-label={`View details for ${publication.title}`}
     >
       <div className="card-body p-4 flex flex-col gap-2">
         <div className="flex items-start gap-4">
@@ -168,12 +180,9 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
             {fallbackSuperseded && !primaryRecord && (
               <LibraryStateBadge record={fallbackSuperseded} />
             )}
-            {primaryRecord?.section === "unavailable" &&
-              primaryRecord.local_relative_path && (
-                <span className="text-[10px] text-base-content/60">
-                  local copy kept on device
-                </span>
-              )}
+            {primaryRecord?.section === "unavailable" && primaryRecord.local_relative_path && (
+              <span className="text-[10px] text-base-content/60">local copy kept on device</span>
+            )}
           </div>
         )}
 
@@ -190,7 +199,12 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
         )}
 
         {showDownloadSection && acquisitionFormats.length > 0 && (
-          <section className="flex flex-col gap-2 mt-2" aria-label="Download options">
+          <section
+            className="flex flex-col gap-2 mt-2"
+            aria-label="Download options"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             {status === "failed" && errorMessage && (
               <p className="text-xs text-error" role="status" aria-live="polite">
                 <AlertCircleIcon className="w-3 h-3 mr-1 inline" aria-hidden="true" />
@@ -256,10 +270,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
         {(primaryRecord?.section === "failed" ||
           retryableRecord !== null ||
           deletableRecords.length > 0) && (
-          <section
-            className="flex flex-col gap-1 mt-1"
-            aria-label="Offline library actions"
-          >
+          <section className="flex flex-col gap-1 mt-1" aria-label="Offline library actions">
             {primaryRecord?.section === "failed" && primaryRecord.job_error && (
               <p className="text-xs text-error" role="status">
                 <AlertCircleIcon className="w-3 h-3 mr-1 inline" aria-hidden="true" />

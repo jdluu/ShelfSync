@@ -104,9 +104,11 @@ export function useOpdsDownload() {
     // Ask the backend to stop streaming the response. The UI resets to idle
     // immediately; a cancelled transfer reports no false completion.
     if (publicationId && isTauri()) {
-      void safeInvoke<boolean>("opds_cancel_download", { publication_id: publicationId }, false).catch(
-        () => {},
-      );
+      void safeInvoke<boolean>(
+        "opds_cancel_download",
+        { publication_id: publicationId },
+        false,
+      ).catch(() => {});
     }
 
     setStatus("idle");

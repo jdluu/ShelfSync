@@ -9,6 +9,7 @@ const createMockPublication = (overrides?: Partial<Publication>): Publication =>
     title: "Test Publication",
     authors: ["Test Author"],
     languages: ["en"],
+    categories: [],
     relations: [],
     descriptions: ["A test publication description"],
     links: [],

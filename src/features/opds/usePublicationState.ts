@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
-import type {
-  CategorizedLibraryRecord,
-  PublicationLibraryInfo,
-} from "@/types/offline";
+import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type {
   DownloadConfig,
   DownloadResult,
@@ -51,8 +48,7 @@ export function usePublicationState({
 
   const primaryRecord = libraryInfo?.primary ?? null;
   const supersededRecords = libraryInfo?.superseded ?? [];
-  const fallbackSuperseded =
-    primaryRecord === null ? (supersededRecords[0] ?? null) : null;
+  const fallbackSuperseded = primaryRecord === null ? (supersededRecords[0] ?? null) : null;
   const isBusyDownloading =
     downloadStatus === "downloading" || primaryRecord?.section === "downloading";
 

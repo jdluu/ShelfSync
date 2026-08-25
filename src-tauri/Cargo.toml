@@ -1,6 +1,6 @@
 [package]
 name = "shelfsync"
-version = "1.6.0"
+version = "0.1.0"
 description = "Secure cross-device library synchronization"
 authors = ["jdluu"]
 edition = "2021"
@@ -48,6 +48,8 @@ quick-xml = { version = "0.41", features = ["serialize", "escape-html"] }
  url = "2.5"
  base64 = "0.22"
  sha2 = "0.10"
+ aes-gcm = "0.10.3"
+ rand = "0.8"
  md-5 = "0.10"
  async-trait = "0.1"
  libc = "0.2"

@@ -40,9 +40,11 @@ export interface Publication {
   title: string;
   authors: string[];
   pubdate?: string | null;
+  publisher?: string | null;
   identifiers: Record<string, string>;
   series?: Series | null;
   languages: string[];
+  categories: string[];
   relations: Relation[];
   descriptions: string[];
   links: Acquisition[];

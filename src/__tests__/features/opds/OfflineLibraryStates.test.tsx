@@ -17,6 +17,7 @@ const createMockPublication = (overrides?: Partial<Publication>): Publication =>
     title: "Dune",
     authors: [],
     languages: [],
+    categories: [],
     relations: [],
     descriptions: [],
     links: [

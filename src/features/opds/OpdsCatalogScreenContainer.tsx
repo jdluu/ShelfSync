@@ -1,13 +1,15 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useOpdsCatalog } from "@/hooks/useOpdsCatalog";
 import { offlineLibraryClient } from "@/services/offlineLibrary";
+import { type SavedCatalog, savedCatalogsService } from "@/services/savedCatalogs";
 import type {
   CategorizedLibraryRecord,
   OfflineRefreshReport,
   PublicationLibraryInfo,
 } from "@/types/offline";
+import { buildPublicationLibraryInfo } from "@/types/offline";
 import type {
   DownloadConfig,
   DownloadResult,
@@ -15,10 +17,11 @@ import type {
   MediaType,
   Publication,
 } from "@/types/opds";
-import { buildPublicationLibraryInfo } from "@/types/offline";
 import { isTauri } from "@/utils/tauri";
 import type { OpdsConnectPayload } from "./OpdsCatalogScreen";
 import { isValidOpdsCatalogUrl, OpdsCatalogScreen } from "./OpdsCatalogScreen";
+import { PublicationDetailModal } from "./PublicationDetailModal";
+import { SavedCatalogsManager } from "./SavedCatalogsManager";
 import { useOpdsDownload } from "./useOpdsDownload";
 
 const DEFAULT_CONTENT_ROOT = "ShelfSync";
@@ -48,6 +51,8 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     Record<string, PublicationLibraryInfo>
   >({});
   const [deletingRevisionId, setDeletingRevisionId] = useState<number | null>(null);
+  const [detailPublication, setDetailPublication] = useState<Publication | null>(null);
+  const [savedCatalogsKey, setSavedCatalogsKey] = useState(0);
 
   const queryClient = useQueryClient();
   const catalogQuery = useOpdsCatalog(url, username, password, page, connected);
@@ -177,34 +182,76 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     }
   }, [password, queryClient, refreshLibrarySnapshot, url, username]);
 
+  const handleViewDetails = useCallback((publication: Publication) => {
+    setDetailPublication(publication);
+  }, []);
+
+  const handleSaveCatalog = useCallback(async () => {
+    try {
+      await savedCatalogsService.save(url.trim() || "Untitled catalog", url, username);
+      setSavedCatalogsKey((k) => k + 1);
+    } catch {
+      // Non-fatal: saving the catalog is best-effort.
+    }
+  }, [url, username]);
+
+  const handleConnectToSaved = useCallback((catalog: SavedCatalog) => {
+    setUrl(catalog.url);
+    setUsername(catalog.username);
+    setPassword("");
+    setPage(1);
+    setConnected(true);
+  }, []);
+
   return (
-    <OpdsCatalogScreen
-      url={url}
-      onUrlChange={setUrl}
-      username={username}
-      onUsernameChange={setUsername}
-      password={password}
-      onPasswordChange={setPassword}
-      connected={connected}
-      onConnect={handleConnect}
-      onDisconnect={handleDisconnect}
-      catalog={catalogQuery.data}
-      loading={catalogQuery.isFetching}
-      error={catalogQuery.error?.message ?? null}
-      page={page}
-      onPageChange={handlePageChange}
-      contentRoot={contentRoot}
-      onContentRootChange={setContentRoot}
-      downloadStatuses={downloadStatuses}
-      downloadErrors={downloadErrors}
-      downloadLocalPaths={downloadLocalPaths}
-      downloadProgress={downloadProgressPercents}
-      onDownload={handleDownload}
-      libraryInfoByPublicationId={libraryInfoByPublicationId}
-      deletingRevisionId={deletingRevisionId}
-      onDeleteLocal={handleDeleteLocal}
-      onRefreshLibrary={handleRefreshLibrary}
-    />
+    <>
+      <OpdsCatalogScreen
+        url={url}
+        onUrlChange={setUrl}
+        username={username}
+        onUsernameChange={setUsername}
+        password={password}
+        onPasswordChange={setPassword}
+        connected={connected}
+        onConnect={handleConnect}
+        onDisconnect={handleDisconnect}
+        catalog={catalogQuery.data}
+        loading={catalogQuery.isFetching}
+        error={catalogQuery.error?.message ?? null}
+        page={page}
+        onPageChange={handlePageChange}
+        contentRoot={contentRoot}
+        onContentRootChange={setContentRoot}
+        downloadStatuses={downloadStatuses}
+        downloadErrors={downloadErrors}
+        downloadLocalPaths={downloadLocalPaths}
+        downloadProgress={downloadProgressPercents}
+        onDownload={handleDownload}
+        libraryInfoByPublicationId={libraryInfoByPublicationId}
+        deletingRevisionId={deletingRevisionId}
+        onDeleteLocal={handleDeleteLocal}
+        onRefreshLibrary={handleRefreshLibrary}
+        onViewDetails={handleViewDetails}
+        onSaveCatalog={handleSaveCatalog}
+        savedCatalogs={
+          <SavedCatalogsManager onConnectTo={handleConnectToSaved} refreshKey={savedCatalogsKey} />
+        }
+      />
+      {detailPublication && (
+        <PublicationDetailModal
+          publication={detailPublication}
+          onClose={() => setDetailPublication(null)}
+          catalogUrl={url.trim()}
+          transientUsername={username}
+          transientPassword={password}
+          contentRoot={contentRoot}
+          onDownload={handleDownload}
+          downloadStatus={downloadStatuses[detailPublication.id]}
+          downloadErrorMessage={downloadErrors[detailPublication.id]}
+          libraryInfo={libraryInfoByPublicationId[detailPublication.id] ?? null}
+        />
+      )}
+    </>
   );
 };
 

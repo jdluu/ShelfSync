@@ -51,6 +51,7 @@ const makeBook = (overrides: Partial<Book> & Pick<Book, "id">): Book => ({
 });
 
 const makeProgress = (book_id: number, overrides: Partial<SyncProgress> = {}): SyncProgress => ({
+  book_id,
   title: `Book ${book_id}`,
   status: "downloading",
   progress: 0.5,
@@ -148,7 +149,7 @@ describe("ClientDashboard Integration", () => {
       expect(within(alert).getByText("Failed to start synchronization.")).toBeDefined();
     }
 
-    fireEvent.click(screen.getAllByLabelText("Dismiss error")[0]);
+    fireEvent.click(screen.getAllByLabelText("Dismiss error")[0]!);
     const mock = dashboard.current as ReturnType<typeof createDashboardMock>;
     expect(mock.clearError).toHaveBeenCalledTimes(1);
   });

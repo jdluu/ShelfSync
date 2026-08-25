@@ -1,4 +1,7 @@
-use super::{Acquisition, Catalog, NavigationLink, OpdsError, Publication, Series};
+use super::{
+    Acquisition, Catalog, NavigationLink, OpdsError, Pagination, Publication,
+    RepresentativeLink, Series,
+};
 use quick_xml::escape;
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -22,6 +25,8 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
     let mut updated = None;
     let mut links = Vec::new();
     let mut publications = Vec::new();
+    let mut total_results: Option<u32> = None;
+    let mut pending_total = false;
 
     let mut current_state = ParsingState::Catalog;
     let mut current_pub: Option<PublicationBuilder> = None;
@@ -54,6 +59,17 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                             &mut in_author,
                             &mut current_state,
                         );
+                        if current_state == ParsingState::Catalog {
+                            // Feed-level metadata that does not belong to an entry.
+                            match local_name.as_str() {
+                                "totalresults" | "totalResults" => {
+                                    pending_total = true;
+                                }
+                                "link" | "opensearch:itemsperpage" | "opensearch:startindex"
+                                | "opensearch:query" => {}
+                                _ => {}
+                            }
+                        }
                     }
                     ParsingState::Publication => {
                         handle_publication_element(
@@ -85,6 +101,12 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                     &mut authors,
                     &mut pending_identifier_scheme,
                 );
+                if pending_total {
+                    if let Ok(v) = trimmed_total(&text_buf) {
+                        total_results = Some(v);
+                    }
+                    pending_total = false;
+                }
                 text_buf.clear();
                 pending_identifier_scheme = None;
             }
@@ -92,6 +114,13 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
             _ => {}
         }
     }
+
+    let next_href = links
+        .iter()
+        .find(|l| l.rel.as_deref() == Some("next"))
+        .map(|l| l.href.clone());
+    let pub_count = publications.len().max(1) as u32;
+    let total = total_results;
 
     let catalog = Catalog {
         title: if title.is_empty() {
@@ -103,10 +132,19 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
         authors,
         links,
         publications,
-        pagination: None,
+        pagination: Some(Pagination {
+            page: 1,
+            size: pub_count,
+            total,
+            next: next_href,
+        }),
     };
 
     Ok(catalog)
+}
+
+fn trimmed_total(text: &str) -> Result<u32, ()> {
+    text.trim().parse::<u32>().map_err(|_| ())
 }
 
 fn get_local_name(name: &[u8]) -> String {
@@ -227,6 +265,7 @@ fn handle_publication_element(
                 cost: None,
                 rel: None,
             };
+            let mut is_image_link = false;
             for attr in e.attributes() {
                 if let Ok(attr) = attr {
                     let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
@@ -252,14 +291,32 @@ fn handle_publication_element(
                                 std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
                             )
                             .unwrap_or_default();
-                            acq.rel = Some(v.into_owned());
+                            let rel_val = v.into_owned();
+                            // OPDS cover-image relations (1.x/2.x): the entry's
+                            // representative cover art, kept out of acquisitions.
+                            if rel_val.starts_with("http://opds-spec.org/image") {
+                                is_image_link = true;
+                            }
+                            acq.rel = Some(rel_val);
                         }
                         _ => {}
                     }
                 }
             }
-            if !acq.href.is_empty() {
-                if acq.rel.as_deref() == Some("acquisition") || acq.rel.is_none() {
+            if is_image_link && !acq.href.is_empty() {
+                builder.representative = Some(RepresentativeLink {
+                    href: acq.href.clone(),
+                    r#type: acq.r#type.clone(),
+                });
+            } else if !acq.href.is_empty() {
+                if acq.rel.as_deref() == Some("acquisition")
+                    || acq.rel.as_deref() == Some("http://opds-spec.org/acquisition")
+                    || acq.rel
+                        .as_deref()
+                        .unwrap_or("")
+                        .starts_with("http://opds-spec.org/acquisition")
+                    || acq.rel.is_none()
+                {
                     builder.links.push(acq);
                 }
             }
@@ -267,6 +324,64 @@ fn handle_publication_element(
         "summary" | "description" | "dc:description" => {}
         "language" | "dc:language" => {}
         "series" | "dc:series" => {}
+        "publisher" | "dc:publisher" => {}
+        "category" | "dc:subject" => {
+            // OPDS 1.x uses Atom <category term="...">; subjects may also
+            // appear as dc:subject text content.
+            for attr in e.attributes() {
+                if let Ok(attr) = attr {
+                    if std::str::from_utf8(attr.key.as_ref()).unwrap_or("") == "term" {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default()
+                        .into_owned();
+                        if !v.trim().is_empty() {
+                            builder.categories.push(v);
+                        }
+                    }
+                }
+            }
+        }
+        "meta" => {
+            // EPUB/OPDS collection metadata (Grimmory emits this form):
+            // <meta property="belongs-to-collection">Name</meta>
+            // <meta property="group-position" refines="#id">3.0</meta>
+            let mut property = None;
+            let mut refines = None;
+            for attr in e.attributes() {
+                if let Ok(attr) = attr {
+                    match std::str::from_utf8(attr.key.as_ref()).unwrap_or("") {
+                        "property" => {
+                            property = Some(
+                                escape::unescape(
+                                    std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                                )
+                                .unwrap_or_default()
+                                .into_owned(),
+                            );
+                        }
+                        "refines" => {
+                            refines = Some(
+                                escape::unescape(
+                                    std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                                )
+                                .unwrap_or_default()
+                                .into_owned(),
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            match property.as_deref() {
+                Some("belongs-to-collection") => builder.pending_collection = true,
+                Some("group-position") => {
+                    builder.pending_position_refines = refines.filter(|r| !r.is_empty());
+                }
+                _ => {}
+            }
+        }
         "index" => {}
         _ => {}
     }
@@ -379,6 +494,41 @@ fn handle_end(
                 }
             }
         }
+        "publisher" | "dc:publisher" => {
+            if let Some(ref mut b) = current_pub {
+                if b.publisher.is_none() && !trimmed.is_empty() {
+                    b.publisher = Some(trimmed.to_string());
+                }
+            }
+        }
+        "meta" => {
+            // Text of <meta property="belongs-to-collection"> or group-position.
+            if let Some(ref mut b) = current_pub {
+                if b.pending_collection && !trimmed.is_empty() {
+                    b.series = Some(Series {
+                        name: trimmed.to_string(),
+                        index: None,
+                    });
+                    b.pending_collection = false;
+                } else if b.pending_position_refines.is_some() {
+                    // group-position refines the collection declared in this
+                    // entry; apply when a series is present.
+                    if let Ok(idx) = trimmed.parse::<f64>() {
+                        if let Some(ref mut s) = b.series.as_mut() {
+                            s.index = Some(idx);
+                        }
+                    }
+                    b.pending_position_refines = None;
+                }
+            }
+        }
+        "subject" | "dc:subject" => {
+            if let Some(ref mut b) = current_pub {
+                if !trimmed.is_empty() {
+                    b.categories.push(trimmed.to_string());
+                }
+            }
+        }
         "index" => {
             if let Some(ref mut b) = current_pub {
                 if let Some(ref mut s) = b.series.as_mut() {
@@ -407,11 +557,17 @@ struct PublicationBuilder {
     title: String,
     authors: Vec<String>,
     pubdate: Option<String>,
+    publisher: Option<String>,
     identifiers: HashMap<String, String>,
     series: Option<Series>,
     languages: Vec<String>,
+    categories: Vec<String>,
     descriptions: Vec<String>,
     links: Vec<Acquisition>,
+    representative: Option<RepresentativeLink>,
+    pending_collection: bool,
+    pending_position_refines: Option<String>,
+    series_refines_id: Option<String>,
 }
 
 impl PublicationBuilder {
@@ -422,11 +578,17 @@ impl PublicationBuilder {
             title: String::new(),
             authors: Vec::new(),
             pubdate: None,
+            publisher: None,
             identifiers: HashMap::new(),
             series: None,
             languages: Vec::new(),
+            categories: Vec::new(),
             descriptions: Vec::new(),
             links: Vec::new(),
+            representative: None,
+            pending_collection: false,
+            pending_position_refines: None,
+            series_refines_id: None,
         }
     }
 
@@ -444,14 +606,16 @@ impl PublicationBuilder {
             },
             authors: self.authors,
             pubdate: self.pubdate,
+            publisher: self.publisher,
             identifiers: self.identifiers,
             series: self.series,
             languages: self.languages,
+            categories: self.categories,
             relations: Vec::new(),
             descriptions: self.descriptions,
             links: self.links,
             providers: None,
-            representative: None,
+            representative: self.representative,
         })
     }
 }
@@ -531,6 +695,77 @@ mod tests {
         let result = parse_catalog(FIXTURE_BOOK_ENTRY).expect("Should parse");
         let book = &result.publications[0];
         assert!(book.links.len() >= 2);
+    }
+
+    #[test]
+    fn test_grimmory_style_entry_full_metadata() {
+        // Mirrors the live Grimmory/Booklore acquisition feed: EPUB-3
+        // collection meta for series, dc:publisher, Atom categories, cover
+        // image links, and a full-rel acquisition link.
+        let feed = r##"<entry>
+    <title>Blackflame</title>
+    <id>urn:booklore:book:934</id>
+    <updated>2026-08-15T01:00:06Z</updated>
+    <author><name>Will Wight</name></author>
+    <dc:publisher>Hidden Gnome Publishing</dc:publisher>
+    <dc:language>en</dc:language>
+    <category term="Fantasy"/>
+    <category term="Adventure"/>
+    <summary>&lt;p&gt;Lindon has a year left.&lt;/p&gt;</summary>
+    <meta property="belongs-to-collection" id="series">Cradle</meta>
+    <meta property="group-position" refines="#series">3.0</meta>
+    <link href="/api/v1/opds/934/download?fileId=934" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/934/cover" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/934/cover" type="image/jpeg"/>
+  </entry>"##;
+        let wrapped = format!(
+            r#"<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">{}</feed>"#,
+            feed
+        );
+        let result = parse_catalog(&wrapped).expect("Should parse");
+        assert_eq!(result.publications.len(), 1);
+        let book = &result.publications[0];
+        assert_eq!(book.title, "Blackflame");
+        assert_eq!(book.authors, vec!["Will Wight"]);
+        assert_eq!(
+            book.publisher.as_deref(),
+            Some("Hidden Gnome Publishing")
+        );
+        assert!(book.languages.contains(&"en".to_string()));
+        assert!(book.categories.contains(&"Fantasy".to_string()));
+        assert!(book.categories.contains(&"Adventure".to_string()));
+        let series = book.series.as_ref().expect("series from collection meta");
+        assert_eq!(series.name, "Cradle");
+        assert_eq!(series.index, Some(3.0));
+        assert!(!book.descriptions.is_empty());
+        // Cover image links become the representative, never acquisitions.
+        let rep = book.representative.as_ref().expect("representative cover");
+        assert_eq!(rep.href, "/api/v1/opds/934/cover");
+        assert_eq!(rep.r#type.as_deref(), Some("image/jpeg"));
+        assert_eq!(book.links.len(), 1);
+        assert_eq!(book.links[0].href, "/api/v1/opds/934/download?fileId=934");
+    }
+
+    #[test]
+    fn test_opensearch_total_results_populates_pagination() {
+        let feed = r#"<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">
+  <title>Catalog</title>
+  <opensearch:totalResults>481</opensearch:totalResults>
+  <link rel="next" href="/catalog?page=2&amp;size=50" type="application/atom+xml"/>
+  <entry>
+    <id>urn:book:1</id>
+    <title>One</title>
+    <link href="/1.epub" rel="http://opds-spec.org/acquisition" type="application/epub+zip"/>
+  </entry>
+</feed>"#;
+        let result = parse_catalog(feed).expect("Should parse");
+        let pagination = result.pagination.expect("pagination present");
+        assert_eq!(pagination.total, Some(481));
+        assert_eq!(
+            pagination.next.as_deref(),
+            Some("/catalog?page=2&size=50")
+        );
     }
 
     #[test]

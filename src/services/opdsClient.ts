@@ -73,6 +73,7 @@ export const opdsClient = {
         identifiers: publication.identifiers,
         series: publication.series,
         languages: publication.languages,
+        categories: publication.categories ?? [],
         relations: publication.relations,
         descriptions: publication.descriptions,
         links: [acquisitionLink],

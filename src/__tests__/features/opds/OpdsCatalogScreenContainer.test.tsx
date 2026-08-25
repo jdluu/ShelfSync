@@ -30,6 +30,7 @@ const createPublication = (overrides?: Partial<Publication>): Publication => ({
   title: "Dune",
   authors: ["Frank Herbert"],
   languages: ["en"],
+  categories: [],
   relations: [],
   descriptions: [],
   identifiers: {},

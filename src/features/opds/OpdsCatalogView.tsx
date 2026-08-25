@@ -3,10 +3,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
-import type {
-  CategorizedLibraryRecord,
-  PublicationLibraryInfo,
-} from "@/types/offline";
+import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { Catalog, DownloadStatus, MediaType, NavigationLink, Publication } from "@/types/opds";
 import { OpdsPublicationCard } from "./OpdsPublicationCard";
 
@@ -40,6 +37,7 @@ interface OpdsCatalogViewProps {
   libraryInfoByPublicationId?: Record<string, PublicationLibraryInfo>;
   deletingRevisionId?: number | null;
   onDeleteLocal?: (publicationId: string, record: CategorizedLibraryRecord) => void;
+  onViewDetails?: (publication: Publication) => void;
 }
 
 export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
@@ -58,6 +56,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   libraryInfoByPublicationId = {},
   deletingRevisionId = null,
   onDeleteLocal,
+  onViewDetails,
 }) => {
   const navigationLinks = useMemo(() => {
     if (!catalog?.links) return [];
@@ -138,11 +137,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
         {catalog.links && catalog.links.length > 0 && (
           <nav className="flex flex-wrap gap-2 mt-2" aria-label="Catalog navigation">
             {navigationLinks.map((link: NavigationLink) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="btn btn-xs btn-ghost btn-secondary"
-              >
+              <a key={link.href} href={link.href} className="btn btn-xs btn-ghost btn-secondary">
                 {link.title || link.rel || link.href}
               </a>
             ))}
@@ -181,10 +176,9 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
                   libraryInfo={libraryInfoByPublicationId[publication.id] ?? null}
                   deletingRevisionId={deletingRevisionId}
                   onDeleteLocal={
-                    onDeleteLocal
-                      ? (record) => onDeleteLocal(publication.id, record)
-                      : undefined
+                    onDeleteLocal ? (record) => onDeleteLocal(publication.id, record) : undefined
                   }
+                  onViewDetails={onViewDetails}
                 />
               );
             })}

@@ -505,6 +505,8 @@ mod tests {
             title: "Test Book".to_string(),
             authors: vec![],
             pubdate: None,
+            publisher: None,
+            categories: Vec::new(),
             identifiers: HashMap::new(),
             series: None,
             languages: vec![],

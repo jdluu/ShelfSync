@@ -128,7 +128,7 @@ describe("libraryStore actions (#33)", () => {
       await store().toggleReadStatus(book, HOST, "secret-token");
 
       expect(updateReadStatus).toHaveBeenCalledWith(5, "reading");
-      expect(store().localBooks[0].read_status).toBe("reading");
+      expect(store().localBooks[0]!.read_status).toBe("reading");
       expect(httpClient.updateProgress).toHaveBeenCalledWith(HOST, "secret-token", 77, "reading");
     });
 
@@ -138,7 +138,7 @@ describe("libraryStore actions (#33)", () => {
 
       await store().toggleReadStatus(book);
       expect(updateReadStatus).toHaveBeenLastCalledWith(6, "finished");
-      expect(store().localBooks[0].read_status).toBe("finished");
+      expect(store().localBooks[0]!.read_status).toBe("finished");
 
       // The next transition starts from the persisted status
       const finished = { ...book, read_status: "finished" as const };
@@ -146,7 +146,7 @@ describe("libraryStore actions (#33)", () => {
 
       await store().toggleReadStatus(finished);
       expect(updateReadStatus).toHaveBeenLastCalledWith(6, "unread");
-      expect(store().localBooks[0].read_status).toBe("unread");
+      expect(store().localBooks[0]!.read_status).toBe("unread");
       expect(httpClient.updateProgress).not.toHaveBeenCalled();
     });
 
@@ -171,7 +171,7 @@ describe("libraryStore actions (#33)", () => {
         errorSpy.mockRestore();
       }
 
-      expect(store().localBooks[0].read_status).toBe("unread");
+      expect(store().localBooks[0]!.read_status).toBe("unread");
       expect(httpClient.updateProgress).not.toHaveBeenCalled();
     });
   });

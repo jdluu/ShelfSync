@@ -83,6 +83,7 @@ describe("opdsClient.fetchCatalog", () => {
           authors: ["Author One"],
           identifiers: { isbn: "978-0000000001" },
           languages: ["en"],
+          categories: [],
           relations: [],
           descriptions: [],
           links: [],
@@ -107,6 +108,7 @@ describe("opdsClient.fetchCatalog", () => {
 
 describe("opdsClient.downloadPublication", () => {
   beforeEach(() => {
+    mockSafeInvoke.mockClear();
     mockSafeInvoke.mockResolvedValue({
       local_path: "/path/to/download.epub",
       media_type: "application/epub+zip",
@@ -129,6 +131,7 @@ describe("opdsClient.downloadPublication", () => {
       title: "Test Book",
       authors: ["Test Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: ["A test book"],
       links: [
@@ -149,6 +152,7 @@ describe("opdsClient.downloadPublication", () => {
         title: "Test Book",
         authors: ["Test Author"],
         languages: ["en"],
+        categories: [],
         relations: [],
         descriptions: ["A test book"],
         links: [
@@ -177,6 +181,7 @@ describe("opdsClient.downloadPublication", () => {
       title: "Test Book",
       authors: ["Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
@@ -211,6 +216,7 @@ describe("opdsClient.downloadPublication", () => {
       title: "Test Book",
       authors: ["Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
@@ -234,6 +240,7 @@ describe("opdsClient.downloadPublication", () => {
       title: "Test Book",
       authors: ["Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "https://example.com/book.pdf", media_type: "application/pdf" }],
@@ -257,6 +264,7 @@ describe("opdsClient.downloadPublication", () => {
       title: "Test Book",
       authors: ["Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "https://example.com/book.epub", media_type: "application/epub+zip" }],
@@ -290,6 +298,7 @@ describe("opdsClient.getAvailableFormats", () => {
       title: "Test Book",
       authors: ["Author"],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [
@@ -318,6 +327,7 @@ describe("opdsClient.getAvailableFormats", () => {
       title: "Test Book",
       authors: [],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "/book.html", media_type: "text/html" }],
@@ -335,6 +345,7 @@ describe("opdsClient.getAvailableFormats", () => {
       title: "Test Book",
       authors: [],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [
@@ -362,6 +373,7 @@ describe("opdsClient.getPreferredFormat", () => {
       title: "Test Book",
       authors: [],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [
@@ -385,6 +397,7 @@ describe("opdsClient.getPreferredFormat", () => {
       title: "Test Book",
       authors: [],
       languages: ["en"],
+      categories: [],
       relations: [],
       descriptions: [],
       links: [{ href: "/book.epub", media_type: "application/epub+zip" }],

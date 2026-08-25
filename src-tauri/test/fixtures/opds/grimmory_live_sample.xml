@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">
+  <id>urn:booklore:catalog</id>
+  <title>Booklore Catalog</title>
+  <updated>2026-08-25T08:18:06.760204720Z</updated>
+  <opensearch:totalResults>481</opensearch:totalResults>
+  <opensearch:startIndex>1</opensearch:startIndex>
+  <opensearch:itemsPerPage>5</opensearch:itemsPerPage>
+  <link rel="self" href="/api/v1/opds/catalog?page=1&amp;size=5" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="start" href="/api/v1/opds" type="application/atom+xml;profile=opds-catalog;kind=navigation"/>
+  <link rel="search" type="application/opensearchdescription+xml" title="Search" href="/api/v1/opds/search.opds"/>
+  <link rel="first" href="/api/v1/opds/catalog?page=1&amp;size=5" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="next" href="/api/v1/opds/catalog?page=2&amp;size=5" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <link rel="last" href="/api/v1/opds/catalog?page=97&amp;size=5" type="application/atom+xml;profile=opds-catalog;kind=acquisition"/>
+  <entry>
+    <title>Blackflame</title>
+    <id>urn:booklore:book:934</id>
+    <updated>2026-08-15T01:00:06Z</updated>
+    <author><name>Will Wight</name></author>
+    <dc:publisher>Hidden Gnome Publishing</dc:publisher>
+    <dc:language>en</dc:language>
+    <category term="Action &amp; Adventure"/>
+    <category term="Fantasy"/>
+    <category term="Fiction"/>
+    <category term="Sword &amp; Sorcery"/>
+    <category term="Epic"/>
+    <category term="Science Fiction"/>
+    <category term="Unloveable Characters"/>
+    <category term="Young Adult"/>
+    <category term="Diverse Characters"/>
+    <category term="Adventure"/>
+    <category term="Loveable Characters"/>
+    <category term="Character Driven"/>
+    <category term="A Mix Driven"/>
+    <category term="Science Fiction &amp; Fantasy"/>
+    <category term="Strong Character Development"/>
+    <category term="Plot Driven"/>
+    <category term="Progression SFF"/>
+    <summary>&lt;div&gt;
+&lt;p&gt;Lindon has a year left.&lt;/p&gt;
+&lt;p&gt;When his time runs out, he’ll have to fight an opponent that no one believes he can beat. Unless he learns the magic of the sacred arts the right way, from scratch, he won’t have a chance to win…and even then, the odds are against him.&lt;/p&gt;
+&lt;p&gt;In the course of their training, Lindon and Yerin travel to the Blackflame Empire, where they struggle to master an ancient power. Success means a chance at life, but failure means death.&lt;/p&gt;
+&lt;p&gt;In the sacred arts, only those who risk the most can travel far.&lt;/p&gt;&lt;/div&gt;</summary>
+    <meta property="belongs-to-collection" id="series">Cradle</meta>
+    <meta property="group-position" refines="#series">3.0</meta>
+    <link href="/api/v1/opds/934/download?fileId=934" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/934/cover?2026-08-22T20:32:15Z" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/934/cover?2026-08-22T20:32:15Z" type="image/jpeg"/>
+  </entry>
+  <entry>
+    <title>A Kingdom of Flesh and Fire</title>
+    <id>urn:booklore:book:930</id>
+    <updated>2026-08-15T01:00:05Z</updated>
+    <author><name>Jennifer L. Armentrout</name></author>
+    <dc:publisher>Blue Box Press</dc:publisher>
+    <dc:language>en</dc:language>
+    <category term="Romance"/>
+    <category term="Fantasy"/>
+    <category term="Fantasy Romance"/>
+    <category term="Vampires"/>
+    <category term="Jennifer L. Armentrout"/>
+    <category term="From Blood and Ash"/>
+    <summary>&lt;div&gt;
+&lt;p&gt;From #1 New York Times bestselling author Jennifer L. Armentrout comes a new novel in her Blood and Ash series…&lt;/p&gt;
+&lt;p&gt;A Betrayal…&lt;/p&gt;
+&lt;p&gt;Everything Poppy has ever believed in is a lie, including the man she was falling in love with. Thrust among those who see her as a symbol of a monstrous kingdom, she barely knows who she is without the veil of the Maiden. But what she does know is that nothing is as dangerous to her as him. The Dark One. The Prince of Atlantia. He wants her to fight him, and that’s one order she’s more than happy to obey. He may have taken her, but he will never have her.&lt;/p&gt;
+&lt;p&gt;A Choice….&lt;/p&gt;
+&lt;p&gt;Casteel Da’Neer is known by many names and many faces. His lies are as seductive as his touch. His truths as sensual as his bite. Poppy knows better than to trust him. He needs her alive, healthy, and whole to achieve his goals. But he’s the only way for her to get what she wants—to find her brother Ian and see for herself if he has become a soulless Ascended. Working with Casteel instead of against him presents its own risks. He still tempts her with every breath, offering up all she’s ever wanted. Casteel has plans for her. Ones that could expose her to unimaginable pleasure and unfathomable pain. Plans that will force her to look beyond everything she thought she knew about herself—about him. Plans that could bind their lives together in unexpected ways that neither kingdom is prepared for. And she’s far too reckless, too hungry, to resist the temptation.&lt;/p&gt;
+&lt;p&gt;A Secret…&lt;/p&gt;
+&lt;p&gt;But unrest has grown in Atlantia as they await the return of their Prince. Whispers of war have become stronger, and Poppy is at the very heart of it all. The King wants to use her to send a message. The Descenters want her dead. The wolven are growing more unpredictable. And as her abilities to feel pain and emotion begin to grow and strengthen, the Atlantians start to fear her. Dark secrets are at play, ones steeped in the blood-drenched sins of two kingdoms that wo</summary>
+    <meta property="belongs-to-collection" id="series">Blood and Ash</meta>
+    <meta property="group-position" refines="#series">2.0</meta>
+    <link href="/api/v1/opds/930/download?fileId=930" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/930/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/930/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+  </entry>
+  <entry>
+    <title>Sevenfold Sword: Unity</title>
+    <id>urn:booklore:book:931</id>
+    <updated>2026-08-15T01:00:05Z</updated>
+    <author><name>Jonathan Moeller</name></author>
+    <dc:publisher>CreateSpace Publishing</dc:publisher>
+    <dc:language>en</dc:language>
+    <category term="Fantasy"/>
+    <category term="Fiction"/>
+    <category term="Epic"/>
+    <category term="Arthurian"/>
+    <category term="Military"/>
+    <summary>&lt;div&gt;
+&lt;p&gt;The quest of the Seven Swords will destroy kingdoms. &lt;/p&gt;
+&lt;p&gt;Ridmark Arban is the Shield Knight, questing to stop the rise of the evil New God. But Ridmark and his companions are caught in the war between the final remnant of the dying gray elves and the brutal muridach horde. Unless Ridmark can save the gray elves, he and his friends will die, and the New God will rise in power to enslave the world...&lt;/p&gt;&lt;/div&gt;</summary>
+    <meta property="belongs-to-collection" id="series">Sevenfold Sword Series</meta>
+    <meta property="group-position" refines="#series">6.0</meta>
+    <link href="/api/v1/opds/931/download?fileId=931" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/931/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/931/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+  </entry>
+  <entry>
+    <title>The Alchemyst</title>
+    <id>urn:booklore:book:932</id>
+    <updated>2026-08-15T01:00:05Z</updated>
+    <author><name>Michael Scott</name></author>
+    <dc:publisher>Random House Children&apos;s Books</dc:publisher>
+    <dc:language>en</dc:language>
+    <category term="Fantasy"/>
+    <category term="Young Adult"/>
+    <category term="Adventure"/>
+    <summary>&lt;p&gt;&lt;strong&gt;Nicholas Flamel appeared in J.K. Rowling’s &lt;em&gt;Harry Potter&lt;em&gt; —but did you know he really lived? And his secrets aren&apos;t safe!&lt;/em&gt;* &lt;/em&gt;&lt;/strong&gt;&lt;em&gt;Discover the truth in book one of the &lt;/em&gt;New York Times&lt;em&gt; bestselling series the Secrets of the Immortal Nicholas Flamel.&lt;/em&gt;*   &lt;/p&gt;
+&lt;p&gt;The truth: Nicholas Flamel&apos;s tomb is empty.   &lt;/p&gt;
+&lt;p&gt;The legend: Nicholas Flamel lives.  &lt;/p&gt;
+&lt;p&gt;Nicholas Flamel is the greatest Alchemyst to ever live. The records show that he died in 1418, but what if he&apos;s actually been making the elixir of life for centuries?&lt;br /&gt;
+The secrets to eternal life are hidden within the book he protects—the Book of Abraham the Mage. It&apos;s the most powerful book that has ever existed, and in the wrong hands, it will destroy the world. And that&apos;s exactly what Dr. John Dee plans to do when he steals it. &lt;br /&gt;
+There is one hope. If the prophecy is true, Sophie and Josh Newman have the power to save everyone. Now they just have to learn to use it.   &lt;/p&gt;
+&lt;p&gt;“The Secrets of the Immortal Nicholas Flamel has &lt;strong&gt;everything you loved about Harry Potter&lt;/strong&gt; , including &lt;strong&gt;magic, mystery, and a constant battle of good versus evil.&lt;/strong&gt; ”— &lt;em&gt;Bustle&lt;/em&gt; &lt;strong&gt;&lt;br /&gt;
+&lt;/strong&gt;&lt;br /&gt;
+&lt;strong&gt;Read the whole series!&lt;/strong&gt;&lt;br /&gt;
+&lt;em&gt;The Alchemyst&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;The Magician&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;The Sorceress&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;The Necromancer&lt;/em&gt;&lt;br /&gt;
+&lt;em&gt;The Warlock&lt;/em&gt; &lt;br /&gt;
+&lt;em&gt;The Enchantress&lt;/em&gt;&lt;/p&gt;</summary>
+    <meta property="belongs-to-collection" id="series">Secrets of the Immortal Nicholas Flamel Series</meta>
+    <meta property="group-position" refines="#series">1.0</meta>
+    <link href="/api/v1/opds/932/download?fileId=932" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/932/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/932/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+  </entry>
+  <entry>
+    <title>Iron Flame</title>
+    <id>urn:booklore:book:933</id>
+    <updated>2026-08-15T01:00:05Z</updated>
+    <author><name>Rebecca Yarros</name></author>
+    <dc:publisher>Entangled Publishing, LLC</dc:publisher>
+    <dc:language>en-US</dc:language>
+    <category term="Romance"/>
+    <category term="Fantasy"/>
+    <summary>&lt;div&gt;
+&lt;p&gt;**Discover the instant #1 &lt;em&gt;New York Times&lt;/em&gt; bestseller! TV series now in development at MGM Amazon Studios with Michael B. Jordan’s Outlier Society.&lt;/p&gt;
+&lt;p&gt;Accolades for &lt;em&gt;Fourth Wing&lt;/em&gt;&lt;br&gt;Amazon Best Books of the Year, #4 • Apple Best Books of the Year 2023 • Barnes &amp;amp; Noble Best Fantasy Book of 2023 (&lt;em&gt;Fourth Wing&lt;/em&gt; and &lt;em&gt;Iron Flame&lt;/em&gt;) • NPR “Books We Love” 2023 • Audible Best Books of 2023 • Hudson Book of the Year • Google Play Best Books of 2023 • Indigo Best Books of 2023 • Waterstones Book of the Year finalist • Goodreads Choice Award, semi-finalist • Newsweek Staffers’ Favorite Books of 2023** &lt;span style=&quot;font-weight: bold; font-style: italic&quot;&gt;•&lt;/span&gt; &lt;strong&gt;Paste Magazine&apos;s Best Books of 2023&lt;/strong&gt;&lt;/p&gt;
+&lt;p style=&quot;font-style: italic; font-weight: bold&quot;&gt;“The first year is when some of us lose our lives. The second year is when the rest of us lose our humanity.” —Xaden Riorson&lt;/p&gt;
+&lt;p&gt;Everyone expected Violet Sorrengail to die during her first year at Basgiath War College—Violet included. But Threshing was only the first impossible test meant to weed out the weak-willed, the unworthy, and the unlucky.&lt;/p&gt;
+&lt;p&gt;Now the &lt;em&gt;real&lt;/em&gt; training begins, and Violet’s already wondering how she’ll get through. It’s not just that it’s grueling and maliciously brutal, or even that it’s designed to stretch the riders’ capacity for pain beyond endurance. It’s the new vice commandant, who’s made it his personal mission to teach Violet &lt;em&gt;exactly&lt;/em&gt; how powerless she is–unless she betrays the man she loves.&lt;/p&gt;
+&lt;p&gt;Although Violet’s body might be weaker and frailer than everyone else’s, she still has her wits—and a will of iron. And leadership is forgetting the most important lesson Basgiath has taught her: &lt;em&gt;Dragon riders make their own rules&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;But a determination to survive won’t be enough this year.&lt;/p&gt;
+&lt;p&gt;Because Violet knows the real secret hidden for centuries at Basgiath War College—and nothing, not even dragon fire, </summary>
+    <meta property="belongs-to-collection" id="series">The Empyrean</meta>
+    <meta property="group-position" refines="#series">2.0</meta>
+    <link href="/api/v1/opds/933/download?fileId=933" rel="http://opds-spec.org/acquisition" type="application/epub+zip" title="EPUB"/>
+    <link rel="http://opds-spec.org/image" href="/api/v1/opds/933/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" href="/api/v1/opds/933/cover?2026-08-22T20:32:14Z" type="image/jpeg"/>
+  </entry>
+</feed>
