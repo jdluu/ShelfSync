@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 import { ClientDashboard } from "@/features/client/ClientDashboard";
 import { useHostManifest, useInfiniteHostManifest } from "@/hooks/useLibraryQuery";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useStorageStore } from "@/store/storageStore";
 import { useSyncStore } from "@/store/syncStore";
 
 // Mock localStorage and matchMedia for ThemeSwitcher
@@ -36,6 +37,10 @@ vi.mock("@/store/libraryStore", () => ({
   useLibraryStore: vi.fn(),
 }));
 
+vi.mock("@/store/storageStore", () => ({
+  useStorageStore: vi.fn(),
+}));
+
 vi.mock("@/store/syncStore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/store/syncStore")>();
   return { ...actual, useSyncStore: vi.fn() };
@@ -55,11 +60,14 @@ describe("ClientDashboard Integration", () => {
 
   beforeEach(() => {
     (useLibraryStore as unknown as Mock).mockReturnValue({
-      
-      offlineStoragePath: "/test/path",
       localBooks: [],
       toggleReadStatus: vi.fn(),
       setLocalBooks: vi.fn(),
+    });
+
+    (useStorageStore as unknown as Mock).mockReturnValue({
+      offlineStoragePath: "/test/path",
+      selectOfflineStorageFolder: vi.fn(),
     });
 
     (useSyncStore as unknown as Mock).mockReturnValue({

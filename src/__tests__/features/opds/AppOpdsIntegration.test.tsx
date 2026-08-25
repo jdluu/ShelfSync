@@ -45,8 +45,6 @@ describe("OPDS app shell integration", () => {
 
     const libraryState = {
       eInkMode: false,
-      offlineStoragePath: null,
-      selectOfflineStorageFolder: vi.fn(),
       setEInkMode: vi.fn(),
       loadSettings: vi.fn().mockResolvedValue(undefined),
     };

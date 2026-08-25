@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { useLibraryStore } from "@/store/libraryStore";
+import { useStorageStore } from "@/store/storageStore";
 import { useToastStore } from "@/store/toastStore";
 
 const mocks = vi.hoisted(() => ({
@@ -43,7 +43,7 @@ vi.mock("@tauri-apps/api/path", () => ({
 
 const DEFAULT_PATH = "/storage/emulated/0/Documents/ShelfSync";
 
-const store = () => useLibraryStore.getState();
+const store = () => useStorageStore.getState();
 const toastMessages = () => useToastStore.getState().toasts.map((t) => t.message);
 
 describe("offline storage folder selection (#13)", () => {
@@ -55,7 +55,7 @@ describe("offline storage folder selection (#13)", () => {
     vi.mocked(invoke).mockResolvedValue(DEFAULT_PATH);
     vi.mocked(open).mockResolvedValue(null);
     vi.mocked(save).mockResolvedValue(null);
-    useLibraryStore.setState({
+    useStorageStore.setState({
       offlineStoragePath: "",
       storageChoiceOpen: false,
     });
