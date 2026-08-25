@@ -16,6 +16,19 @@ ShelfSync is not an e-reader — it gets verified books onto your device.
 Open them with your favorite reading app (we recommend
 [Leafline](https://github.com/jdluu/Leafline)).
 
+## Screenshots
+
+**Connect your shelf** — point ShelfSync at any OPDS catalog:
+
+![Connect screen in the paper theme](docs/screenshots/connect-paper.png)
+
+**Browse and download** — cover-forward cards with serif titles, live download
+progress, and offline library states:
+
+| Paper (light) | Lamplight (dark) |
+|---|---|
+| ![Catalog in paper theme](docs/screenshots/catalog-paper.png) | ![Catalog in lamplight theme](docs/screenshots/catalog-lamplight.png) |
+
 ## Features
 
 - **OPDS catalog browsing** — navigate, search, and paginate remote catalogs
