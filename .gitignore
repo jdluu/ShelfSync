@@ -51,6 +51,6 @@ logs/
 *.log
 *.txt
 docs/analysis/
-docs/screenshots/
+docs/screenshots/tmp/
 plans/
 .dev-docs/
