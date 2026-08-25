@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-08-24
+### Changed
+- **Pure OPDS Client**: Removed all vestigial peer-to-peer features (discovery, host dashboard, role selection, pairing auth, BLE/mDNS/tray, Axum HTTP server). ShelfSync is now a focused OPDS catalog client (-5,356 lines) (#27).
+- **OPDS-First Navigation**: App loads directly into the OPDS catalog browser. Removed `appMode`/role selection system, `appStore.ts`. Settings accessible via gear icon sidebar (#28).
+- **Refactored commands/opds.rs**: 735-line monolith split into `transport`, `catalog`, `download` sub-modules — no behavior change (#29).
+- **Refactored persist/repo.rs**: SQL queries and grouping logic extracted into `queries.rs` and `grouping.rs` (#30).
+- **Refactored OpdsPublicationCard**: 423-line component split into `usePublicationState` hook (170L) and `PublicationFormatMenu` component (105L) (#31).
+- **Refactored libraryStore**: Split into focused `libraryStore` (book CRUD) and `storageStore` (path management) (#32).
+- **Infisical Optional**: Local Android builds degrade gracefully to debug signing when Infisical CLI is absent; CI already uses GitHub Secrets only.
+
+### Added
+- **Obtainium Install Badge**: One-tap "Add to Obtainium" button in README for Android installs and auto-updates.
+- **A11y Audit**: OPDS catalog form labels, focus management, publication card aria-labels with progress, format menu keyboard navigation — 17 new a11y tests (#35).
+- **Test Coverage**: Vitest tests for ClientDashboard rendering states and store actions (#33).
+- **E2E CI Job**: Optional Playwright job in CI (requires display server, continue-on-error) (#36).
+
+### Fixed
+- TypeScript strict errors in QueueOverlay, A11y tests, offlineLibrary tests (14 fixes).
+
 ## [1.4.0] - 2026-08-23
 ### Added
 - **Live Sync Queue**: Download progress events now reach the UI in real time; the queue overlay shows per-book status with download-first ordering and auto-dismisses when the queue settles (#8).
