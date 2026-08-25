@@ -50,7 +50,7 @@ progress, and offline library states:
 
 ### Android (Obtainium)
 
-[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](https://obtainium.imranr.dev/add/https%3A%2F%2Fgithub.com%2Fjdluu%2FShelfSync)
+[![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fadd%2Fhttps%3A%2F%2Fgithub.com%2Fjdluu%2FShelfSync)
 
 Tap the badge on your Android device with [Obtainium](https://obtainium.imranr.dev/)
 installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
