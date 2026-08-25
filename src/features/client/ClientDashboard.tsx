@@ -1,4 +1,4 @@
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, WifiOff } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import type React from "react";
 import { useState } from "react";
@@ -8,8 +8,8 @@ import { SkipLink } from "@/components/layout/SkipLink";
 
 import { BookDetailsModal } from "@/components/ui/BookDetailsModal";
 import { CoverFlow } from "@/components/ui/CoverFlow";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
-import { Discovery } from "@/features/discovery/Discovery";
 import { deriveSyncSummary } from "@/store/syncStore";
 import type { Book } from "@/types/core";
 import { ClientBookGrid } from "./ClientBookGrid";
@@ -37,7 +37,6 @@ interface ClientDashboardProps {
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }) => {
   const {
     connectedHost,
-    connect,
     disconnect,
     books,
     loading,
@@ -162,7 +161,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onChangeRole }
                   {loading ? (
                     <ClientSkeletonGrid />
                   ) : !connectedHost ? (
-                    <Discovery onConnect={connect} />
+                    <EmptyState
+                      icon={WifiOff}
+                      title="No host connected"
+                      description="Connect to a host to browse and sync its library."
+                    />
                   ) : books.length === 0 ? (
                     <ClientNoBooksFound refresh={refresh} />
                   ) : groupedBooks ? (

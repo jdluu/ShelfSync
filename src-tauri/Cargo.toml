@@ -19,28 +19,20 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-axum = "0.8.8"
 tokio = { version = "1.50", features = ["full"] }
-tower-http = { version = "0.6.8", features = ["cors"] }
-mdns-sd = "0.18.2"
-local-ip-address = "0.6.10"
-network-interface = "2.0.5"
 jni = "0.21.1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 uuid = { version = "1.22.0", features = ["v4", "fast-rng"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
-hostname = "0.4.2"
-image = "0.25.10"
 log = "0.4.29"
 env_logger = "0.11.9"
 thiserror = "2.0.18"
-rand = "0.10.0"
 zip = "8.2.0"
 reqwest = { version = "0.13.2", default-features = false, features = ["stream", "json", "rustls"] }
 rustls = { version = "0.23", features = ["ring"] }
@@ -50,7 +42,6 @@ rusqlite = { version = "0.38.0", features = ["bundled"] }
 tauri-plugin-updater = "2.10.0"
 deadpool-sqlite = "0.13.0"
 tauri-plugin-process = "2"
-btleplug = "0.11"
 tantivy = "0.22"
 epub = "2.1"
 quick-xml = { version = "0.41", features = ["serialize", "escape-html"] }
@@ -66,6 +57,7 @@ quick-xml = { version = "0.41", features = ["serialize", "escape-html"] }
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 
 [dev-dependencies]
+axum = "0.8.8"
 axum-test = { version = "19.1.1", features = ["reqwest"] }
 tempfile = "3.27.0"
 

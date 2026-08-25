@@ -1,24 +1,12 @@
-import { ArrowLeft } from "lucide-react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { PinModal } from "@/components/ui/PinModal";
 import { StorageChoiceModal } from "@/components/ui/StorageChoiceModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
-import { RoleSelection } from "@/features/role-selection/RoleSelection";
 import { useUpdater } from "@/hooks/useUpdater";
-import { useAppStore } from "@/store/appStore";
-import { useAuthStore } from "@/store/authStore";
-import { useDiscoveryStore } from "@/store/discoveryStore";
 import { useLibraryStore } from "@/store/libraryStore";
 
-const ClientDashboard = lazy(() =>
-  import("@/features/client/ClientDashboard").then((m) => ({ default: m.ClientDashboard })),
-);
-const HostDashboard = lazy(() =>
-  import("@/features/host/HostDashboard").then((m) => ({ default: m.HostDashboard })),
-);
 const OpdsCatalogScreenContainer = lazy(() => import("@/features/opds/OpdsCatalogScreenContainer"));
 
 function InitializingView() {
@@ -46,112 +34,29 @@ function InitializingView() {
   );
 }
 
-function useAppContentState() {
-  const role = useAppStore((state) => state.role);
-  const setRole = useAppStore((state) => state.setRole);
-
-  const { setAppMode, loadSettings } = useLibraryStore();
-  const { disconnect, loadTokens } = useAuthStore();
-
-  const myConnectionInfo = useDiscoveryStore((s) => s.myConnectionInfo);
-  const initDiscovery = useDiscoveryStore((s) => s.init);
+function AppContent() {
+  const loadSettings = useLibraryStore((state) => state.loadSettings);
+  const { checkForUpdates } = useUpdater();
 
   const [appLoading, setAppLoading] = useState(true);
-  const { checkForUpdates } = useUpdater();
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([loadSettings(), loadTokens()]);
+      await loadSettings();
       setTimeout(() => setAppLoading(false), 500);
       checkForUpdates(false);
     };
     init();
-  }, [loadSettings, loadTokens, checkForUpdates]);
-
-  useEffect(() => {
-    const cleanup = initDiscovery();
-    return cleanup;
-  }, [initDiscovery]);
-
-  const handleRoleSelect = async (selectedRole: "host" | "client") => {
-    setRole(selectedRole);
-    await setAppMode(selectedRole);
-  };
-
-  const handleChangeRole = async () => {
-    await setAppMode("unselected");
-    if (role === "client") {
-      disconnect();
-    }
-    setRole("unselected");
-  };
-
-  return { role, appLoading, myConnectionInfo, handleRoleSelect, handleChangeRole };
-}
-
-function AppContent() {
-  const { role, appLoading, myConnectionInfo, handleRoleSelect, handleChangeRole } =
-    useAppContentState();
-
-  const { authRequired, pairingHost, pair, disconnect } = useAuthStore();
-
-  const [opdsMode, setOpdsMode] = useState(false);
+  }, [loadSettings, checkForUpdates]);
 
   if (appLoading) return <InitializingView />;
 
-  if (authRequired) {
-    return (
-      <PinModal
-        hostName={pairingHost?.hostname || "Unknown Host"}
-        onPair={pair}
-        onCancel={disconnect}
-        loading={false}
-      />
-    );
-  }
-
-  if (opdsMode) {
-    return (
-      <div className="h-screen w-screen flex flex-col bg-base-100 font-sans">
-        <header
-          className="flex items-center gap-3 px-3 sm:px-6 py-2 border-b border-base-content/10 bg-base-100"
-          style={{ paddingTop: "calc(var(--safe-area-top, 0px) + 0.5rem)" }}
-        >
-          <button type="button" onClick={() => setOpdsMode(false)} className="btn btn-ghost btn-sm">
-            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            Back
-          </button>
-          <span className="text-lg sm:text-xl font-display font-bold tracking-tight">
-            Browse Catalog (OPDS)
-          </span>
-        </header>
-        <main id="main-content" className="flex-grow overflow-y-auto p-4 sm:p-6">
-          <div className="container max-w-4xl mx-auto">
-            <Suspense fallback={<InitializingView />}>
-              <OpdsCatalogScreenContainer />
-            </Suspense>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (role === "unselected") {
-    return <RoleSelection onSelect={handleRoleSelect} onBrowseCatalog={() => setOpdsMode(true)} />;
-  }
-
-  if (role === "host") {
-    return (
-      <Suspense fallback={<InitializingView />}>
-        <HostDashboard connectionInfo={myConnectionInfo} onChangeRole={handleChangeRole} />
-      </Suspense>
-    );
-  }
-
   return (
-    <Suspense fallback={<InitializingView />}>
-      <ClientDashboard onChangeRole={handleChangeRole} />
-    </Suspense>
+    <main id="main-content" className="h-screen w-screen flex flex-col bg-base-100 font-sans">
+      <Suspense fallback={<InitializingView />}>
+        <OpdsCatalogScreenContainer />
+      </Suspense>
+    </main>
   );
 }
 

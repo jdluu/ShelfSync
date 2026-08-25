@@ -8,7 +8,7 @@ feature, check this table first.
 
 | | Leafline | ShelfSync |
 |---|---|---|
-| Purpose | EPUB reading app | Grimmory/Calibre-compatible sync client |
+| Purpose | EPUB reading app | Grimmory/OPDS library client (no host role) |
 | Platform | Native Android (Kotlin, Jetpack Compose) | Tauri desktop + Android shell (React frontend, Rust backend) |
 | Rendering | Readium Kotlin Toolkit (EPUB rendering) | None. Never renders or opens books for reading |
 | Catalog | OPDS browse + download into local library (client role only) | OPDS browse, authenticated download, offline reconciliation (primary domain) |
