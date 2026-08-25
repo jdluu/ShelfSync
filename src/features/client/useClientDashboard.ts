@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteHostManifest } from "@/hooks/useLibraryQuery";
 import { useSyncProgress } from "@/hooks/useSyncProgress";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useStorageStore } from "@/store/storageStore";
 import { useSyncStore } from "@/store/syncStore";
 import { useToastStore } from "@/store/toastStore";
 import type { Host } from "@/types/core";
@@ -12,13 +13,8 @@ import { useBookSelection } from "./useBookSelection";
 import { useBookSyncActions } from "./useBookSyncActions";
 
 export function useClientDashboard() {
-  const {
-    offlineStoragePath,
-    localBooks,
-    setLocalBooks,
-    selectOfflineStorageFolder,
-    deleteLocalBook,
-  } = useLibraryStore();
+  const { localBooks, setLocalBooks, deleteLocalBook } = useLibraryStore();
+  const { offlineStoragePath, selectOfflineStorageFolder } = useStorageStore();
   const { syncProgress, manualError, clearError } = useSyncStore();
 
   const [connectedHost, setConnectedHost] = useState<Host | null>(null);

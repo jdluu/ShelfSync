@@ -1,17 +1,17 @@
 import { FolderDown, Search } from "lucide-react";
 import type React from "react";
-import { useLibraryStore } from "@/store/libraryStore";
+import { useStorageStore } from "@/store/storageStore";
 
 /**
  * Mobile-only dialog shown when no native directory chooser is available.
  * Offers the recommended app location or an advanced folder browse fallback.
  */
 export const StorageChoiceModal: React.FC = () => {
-  const storageChoiceOpen = useLibraryStore((s) => s.storageChoiceOpen);
-  const offlineStoragePath = useLibraryStore((s) => s.offlineStoragePath);
-  const chooseRecommendedStorage = useLibraryStore((s) => s.chooseRecommendedStorage);
-  const browseForStorage = useLibraryStore((s) => s.browseForStorage);
-  const dismissStorageChoice = useLibraryStore((s) => s.dismissStorageChoice);
+  const storageChoiceOpen = useStorageStore((s) => s.storageChoiceOpen);
+  const offlineStoragePath = useStorageStore((s) => s.offlineStoragePath);
+  const chooseRecommendedStorage = useStorageStore((s) => s.chooseRecommendedStorage);
+  const browseForStorage = useStorageStore((s) => s.browseForStorage);
+  const dismissStorageChoice = useStorageStore((s) => s.dismissStorageChoice);
 
   if (!storageChoiceOpen) return null;
 

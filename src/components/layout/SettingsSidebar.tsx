@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, Library, Settings, Shield, User, Wifi, X } from "l
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useLibraryStore } from "@/store/libraryStore";
+import { useStorageStore } from "@/store/storageStore";
 import { useToastStore } from "@/store/toastStore";
 import { isTauri } from "@/utils/tauri";
 import { ARTICLES } from "./help/helpArticles";
@@ -28,8 +29,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onChangeRole,
   hostIp,
 }) => {
-  const { offlineStoragePath, selectOfflineStorageFolder, eInkMode, setEInkMode } =
-    useLibraryStore();
+  const { offlineStoragePath, selectOfflineStorageFolder } = useStorageStore();
+  const { eInkMode, setEInkMode } = useLibraryStore();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
 
   const handleClose = () => {
