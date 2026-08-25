@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
  */
 
 const ENV = "prod";
+const PROJECT_ID = "b5af8dff-e2cd-492a-bf10-a71ce71deb58";
 
 function run(cmd) {
   try {
@@ -15,6 +16,13 @@ function run(cmd) {
   } catch (_e) {
     return null;
   }
+}
+
+/** Build infisical command with project context for machine identity auth */
+function infisicalCmd(baseCmd) {
+  // If INFISICAL_TOKEN is set in env (machine identity), add --projectId
+  const tokenFlag = process.env.INFISICAL_TOKEN ? ` --token ${process.env.INFISICAL_TOKEN} --projectId ${PROJECT_ID}` : "";
+  return `${baseCmd}${tokenFlag}`;
 }
 
 // Check for Infisical CLI
@@ -34,7 +42,7 @@ console.log("--- ShelfSync Secret Sync ---");
  */
 function syncBinaryFile(secretName, targetPath, secretsPath = "/") {
   const value = run(
-    `infisical secrets get ${secretName} --env=${ENV} --path=${secretsPath} --plain`,
+    infisicalCmd(`infisical secrets get ${secretName} --env=${ENV} --path=${secretsPath} --plain`),
   );
   if (value) {
     const dir = dirname(targetPath);
@@ -52,7 +60,7 @@ function syncBinaryFile(secretName, targetPath, secretsPath = "/") {
 
 // 1. Recreate keystore.properties from the /android folder
 console.log("Exporting keystore.properties from /android...");
-const props = run(`infisical export --env=${ENV} --path=/android --format=dotenv`);
+const props = run(infisicalCmd(`infisical export --env=${ENV} --path=/android --format=dotenv`));
 if (props) {
   const propsPath = join("src-tauri", "gen", "android", "app", "keystore.properties");
   const propsDir = dirname(propsPath);

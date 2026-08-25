@@ -49,8 +49,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+          # Tauri signing: prefer Infisical, fall back to direct secret
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: pnpm tauri build
+        run: |
+          if [ -n "$INFISICAL_TOKEN" ]; then
+            npm install -g infisical@latest 2>/dev/null
+            TAURI_KEY_B64=$(infisical secrets get TAURI_UPDATER_PRIVATE_KEY_BASE64 \
+              --env prod --path /tauri --plain \
+              --token "$INFISICAL_TOKEN" \
+              --projectId b5af8dff-e2cd-492a-bf10-a71ce71deb58 2>/dev/null)
+            if [ -n "$TAURI_KEY_B64" ]; then
+              export TAURI_SIGNING_PRIVATE_KEY="$TAURI_KEY_B64"
+              echo "✓ Tauri signing key from Infisical"
+            fi
+          fi
+          pnpm tauri build
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
@@ -100,19 +114,42 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
       - name: setup Android signing
-        if: env.ANDROID_KEY_BASE64 != ''
         env:
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+          # Fallback GitHub secrets (set these if INFISICAL_TOKEN not available)
           ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
             mkdir -p src-tauri/gen/android/app
             cd src-tauri/gen/android/app
-            echo "shelfsync.key.alias=$ANDROID_KEY_ALIAS" > keystore.properties
-            echo "shelfsync.key.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
-            echo "shelfsync.keystore.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
-            base64 -d <<< "$ANDROID_KEY_BASE64" > shelfsync-release.jks
-            echo "shelfsync.keystore.path=shelfsync-release.jks" >> keystore.properties
+
+            if [ -n "$INFISICAL_TOKEN" ]; then
+              # Fetch from Infisical (preferred)
+              npm install -g infisical@latest 2>/dev/null
+              infisical secrets \
+                --env prod --path /android --output dotenv \
+                --token "$INFISICAL_TOKEN" \
+                --projectId b5af8dff-e2cd-492a-bf10-a71ce71deb58 \
+                > keystore.properties 2>/dev/null
+              infisical secrets get SHELF_KEYSTORE_BASE64 \
+                --env prod --path /android --plain \
+                --token "$INFISICAL_TOKEN" \
+                --projectId b5af8dff-e2cd-492a-bf10-a71ce71deb58 \
+                2>/dev/null | base64 -d > shelfsync-release.jks
+              echo "shelfsync.keystore.path=shelfsync-release.jks" >> keystore.properties
+              echo "✓ Signed from Infisical"
+            elif [ -n "$ANDROID_KEY_BASE64" ]; then
+              # Fallback to GitHub secrets
+              echo "shelfsync.key.alias=$ANDROID_KEY_ALIAS" > keystore.properties
+              echo "shelfsync.key.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+              echo "shelfsync.keystore.password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+              base64 -d <<< "$ANDROID_KEY_BASE64" > shelfsync-release.jks
+              echo "shelfsync.keystore.path=shelfsync-release.jks" >> keystore.properties
+              echo "✓ Signed from GitHub Secrets"
+            else
+              echo "⚠️ No signing secrets available — building unsigned"
+            fi
       - name: Build Android (AAB & APK)
         run: |
             export NDK_HOME=$ANDROID_NDK_HOME
