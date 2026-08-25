@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-08-24
+### Added
+- **Brand v2 redesign**: complete visual overhaul for the OPDS-client pivot. New "paper" (light) and "lamplight" (dark) themes with warm paper neutrals and a single lamplight-amber accent; Source Serif 4 for book titles and the wordmark; cover-forward publication cards; calmer connect screen.
+- **New logo and app icons**: open-book-and-lamp mark across desktop (ico/icns/Store logos) and Android, including a proper adaptive-icon foreground (safe-zone compliant, transparent) and a monochrome layer for Android 13+ themed icons.
+- **README screenshots**: connect screen and catalog grid captured in both themes.
+
+### Changed
+- Old `light`/`dark` theme preferences map to the new theme names automatically.
+
 ## [1.5.0] - 2026-08-24
 ### Changed
 - **Pure OPDS Client**: Removed all vestigial peer-to-peer features (discovery, host dashboard, role selection, pairing auth, BLE/mDNS/tray, Axum HTTP server). ShelfSync is now a focused OPDS catalog client (-5,356 lines) (#27).
