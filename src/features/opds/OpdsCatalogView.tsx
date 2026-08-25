@@ -125,8 +125,8 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold">{catalog.title}</h2>
+      <header className="flex flex-col gap-2 pb-4 border-b border-base-300">
+        <h2 className="font-display text-3xl font-semibold tracking-tight">{catalog.title}</h2>
         {catalog.updated && (
           <p className="text-sm text-base-content/60">
             Last updated: {new Date(catalog.updated).toLocaleDateString()}
@@ -141,7 +141,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
               <a
                 key={link.href}
                 href={link.href}
-                className="badge badge-sm badge-outline badge-secondary"
+                className="btn btn-xs btn-ghost btn-secondary"
               >
                 {link.title || link.rel || link.href}
               </a>
