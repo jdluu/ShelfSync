@@ -93,9 +93,9 @@ async function startEpubDownload(): Promise<void> {
   fireEvent.click(screen.getByRole("button", { name: "Select download format" }));
   fireEvent.click(screen.getByRole("option", { name: "EPUB" }));
   await waitFor(() => {
-    expect(screen.queryByRole("button", { name: "Download as EPUB" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Download Dune as EPUB" })).not.toBeNull();
   });
-  fireEvent.click(screen.getByRole("button", { name: "Download as EPUB" }));
+  fireEvent.click(screen.getByRole("button", { name: "Download Dune as EPUB" }));
 }
 
 beforeEach(() => {
@@ -168,7 +168,7 @@ describe("OpdsCatalogScreenContainer", () => {
         expect(screen.queryByText("Dune")).not.toBeNull();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
       await waitFor(() => {
         expect(opdsClient.fetchCatalog).toHaveBeenCalledTimes(2);
@@ -181,11 +181,11 @@ describe("OpdsCatalogScreenContainer", () => {
 
       await waitFor(() => {
         const previousButton = screen.getByRole("button", {
-          name: "Previous",
+          name: "Previous page",
         }) as HTMLButtonElement;
         expect(previousButton.disabled).toBe(false);
       });
-      fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+      fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
 
       await waitFor(() => {
         expect(opdsClient.fetchCatalog).toHaveBeenCalledTimes(3);
@@ -285,8 +285,11 @@ describe("OpdsCatalogScreenContainer", () => {
         expect(screen.queryByText("Download status: failed")).not.toBeNull();
       });
 
-      const statusAlert = screen.getByRole("status");
-      expect(statusAlert.textContent).toContain("Download failed");
+      const statusAlert = screen
+        .getAllByRole("status")
+        .find((element) => element.textContent?.includes("Download failed"));
+      expect(statusAlert).toBeDefined();
+      expect(statusAlert?.textContent).toContain("Download failed");
     });
 
     it("threads live per-publication progress percent into publication cards", async () => {
