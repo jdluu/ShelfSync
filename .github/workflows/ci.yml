@@ -46,3 +46,28 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - name: test
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.2.0
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: install Playwright
+        run: pnpm exec playwright install chromium
+      - name: install xvfb
+        run: sudo apt-get install -y xvfb
+      - name: build and test (with virtual display)
+        run: |
+          xvfb-run pnpm tauri build 2>/dev/null &
+          sleep 10
+          pnpm exec playwright test --config=playwright.config.ts
