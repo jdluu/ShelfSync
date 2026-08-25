@@ -1,16 +1,16 @@
 import {
   AlertCircle as AlertCircleIcon,
   Book as BookIcon,
-  ChevronDown as ChevronDownIcon,
   Download as DownloadIcon,
   RotateCcw as RetryIcon,
   Trash2 as TrashIcon,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
 import { LibraryStateBadge } from "./LibraryStateBadge";
+import { getMediaTypeLabel, PublicationFormatMenu } from "./PublicationFormatMenu";
+import { usePublicationState } from "./usePublicationState";
 
 interface OpdsPublicationCardProps {
   publication: Publication;
@@ -56,14 +56,6 @@ function getMediaTypeLabelForBadge(mediaType: string): string {
   return labels[mediaType.toLowerCase()] || mediaType;
 }
 
-function getMediaTypeLabel(mediaType: MediaType): string {
-  const labels: Record<MediaType, string> = {
-    "application/epub+zip": "EPUB",
-    "application/pdf": "PDF",
-  };
-  return labels[mediaType] || mediaType;
-}
-
 export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
   publication,
   showFormats = true,
@@ -72,121 +64,50 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
   transientPassword,
   contentRoot,
   onDownload,
-  downloadStatus = "idle",
-  downloadProgress = null,
-  downloadLocalPath = null,
-  downloadErrorMessage = null,
-  libraryInfo = null,
+  downloadStatus,
+  downloadProgress,
+  downloadLocalPath,
+  downloadErrorMessage,
+  libraryInfo,
   deletingRevisionId = null,
   onDeleteLocal,
 }) => {
   const hasCover = publication.representative?.href;
-  const hasDownloadConfig = catalogUrl && contentRoot && onDownload;
-  const hasAcquisitionLinks = publication.links?.some(
-    (link) => link.media_type === "application/epub+zip" || link.media_type === "application/pdf",
-  );
 
-  const primaryRecord = libraryInfo?.primary ?? null;
-  const supersededRecords = libraryInfo?.superseded ?? [];
-  const fallbackSuperseded =
-    primaryRecord === null ? (supersededRecords[0] ?? null) : null;
-  const isBusyDownloading =
-    downloadStatus === "downloading" || primaryRecord?.section === "downloading";
-
-  const acquisitionFormats: MediaType[] = useMemo(() => {
-    const formats: MediaType[] = [];
-    if (!publication.links) return formats;
-    for (const link of publication.links) {
-      if (link.media_type === "application/epub+zip" || link.media_type === "application/pdf") {
-        formats.push(link.media_type as MediaType);
-      }
-    }
-    return formats;
-  }, [publication.links]);
-
-  const [selectedFormat, setSelectedFormat] = useState<MediaType | null>(null);
-  const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const formatMenuContainerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!showFormatMenu) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setShowFormatMenu(false);
-      }
-    };
-    const handlePointerDown = (event: MouseEvent) => {
-      if (
-        formatMenuContainerRef.current &&
-        event.target instanceof Node &&
-        !formatMenuContainerRef.current.contains(event.target)
-      ) {
-        setShowFormatMenu(false);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [showFormatMenu]);
-
-  const formatLabels = useMemo(() => {
-    if (!showFormats || !publication.links || publication.links.length === 0) return [];
-    return publication.links
-      .filter((link) => link.media_type)
-      .map((link) => link.media_type as string);
-  }, [publication.links, showFormats]);
-
-  const handleDownload = async () => {
-    if (!selectedFormat || !hasDownloadConfig || !onDownload) return;
-    try {
-      await onDownload(
-        {
-          catalogUrl,
-          transientUsername,
-          transientPassword,
-          contentRoot,
-        },
-        publication,
-        selectedFormat,
-      );
-    } catch {}
-  };
-
-  const retryableRecord =
-    primaryRecord?.section === "failed" &&
-    (primaryRecord.media_type === "application/epub+zip" ||
-      primaryRecord.media_type === "application/pdf")
-      ? primaryRecord
-      : null;
-
-  const handleRetry = async () => {
-    if (!retryableRecord || !hasDownloadConfig || !onDownload) return;
-    setSelectedFormat(retryableRecord.media_type as MediaType);
-    setShowFormatMenu(false);
-    try {
-      await onDownload(
-        { catalogUrl, transientUsername, transientPassword, contentRoot },
-        publication,
-        retryableRecord.media_type as MediaType,
-      );
-    } catch {}
-  };
-
-  const deletableRecords: CategorizedLibraryRecord[] = [];
-  if (primaryRecord?.local_relative_path && primaryRecord.section !== "downloading") {
-    deletableRecords.push(primaryRecord);
-  }
-  for (const record of supersededRecords) {
-    if (record.local_relative_path) {
-      deletableRecords.push(record);
-    }
-  }
-
-  const showDownloadSection = hasDownloadConfig && hasAcquisitionLinks;
-  const showAcquisitionTags = showFormats && formatLabels.length > 0 && !showDownloadSection;
+  const {
+    downloadStatus: status,
+    downloadProgress: progress,
+    downloadLocalPath: localPath,
+    downloadErrorMessage: errorMessage,
+    primaryRecord,
+    fallbackSuperseded,
+    isBusyDownloading,
+    acquisitionFormats,
+    formatLabels,
+    selectedFormat,
+    showFormatMenu,
+    setShowFormatMenu,
+    selectFormat,
+    handleDownload,
+    handleRetry,
+    retryableRecord,
+    deletableRecords,
+    showDownloadSection,
+    showAcquisitionTags,
+  } = usePublicationState({
+    publication,
+    showFormats,
+    catalogUrl,
+    transientUsername,
+    transientPassword,
+    contentRoot,
+    onDownload,
+    downloadStatus,
+    downloadProgress,
+    downloadLocalPath,
+    downloadErrorMessage,
+    libraryInfo,
+  });
 
   return (
     <article
@@ -235,9 +156,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
               </p>
             )}
           </div>
-          {downloadStatus !== "idle" && (
-            <span className="sr-only">Download status: {downloadStatus}</span>
-          )}
+          {status !== "idle" && <span className="sr-only">Download status: {status}</span>}
         </div>
 
         {(primaryRecord || fallbackSuperseded) && (
@@ -272,81 +191,48 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
 
         {showDownloadSection && acquisitionFormats.length > 0 && (
           <section className="flex flex-col gap-2 mt-2" aria-label="Download options">
-            {downloadStatus === "failed" && downloadErrorMessage && (
+            {status === "failed" && errorMessage && (
               <p className="text-xs text-error" role="status" aria-live="polite">
                 <AlertCircleIcon className="w-3 h-3 mr-1 inline" aria-hidden="true" />
-                {downloadErrorMessage}
+                {errorMessage}
               </p>
             )}
-            {downloadStatus === "downloading" && (
+            {status === "downloading" && (
               <div className="flex flex-col gap-1">
                 <progress
                   className="progress progress-primary w-full"
                   max={100}
-                  value={typeof downloadProgress === "number" ? downloadProgress : undefined}
+                  value={typeof progress === "number" ? progress : undefined}
                   aria-label={`Downloading ${publication.title}`}
                 />
                 <p className="text-xs text-base-content/70">
-                  {typeof downloadProgress === "number" ? `${downloadProgress}%` : "Downloading…"}
+                  {typeof progress === "number" ? `${progress}%` : "Downloading…"}
                 </p>
               </div>
             )}
-            <div ref={formatMenuContainerRef} className="relative inline-block w-full">
-              <button
-                type="button"
-                onClick={() => setShowFormatMenu(!showFormatMenu)}
-                disabled={downloadStatus === "downloading"}
-                className={`btn btn-sm btn-outline w-full justify-between ${
-                  downloadStatus === "downloading" ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                aria-haspopup="listbox"
-                aria-expanded={showFormatMenu}
-                aria-label={
-                  selectedFormat
-                    ? `Selected format: ${getMediaTypeLabel(selectedFormat)}, change format`
-                    : "Select download format"
-                }
-              >
-                <span>
-                  {downloadStatus === "downloading"
-                    ? "Downloading..."
-                    : downloadLocalPath
-                      ? "Downloaded"
-                      : "Select Format"}
-                </span>
-                <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
-              </button>
-              {showFormatMenu && (
-                <div className="absolute z-10 mt-1 w-full bg-base-100 border border-base-content/20 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {acquisitionFormats.map((format) => (
-                    <button
-                      key={format}
-                      type="button"
-                      onClick={() => {
-                        setSelectedFormat(format);
-                        setShowFormatMenu(false);
-                      }}
-                      disabled={downloadStatus === "downloading"}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-base-200 ${
-                        selectedFormat === format ? "bg-primary/10 font-medium" : ""
-                      } ${downloadStatus === "downloading" ? "opacity-50 cursor-not-allowed" : ""}`}
-                      role="option"
-                      aria-selected={selectedFormat === format}
-                    >
-                      {getMediaTypeLabel(format)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <PublicationFormatMenu
+              isOpen={showFormatMenu}
+              onOpenChange={setShowFormatMenu}
+              formats={acquisitionFormats}
+              selectedFormat={selectedFormat}
+              onSelectFormat={selectFormat}
+              disabled={status === "downloading"}
+              triggerText={
+                status === "downloading"
+                  ? "Downloading..."
+                  : localPath
+                    ? "Downloaded"
+                    : "Select Format"
+              }
+            />
 
-            {downloadLocalPath && downloadStatus === "completed" && (
+            {localPath && status === "completed" && (
               <p className="text-xs text-success" role="status">
-                Downloaded: {downloadLocalPath.split("/").pop()}
+                Downloaded: {localPath.split("/").pop()}
               </p>
             )}
 
-            {selectedFormat && downloadStatus === "idle" && (
+            {selectedFormat && status === "idle" && (
               <button
                 type="button"
                 onClick={handleDownload}
