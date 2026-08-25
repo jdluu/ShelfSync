@@ -13,7 +13,6 @@ import { useBookSyncActions } from "./useBookSyncActions";
 
 export function useClientDashboard() {
   const {
-    appMode,
     offlineStoragePath,
     localBooks,
     setLocalBooks,
@@ -28,7 +27,7 @@ export function useClientDashboard() {
   const connect = useCallback((host: Host) => setConnectedHost(host), []);
   const disconnect = useCallback(() => setConnectedHost(null), []);
 
-  const remoteQuery = useInfiniteHostManifest(connectedHost, token, appMode === "client");
+  const remoteQuery = useInfiniteHostManifest(connectedHost, token, true);
 
   const books = remoteQuery.data?.pages.flatMap((p) => p.books) || [];
   const libraryVersion = remoteQuery.data?.pages[0]?.version;

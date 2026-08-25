@@ -44,12 +44,10 @@ describe("OPDS app shell integration", () => {
     });
 
     const libraryState = {
-      appMode: "unselected",
       eInkMode: false,
       offlineStoragePath: null,
       selectOfflineStorageFolder: vi.fn(),
       setEInkMode: vi.fn(),
-      setAppMode: vi.fn().mockResolvedValue(undefined),
       loadSettings: vi.fn().mockResolvedValue(undefined),
     };
     (useLibraryStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(

@@ -28,7 +28,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onChangeRole,
   hostIp,
 }) => {
-  const { appMode, offlineStoragePath, selectOfflineStorageFolder, eInkMode, setEInkMode } =
+  const { offlineStoragePath, selectOfflineStorageFolder, eInkMode, setEInkMode } =
     useLibraryStore();
   const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
 
@@ -129,8 +129,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
               {onChangeRole && (
                 <SettingsSection title="Session">
-                  {appMode === "client" && (
-                    <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                  <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <div className="flex justify-between items-center relative z-10">
                         <div className="flex-grow overflow-hidden mr-3">
@@ -155,7 +154,6 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                         )}
                       </div>
                     </div>
-                  )}
 
                   <button
                     type="button"

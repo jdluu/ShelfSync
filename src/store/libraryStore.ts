@@ -3,17 +3,15 @@ import { dirname } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { create } from "zustand";
 import { httpClient } from "@/services/apiClient";
-import { deleteBook, getLocalBooks, initDB, updateReadStatus } from "@/services/localDb";
+import { deleteBook, initDB, updateReadStatus } from "@/services/localDb";
 import { useToastStore } from "@/store/toastStore";
 import type { Book, Host } from "@/types/core";
-import type { AppMode } from "@/types/library";
 import { notifyError } from "@/utils/notifications";
 import { isMobile, isTauri, safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
 
 interface LibraryState {
-  appMode: AppMode;
   libraryPath: string;
   offlineStoragePath: string;
   localBooks: Book[];
@@ -21,7 +19,6 @@ interface LibraryState {
   /** Mobile-only: the two-option "where should downloads go?" choice is on screen. */
   storageChoiceOpen: boolean;
 
-  setAppMode: (mode: AppMode) => Promise<void>;
   setLibraryPath: (path: string) => Promise<void>;
   setOfflineStoragePath: (path: string) => Promise<void>;
   setLocalBooks: (books: Book[]) => void;
@@ -59,27 +56,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       await store.set("e_ink_mode", enabled);
       await store.save();
     } catch (_) {}
-  },
-
-  setAppMode: async (mode) => {
-    set({ appMode: mode });
-    if (isTauri()) {
-      try {
-        await invoke("set_hosting_mode", { enabled: mode === "host" });
-        await invoke("set_auto_sync", { enabled: mode === "client" });
-      } catch (e) {
-        console.error("Failed to set app mode configurations:", e);
-      }
-    }
-    if (mode === "client") {
-      try {
-        await initDB();
-        const stored = await getLocalBooks();
-        set({ localBooks: stored });
-      } catch (_) {
-        notifyError("Database Error", "Failed to initialize local database.");
-      }
-    }
   },
 
   setLibraryPath: async (path) => {

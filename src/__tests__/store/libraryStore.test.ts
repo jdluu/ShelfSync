@@ -56,7 +56,6 @@ describe("offline storage folder selection (#13)", () => {
     vi.mocked(open).mockResolvedValue(null);
     vi.mocked(save).mockResolvedValue(null);
     useLibraryStore.setState({
-      appMode: "client",
       offlineStoragePath: "",
       storageChoiceOpen: false,
     });
