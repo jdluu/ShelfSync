@@ -24,9 +24,7 @@ export interface SyncBatchSummary {
  * Prefers the authoritative backend batch size when present and falls back
  * to the number of tracked entries otherwise.
  */
-export function deriveSyncSummary(
-  progress: Record<number, SyncProgress>,
-): SyncBatchSummary | null {
+export function deriveSyncSummary(progress: Record<number, SyncProgress>): SyncBatchSummary | null {
   const items = Object.values(progress);
   if (items.length === 0) return null;
   const batched = items.find((p) => p.batch_total > 0);

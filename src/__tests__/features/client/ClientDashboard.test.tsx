@@ -149,7 +149,9 @@ describe("ClientDashboard Integration", () => {
       expect(within(alert).getByText("Failed to start synchronization.")).toBeDefined();
     }
 
-    fireEvent.click(screen.getAllByLabelText("Dismiss error")[0]!);
+    const dismissButton = screen.getAllByLabelText("Dismiss error")[0];
+    if (!dismissButton) throw new Error("expected a dismiss error button");
+    fireEvent.click(dismissButton);
     const mock = dashboard.current as ReturnType<typeof createDashboardMock>;
     expect(mock.clearError).toHaveBeenCalledTimes(1);
   });

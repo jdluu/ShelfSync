@@ -1,10 +1,10 @@
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { Header } from "@/components/layout/Header";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { StorageChoiceModal } from "@/components/ui/StorageChoiceModal";
 import { ToastContainer } from "@/components/ui/ToastContainer";
-import { Header } from "@/components/layout/Header";
 import { useUpdater } from "@/hooks/useUpdater";
 import { useLibraryStore } from "@/store/libraryStore";
 

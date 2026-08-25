@@ -31,10 +31,7 @@ const applyTheme = (t: ThemePref) => {
 
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    metaThemeColor.setAttribute(
-      "content",
-      effectiveTheme === THEMES.dark ? "#191714" : "#faf7f2",
-    );
+    metaThemeColor.setAttribute("content", effectiveTheme === THEMES.dark ? "#191714" : "#faf7f2");
   }
 };
 

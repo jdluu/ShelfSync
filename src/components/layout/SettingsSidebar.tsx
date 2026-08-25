@@ -131,30 +131,30 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               {onChangeRole && (
                 <SettingsSection title="Session">
                   <div className="flex flex-col gap-4 p-4 lg:p-5 bg-base-100/80 rounded-2xl border border-base-content/5 shadow-sm mb-3 group hover:shadow-md transition-all duration-300 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <div className="flex justify-between items-center relative z-10">
-                        <div className="flex-grow overflow-hidden mr-3">
-                          <p className="font-bold text-sm tracking-tight text-base-content/90">
-                            Offline Storage
-                          </p>
-                          <p
-                            className="text-[11px] text-base-content/50 truncate font-mono mt-0.5"
-                            title={offlineStoragePath || "Default Cache"}
-                          >
-                            {offlineStoragePath || "Default Cache"}
-                          </p>
-                        </div>
-                        {isTauri() && (
-                          <button
-                            type="button"
-                            onClick={selectOfflineStorageFolder}
-                            className="btn btn-sm btn-outline border-base-content/10 hover:border-primary shrink-0"
-                          >
-                            Change
-                          </button>
-                        )}
+                    <div className="absolute inset-0 bg-gradient-to-br from-base-200/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-center relative z-10">
+                      <div className="flex-grow overflow-hidden mr-3">
+                        <p className="font-bold text-sm tracking-tight text-base-content/90">
+                          Offline Storage
+                        </p>
+                        <p
+                          className="text-[11px] text-base-content/50 truncate font-mono mt-0.5"
+                          title={offlineStoragePath || "Default Cache"}
+                        >
+                          {offlineStoragePath || "Default Cache"}
+                        </p>
                       </div>
+                      {isTauri() && (
+                        <button
+                          type="button"
+                          onClick={selectOfflineStorageFolder}
+                          className="btn btn-sm btn-outline border-base-content/10 hover:border-primary shrink-0"
+                        >
+                          Change
+                        </button>
+                      )}
                     </div>
+                  </div>
 
                   <button
                     type="button"

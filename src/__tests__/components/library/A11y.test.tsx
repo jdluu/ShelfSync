@@ -68,9 +68,7 @@ describe("BookCard a11y", () => {
 
   it("activates selection with Enter and Space when selectable", () => {
     const handleSelect = vi.fn();
-    render(
-      <BookCard book={book} variant="local" selectable onSelect={handleSelect} />,
-    );
+    render(<BookCard book={book} variant="local" selectable onSelect={handleSelect} />);
 
     const card = screen.getByRole("article");
     expect(card.getAttribute("tabindex")).toBe("0");
@@ -107,9 +105,7 @@ describe("BookCard a11y", () => {
   });
 
   it("gives the cover image meaningful alt text", () => {
-    render(
-      <BookCard book={{ ...book, cover_url: "/covers/book-7.jpg" }} variant="local" />,
-    );
+    render(<BookCard book={{ ...book, cover_url: "/covers/book-7.jpg" }} variant="local" />);
 
     expect(screen.getByAltText(`Cover of ${book.title}`)).toBeDefined();
   });

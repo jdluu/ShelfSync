@@ -125,8 +125,8 @@ describe("buildPublicationLibraryInfo", () => {
       superseded: [],
     });
 
-    const entry = info["book-1"]!;
-    expect(entry).toBeDefined();
+    const entry = info["book-1"];
+    if (!entry) throw new Error("expected record for book-1");
     expect(entry.primary?.section).toBe("downloading");
     expect(entry.primary?.revision_id).toBe(9);
   });
@@ -142,7 +142,8 @@ describe("buildPublicationLibraryInfo", () => {
       superseded: [{ ...baseRecord, revision_id: 3, is_current_revision: false }],
     });
 
-    const entry = info["book-1"]!;
+    const entry = info["book-1"];
+    if (!entry) throw new Error("expected record for book-1");
     expect(entry.primary?.section).toBe("complete");
     expect(entry.superseded).toHaveLength(1);
     expect(entry.superseded[0]?.revision_id).toBe(3);
@@ -165,7 +166,7 @@ describe("buildPublicationLibraryInfo", () => {
       superseded: [],
     });
 
-    expect(info["book-1"]!.primary?.section).toBe("unavailable");
-    expect(info["book-1"]!.primary?.local_relative_path).toBe("book-1.epub");
+    expect(info["book-1"]?.primary?.section).toBe("unavailable");
+    expect(info["book-1"]?.primary?.local_relative_path).toBe("book-1.epub");
   });
 });

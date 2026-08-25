@@ -3,9 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueueOverlay } from "@/components/ui/QueueOverlay";
 import type { SyncProgress } from "@/types/library";
 
-const makeProgress = (
-  overrides: Partial<SyncProgress> & { book_id: number },
-): SyncProgress => ({
+const makeProgress = (overrides: Partial<SyncProgress> & { book_id: number }): SyncProgress => ({
   title: `Book ${overrides.book_id}`,
   status: "downloading",
   progress: 0.4,
