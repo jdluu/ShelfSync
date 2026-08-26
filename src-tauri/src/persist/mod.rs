@@ -1,6 +1,8 @@
 mod error;
 mod model;
 mod repo;
+mod repository;
+mod row_mapper;
 mod schema;
 mod store;
 
@@ -24,5 +26,6 @@ pub use repo::{
     purge_stale_jobs, recover_interrupted_jobs, revisions_for_acquisition, set_job_state,
     set_publication_available, upsert_acquisition, upsert_publication, validate_relative_path,
 };
+pub use repository::LibraryRepository;
 pub use schema::{ensure_runtime_pragmas, meta_value, run_migrations, CURRENT_SCHEMA_VERSION};
 pub use store::LibraryStore;
