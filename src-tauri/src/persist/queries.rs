@@ -5,6 +5,11 @@ use super::model::{
     CatalogAccount, JobState, RevisionInput, StoredAcquisition, StoredDownloadJob,
     StoredFileRevision, StoredPublication,
 };
+use super::row_mapper::{
+    row_to_acquisition, row_to_catalog_account, row_to_download_job, row_to_file_revision,
+    row_to_publication, ACQUISITION_COLUMNS, CATALOG_ACCOUNT_COLUMNS, JOB_COLUMNS,
+    PUBLICATION_COLUMNS, REVISION_COLUMNS,
+};
 
 pub fn now_unix() -> i64 {
     std::time::SystemTime::now()
@@ -38,36 +43,15 @@ pub fn get_catalog_account(
     username: &str,
 ) -> Result<CatalogAccount, PersistError> {
     let account = conn.query_row(
-        "SELECT id, provider, base_url, username FROM catalog_account
-         WHERE provider = ?1 AND base_url = ?2 AND username = ?3",
+        &format!(
+            "SELECT {CATALOG_ACCOUNT_COLUMNS} FROM catalog_account
+             WHERE provider = ?1 AND base_url = ?2 AND username = ?3"
+        ),
         params![provider, base_url, username],
-        |row| {
-            Ok(CatalogAccount {
-                id: row.get(0)?,
-                provider: row.get(1)?,
-                base_url: row.get(2)?,
-                username: row.get(3)?,
-            })
-        },
+        row_to_catalog_account,
     )?;
     Ok(account)
 }
-
-fn publication_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredPublication> {
-    Ok(StoredPublication {
-        id: row.get(0)?,
-        account_id: row.get(1)?,
-        provider: row.get(2)?,
-        canonical_id: row.get(3)?,
-        metadata_json: row.get(4)?,
-        available: row.get::<_, i64>(5)? != 0,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-    })
-}
-
-const PUBLICATION_COLUMNS: &str =
-    "id, account_id, provider, canonical_id, metadata_json, available, created_at, updated_at";
 
 pub fn get_publication(
     conn: &Connection,
@@ -77,7 +61,7 @@ pub fn get_publication(
         .query_row(
             &format!("SELECT {PUBLICATION_COLUMNS} FROM publication WHERE id = ?1"),
             params![publication_id],
-            publication_from_row,
+            row_to_publication,
         )
         .optional()?;
     Ok(found)
@@ -96,7 +80,7 @@ pub fn find_publication(
                  WHERE account_id = ?1 AND provider = ?2 AND canonical_id = ?3"
             ),
             params![account_id, provider, canonical_id],
-            publication_from_row,
+            row_to_publication,
         )
         .optional()?;
     Ok(found)
@@ -157,27 +141,13 @@ pub fn list_publications_for_account(
         "SELECT {PUBLICATION_COLUMNS} FROM publication
          WHERE account_id = ?1 ORDER BY id"
     ))?;
-    let rows = stmt.query_map(params![account_id], publication_from_row)?;
+    let rows = stmt.query_map(params![account_id], row_to_publication)?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row?);
     }
     Ok(out)
 }
-
-fn acquisition_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAcquisition> {
-    Ok(StoredAcquisition {
-        id: row.get(0)?,
-        publication_id: row.get(1)?,
-        media_type: row.get(2)?,
-        canonical_url: row.get(3)?,
-        created_at: row.get(4)?,
-        updated_at: row.get(5)?,
-    })
-}
-
-const ACQUISITION_COLUMNS: &str =
-    "id, publication_id, media_type, canonical_url, created_at, updated_at";
 
 pub fn list_acquisitions(
     conn: &Connection,
@@ -186,7 +156,7 @@ pub fn list_acquisitions(
     let mut stmt = conn.prepare(&format!(
         "SELECT {ACQUISITION_COLUMNS} FROM acquisition WHERE publication_id = ?1 ORDER BY id"
     ))?;
-    let rows = stmt.query_map(params![publication_id], acquisition_from_row)?;
+    let rows = stmt.query_map(params![publication_id], row_to_acquisition)?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row?);
@@ -201,7 +171,7 @@ pub fn get_acquisition(
     let acquisition = conn.query_row(
         &format!("SELECT {ACQUISITION_COLUMNS} FROM acquisition WHERE id = ?1"),
         params![acquisition_id],
-        acquisition_from_row,
+        row_to_acquisition,
     )?;
     Ok(acquisition)
 }
@@ -247,22 +217,6 @@ pub fn insert_acquisition(
     Ok(conn.last_insert_rowid())
 }
 
-fn revision_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredFileRevision> {
-    Ok(StoredFileRevision {
-        id: row.get(0)?,
-        acquisition_id: row.get(1)?,
-        expected_length: row.get(2)?,
-        expected_hash: row.get(3)?,
-        hash_algorithm: row.get(4)?,
-        local_relative_path: row.get(5)?,
-        created_at: row.get(6)?,
-        updated_at: row.get(7)?,
-    })
-}
-
-const REVISION_COLUMNS: &str =
-    "id, acquisition_id, expected_length, expected_hash, hash_algorithm, local_relative_path, created_at, updated_at";
-
 pub fn acquisition_exists(conn: &Connection, acquisition_id: i64) -> Result<bool, PersistError> {
     let found: Option<i64> = conn
         .query_row(
@@ -301,7 +255,7 @@ pub fn required_revision(
     let revision = conn.query_row(
         &format!("SELECT {REVISION_COLUMNS} FROM file_revision WHERE id = ?1"),
         params![revision_id],
-        revision_from_row,
+        row_to_file_revision,
     )?;
     Ok(revision)
 }
@@ -340,7 +294,7 @@ pub fn current_revision(
                  WHERE acquisition_id = ?1 ORDER BY id DESC LIMIT 1"
             ),
             params![acquisition_id],
-            revision_from_row,
+            row_to_file_revision,
         )
         .optional()?;
     Ok(found)
@@ -354,7 +308,7 @@ pub fn get_revision(
         .query_row(
             &format!("SELECT {REVISION_COLUMNS} FROM file_revision WHERE id = ?1"),
             params![revision_id],
-            revision_from_row,
+            row_to_file_revision,
         )
         .optional()?;
     Ok(found)
@@ -368,7 +322,7 @@ pub fn revisions_for_acquisition(
         "SELECT {REVISION_COLUMNS} FROM file_revision
          WHERE acquisition_id = ?1 ORDER BY id"
     ))?;
-    let rows = stmt.query_map(params![acquisition_id], revision_from_row)?;
+    let rows = stmt.query_map(params![acquisition_id], row_to_file_revision)?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row?);
@@ -376,36 +330,12 @@ pub fn revisions_for_acquisition(
     Ok(out)
 }
 
-fn job_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredDownloadJob> {
-    let state_raw: String = row.get(2)?;
-    let state = JobState::parse(&state_raw).ok_or_else(|| {
-        rusqlite::Error::FromSqlConversionFailure(
-            2,
-            rusqlite::types::Type::Text,
-            format!("unknown download job state '{state_raw}'").into(),
-        )
-    })?;
-    Ok(StoredDownloadJob {
-        id: row.get(0)?,
-        revision_id: row.get(1)?,
-        state,
-        error: row.get(3)?,
-        created_at: row.get(4)?,
-        updated_at: row.get(5)?,
-        started_at: row.get(6)?,
-        finished_at: row.get(7)?,
-    })
-}
-
-const JOB_COLUMNS: &str =
-    "id, revision_id, state, error, created_at, updated_at, started_at, finished_at";
-
 pub fn get_job(conn: &Connection, job_id: i64) -> Result<Option<StoredDownloadJob>, PersistError> {
     let found = conn
         .query_row(
             &format!("SELECT {JOB_COLUMNS} FROM download_job WHERE id = ?1"),
             params![job_id],
-            job_from_row,
+            row_to_download_job,
         )
         .optional()?;
     Ok(found)
@@ -437,7 +367,7 @@ pub fn create_download_job(
     let job = conn.query_row(
         &format!("SELECT {JOB_COLUMNS} FROM download_job WHERE id = ?1"),
         params![id],
-        job_from_row,
+        row_to_download_job,
     )?;
     Ok(job)
 }
@@ -466,7 +396,7 @@ pub fn active_jobs(conn: &Connection) -> Result<Vec<StoredDownloadJob>, PersistE
     let mut stmt = conn.prepare(&format!(
         "SELECT {JOB_COLUMNS} FROM download_job WHERE state IN {ACTIVE_JOB_STATES} ORDER BY id"
     ))?;
-    let rows = stmt.query_map([], job_from_row)?;
+    let rows = stmt.query_map([], row_to_download_job)?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row?);
@@ -481,7 +411,7 @@ pub fn jobs_for_revision(
     let mut stmt = conn.prepare(&format!(
         "SELECT {JOB_COLUMNS} FROM download_job WHERE revision_id = ?1 ORDER BY id"
     ))?;
-    let rows = stmt.query_map(params![revision_id], job_from_row)?;
+    let rows = stmt.query_map(params![revision_id], row_to_download_job)?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row?);
@@ -527,7 +457,7 @@ pub fn latest_job_for_revision(
                  WHERE revision_id = ?1 ORDER BY id DESC LIMIT 1"
             ),
             params![revision_id],
-            job_from_row,
+            row_to_download_job,
         )
         .optional()?;
     Ok(found)
