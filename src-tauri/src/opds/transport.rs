@@ -58,8 +58,7 @@ impl ParsedOrigin {
             if let Some(close_bracket) = rest.find(']') {
                 let host = &rest[..close_bracket + 1];
                 let after_bracket = &rest[close_bracket + 1..];
-                if after_bracket.starts_with(':') {
-                    let port_str = &after_bracket[1..];
+                if let Some(port_str) = after_bracket.strip_prefix(':') {
                     let port = port_str.parse::<u16>().ok();
                     (host.to_string(), port)
                 } else {

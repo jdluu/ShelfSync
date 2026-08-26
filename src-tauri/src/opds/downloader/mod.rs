@@ -171,7 +171,7 @@ pub async fn download_file_with_verifier<V: ContentVerifier>(
     })?;
 
     if !parent.exists() {
-        std::fs::create_dir_all(&parent).map_err(|e| {
+        std::fs::create_dir_all(parent).map_err(|e| {
             DownloadError::InvalidDestination(format!("Failed to create parent directory: {}", e))
         })?;
     }
