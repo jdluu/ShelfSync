@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { opdsClient } from "@/services/opdsClient";
 import type { DownloadConfig, DownloadProgress, MediaType, Publication } from "@/types/opds";
+import { formatOpdsErrorMessage } from "@/utils/notifyOpdsError";
 import { isTauri, safeInvoke } from "@/utils/tauri";
 
 export type DownloadStatus = "idle" | "downloading" | "completed" | "failed";
@@ -77,7 +78,7 @@ export function useOpdsDownload() {
         });
         setStatus("completed");
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : "Unknown error";
+        const errMsg = formatOpdsErrorMessage(e);
         setError(errMsg);
         setProgress({
           publicationId: publication.id,

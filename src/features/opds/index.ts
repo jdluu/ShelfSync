@@ -4,5 +4,8 @@ export { default as OpdsCatalogScreenContainer } from "./OpdsCatalogScreenContai
 export { OpdsCatalogView } from "./OpdsCatalogView";
 export { OpdsPublicationCard } from "./OpdsPublicationCard";
 export { PublicationFormatMenu } from "./PublicationFormatMenu";
+export { useCatalogConnection } from "./useCatalogConnection";
+export { useDownloadRegistry } from "./useDownloadRegistry";
+export { useOfflineLibraryState } from "./useOfflineLibraryState";
 export { useOpdsDownload } from "./useOpdsDownload";
 export { usePublicationState } from "./usePublicationState";

@@ -2,6 +2,7 @@ import { Book, Calendar, Download, User, X } from "lucide-react";
 import type React from "react";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
+import { getAcquisitionLinks } from "@/types/opds";
 import { LibraryStateBadge } from "./LibraryStateBadge";
 
 interface PublicationDetailModalProps {
@@ -54,13 +55,7 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
   downloadErrorMessage,
   libraryInfo,
 }) => {
-  const acquisitionLinks = publication.links.filter(
-    (l) =>
-      l.rel === "acquisition" ||
-      l.rel === "http://opds-spec.org/acquisition" ||
-      l.rel?.startsWith("http://opds-spec.org/acquisition") ||
-      !l.rel,
-  );
+  const acquisitionLinks = getAcquisitionLinks(publication);
 
   const showDownload = catalogUrl && onDownload && acquisitionLinks.length > 0;
 
