@@ -11,6 +11,7 @@ mod install;
 mod live_grimmory_tests;
 mod parser;
 mod transport;
+mod verify;
 
 pub use acquisition::{
     derive_filename, is_valid_media_type, plan_download_destination, select_acquisition,
@@ -32,6 +33,7 @@ pub use transport::{
     validate_same_origin, validate_url_scheme, CatalogConfig, ParsedOrigin, ResolvedUrl,
     DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT, DEFAULT_PAGE_SIZE, MAX_FEED_SIZE, MAX_PAGE_SIZE,
 };
+pub use verify::{ContentVerifier, Sha256Verifier};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Catalog {
