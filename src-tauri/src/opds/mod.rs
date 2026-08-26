@@ -10,6 +10,8 @@ mod install;
 #[cfg(test)]
 mod live_grimmory_tests;
 mod parser;
+#[cfg(test)]
+mod pipeline_integration_tests;
 mod transport;
 mod verify;
 
@@ -18,7 +20,8 @@ pub use acquisition::{
     validate_download_url, DownloadPlan, MEDIA_TYPE_EPUB, MEDIA_TYPE_PDF,
 };
 pub use downloader::{
-    download_file, DownloadContext, DEFAULT_DOWNLOAD_TIMEOUT_SECS, DEFAULT_MAX_DOWNLOAD_SIZE,
+    download_file, DownloadContext, ProgressCallback, DEFAULT_DOWNLOAD_TIMEOUT_SECS,
+    DEFAULT_MAX_DOWNLOAD_SIZE,
 };
 pub use errors::{AcquisitionError, DownloadError, OpdsTransportError};
 pub use http_client::{ClientPagination, OpdsClient};

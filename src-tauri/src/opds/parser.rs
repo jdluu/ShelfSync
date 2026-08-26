@@ -51,10 +51,7 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                         handle_catalog_element(
                             &e,
                             &local_name,
-                            &mut updated,
-                            &mut authors,
                             &mut links,
-                            &mut publications,
                             &mut current_pub,
                             &mut in_author,
                             &mut current_state,
@@ -85,7 +82,7 @@ pub fn parse_catalog_from_str(xml: &str) -> Result<Catalog, OpdsError> {
                 }
             }
             Event::Text(e) => {
-                text_buf = escape::unescape(std::str::from_utf8(&*e).unwrap_or(""))
+                text_buf = escape::unescape(std::str::from_utf8(&e).unwrap_or(""))
                     .map(|c| c.into_owned())
                     .unwrap_or_else(|_| text_buf.clone());
             }
@@ -153,7 +150,7 @@ fn get_local_name(name: &[u8]) -> String {
     let name_str = std::str::from_utf8(name).unwrap_or("");
     let stripped = name_str
         .strip_prefix("xml:")
-        .or_else(|| name_str.split(':').last())
+        .or_else(|| name_str.split(':').next_back())
         .unwrap_or(name_str);
     stripped.to_string()
 }
@@ -161,10 +158,7 @@ fn get_local_name(name: &[u8]) -> String {
 fn handle_catalog_element(
     e: &quick_xml::events::BytesStart,
     local_name: &str,
-    _updated: &mut Option<String>,
-    _authors: &mut Vec<String>,
     links: &mut Vec<NavigationLink>,
-    _publications: &mut Vec<Publication>,
     current_pub: &mut Option<PublicationBuilder>,
     in_author: &mut bool,
     state: &mut ParsingState,
@@ -178,40 +172,38 @@ fn handle_catalog_element(
         "name" => {}
         "link" => {
             let mut link = NavigationLink::default();
-            for attr in e.attributes() {
-                if let Ok(attr) = attr {
-                    let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-                    match k {
-                        "href" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            link.href = v.into_owned();
-                        }
-                        "rel" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            link.rel = Some(v.into_owned());
-                        }
-                        "title" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            link.title = Some(v.into_owned());
-                        }
-                        "type" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            link.r#type = Some(v.into_owned());
-                        }
-                        _ => {}
+            for attr in e.attributes().flatten() {
+                let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                match k {
+                    "href" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        link.href = v.into_owned();
                     }
+                    "rel" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        link.rel = Some(v.into_owned());
+                    }
+                    "title" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        link.title = Some(v.into_owned());
+                    }
+                    "type" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        link.r#type = Some(v.into_owned());
+                    }
+                    _ => {}
                 }
             }
             if !link.href.is_empty() {
@@ -240,16 +232,13 @@ fn handle_publication_element(
 
     match local_name {
         "id" => {
-            for attr in e.attributes() {
-                if let Ok(attr) = attr {
-                    let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-                    if k == "scheme" {
-                        let v = escape::unescape(
-                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                        )
-                        .unwrap_or_default();
-                        *pending_identifier_scheme = Some(v.into_owned());
-                    }
+            for attr in e.attributes().flatten() {
+                let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                if k == "scheme" {
+                    let v =
+                        escape::unescape(std::str::from_utf8(attr.value.as_ref()).unwrap_or(""))
+                            .unwrap_or_default();
+                    *pending_identifier_scheme = Some(v.into_owned());
                 }
             }
         }
@@ -268,41 +257,39 @@ fn handle_publication_element(
                 rel: None,
             };
             let mut is_image_link = false;
-            for attr in e.attributes() {
-                if let Ok(attr) = attr {
-                    let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
-                    match k {
-                        "href" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            acq.href = v.into_owned();
-                        }
-                        "type" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            let type_val = v.into_owned();
-                            acq.r#type = Some(type_val.clone());
-                            acq.media_type = Some(type_val);
-                        }
-                        "rel" => {
-                            let v = escape::unescape(
-                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                            )
-                            .unwrap_or_default();
-                            let rel_val = v.into_owned();
-                            // OPDS cover-image relations (1.x/2.x): the entry's
-                            // representative cover art, kept out of acquisitions.
-                            if rel_val.starts_with("http://opds-spec.org/image") {
-                                is_image_link = true;
-                            }
-                            acq.rel = Some(rel_val);
-                        }
-                        _ => {}
+            for attr in e.attributes().flatten() {
+                let k = std::str::from_utf8(attr.key.as_ref()).unwrap_or("");
+                match k {
+                    "href" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        acq.href = v.into_owned();
                     }
+                    "type" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        let type_val = v.into_owned();
+                        acq.r#type = Some(type_val.clone());
+                        acq.media_type = Some(type_val);
+                    }
+                    "rel" => {
+                        let v = escape::unescape(
+                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                        )
+                        .unwrap_or_default();
+                        let rel_val = v.into_owned();
+                        // OPDS cover-image relations (1.x/2.x): the entry's
+                        // representative cover art, kept out of acquisitions.
+                        if rel_val.starts_with("http://opds-spec.org/image") {
+                            is_image_link = true;
+                        }
+                        acq.rel = Some(rel_val);
+                    }
+                    _ => {}
                 }
             }
             if is_image_link && !acq.href.is_empty() {
@@ -310,18 +297,17 @@ fn handle_publication_element(
                     href: acq.href.clone(),
                     r#type: acq.r#type.clone(),
                 });
-            } else if !acq.href.is_empty() {
-                if acq.rel.as_deref() == Some("acquisition")
+            } else if !acq.href.is_empty()
+                && (acq.rel.as_deref() == Some("acquisition")
                     || acq.rel.as_deref() == Some("http://opds-spec.org/acquisition")
                     || acq
                         .rel
                         .as_deref()
                         .unwrap_or("")
                         .starts_with("http://opds-spec.org/acquisition")
-                    || acq.rel.is_none()
-                {
-                    builder.links.push(acq);
-                }
+                    || acq.rel.is_none())
+            {
+                builder.links.push(acq);
             }
         }
         "summary" | "description" | "dc:description" => {}
@@ -331,17 +317,14 @@ fn handle_publication_element(
         "category" | "dc:subject" => {
             // OPDS 1.x uses Atom <category term="...">; subjects may also
             // appear as dc:subject text content.
-            for attr in e.attributes() {
-                if let Ok(attr) = attr {
-                    if std::str::from_utf8(attr.key.as_ref()).unwrap_or("") == "term" {
-                        let v = escape::unescape(
-                            std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                        )
-                        .unwrap_or_default()
-                        .into_owned();
-                        if !v.trim().is_empty() {
-                            builder.categories.push(v);
-                        }
+            for attr in e.attributes().flatten() {
+                if std::str::from_utf8(attr.key.as_ref()).unwrap_or("") == "term" {
+                    let v =
+                        escape::unescape(std::str::from_utf8(attr.value.as_ref()).unwrap_or(""))
+                            .unwrap_or_default()
+                            .into_owned();
+                    if !v.trim().is_empty() {
+                        builder.categories.push(v);
                     }
                 }
             }
@@ -352,29 +335,27 @@ fn handle_publication_element(
             // <meta property="group-position" refines="#id">3.0</meta>
             let mut property = None;
             let mut refines = None;
-            for attr in e.attributes() {
-                if let Ok(attr) = attr {
-                    match std::str::from_utf8(attr.key.as_ref()).unwrap_or("") {
-                        "property" => {
-                            property = Some(
-                                escape::unescape(
-                                    std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                                )
-                                .unwrap_or_default()
-                                .into_owned(),
-                            );
-                        }
-                        "refines" => {
-                            refines = Some(
-                                escape::unescape(
-                                    std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
-                                )
-                                .unwrap_or_default()
-                                .into_owned(),
-                            );
-                        }
-                        _ => {}
+            for attr in e.attributes().flatten() {
+                match std::str::from_utf8(attr.key.as_ref()).unwrap_or("") {
+                    "property" => {
+                        property = Some(
+                            escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default()
+                            .into_owned(),
+                        );
                     }
+                    "refines" => {
+                        refines = Some(
+                            escape::unescape(
+                                std::str::from_utf8(attr.value.as_ref()).unwrap_or(""),
+                            )
+                            .unwrap_or_default()
+                            .into_owned(),
+                        );
+                    }
+                    _ => {}
                 }
             }
             match property.as_deref() {
@@ -390,6 +371,10 @@ fn handle_publication_element(
     }
 }
 
+// Single event-dispatch handler: every End event routes through this one
+// function so all state transitions stay in one place; splitting it into
+// per-element helpers would scatter the parse state without reducing it.
+#[allow(clippy::too_many_arguments)]
 fn handle_end(
     local_name: &str,
     title: &mut String,
@@ -397,7 +382,7 @@ fn handle_end(
     current_pub: &mut Option<PublicationBuilder>,
     publications: &mut Vec<Publication>,
     state: &mut ParsingState,
-    text: &mut String,
+    text: &mut str,
     in_author: &mut bool,
     authors: &mut Vec<String>,
     pending_identifier_scheme: &mut Option<String>,

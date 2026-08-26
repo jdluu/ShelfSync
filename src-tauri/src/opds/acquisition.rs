@@ -78,18 +78,10 @@ fn media_type_to_extension(media_type: &str) -> String {
 fn sanitize_title(title: &str) -> String {
     let sanitized: String = title
         .chars()
-        .map(|c| {
-            if c.is_alphanumeric() {
-                c
-            } else if c == ' ' || c == '-' || c == '_' {
-                '_'
-            } else {
-                '_'
-            }
-        })
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .collect();
 
-    let sanitized = sanitized.replace("_", "_").replace("__", "_");
+    let sanitized = sanitized.replace("__", "_");
     let sanitized = sanitized.trim_matches('_').to_string();
 
     if sanitized.is_empty() {

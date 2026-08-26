@@ -12,8 +12,6 @@ pub(crate) fn sanitize_error_message(err: &DownloadError) -> String {
                 "Authentication failed".to_string()
             } else if msg.contains("origin") || msg.contains("cross") || msg.contains("redirect") {
                 "Cross-origin download rejected".to_string()
-            } else if msg.contains("status") || msg.contains("HTTP") {
-                "Download failed".to_string()
             } else {
                 "Download failed".to_string()
             }

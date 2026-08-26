@@ -2,7 +2,7 @@ use super::transport::sanitize_error_message;
 use crate::error::AppError;
 use crate::opds::{
     download_file, plan_download_destination, CatalogConfig, DownloadContext, DownloadError,
-    Publication,
+    ProgressCallback, Publication,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -141,7 +141,7 @@ pub async fn download_opds_publication(
     let app_clone = app.clone();
     let pub_id_for_cb = publication_id_orig.clone();
     let title_for_cb = title_orig.clone();
-    let progress_callback: Option<Box<dyn Fn(u64, Option<u64>) + Send + Sync>> =
+    let progress_callback: Option<ProgressCallback> =
         Some(Box::new(move |bytes_received, total_bytes| {
             let status = if bytes_received > 0 {
                 DownloadStatus::Downloading
