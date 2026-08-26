@@ -9,6 +9,7 @@ import type {
   MediaType,
   Publication,
 } from "@/types/opds";
+import { findAcquisitionLinkForFormat, getDownloadableFormats } from "@/types/opds";
 import { isTauri, safeInvoke } from "@/utils/tauri";
 
 export type DownloadProgressEvent = {
@@ -52,9 +53,7 @@ export const opdsClient = {
       );
     }
 
-    const acquisitionLink = publication.links.find(
-      (link) => link.media_type === format || link.media_type === EPUB_MEDIA_TYPE,
-    );
+    const acquisitionLink = findAcquisitionLinkForFormat(publication, format);
 
     if (!acquisitionLink) {
       return Promise.reject(new Error(`No acquisition link found for format: ${format}`));
@@ -133,24 +132,7 @@ export const opdsClient = {
   },
 
   getAvailableFormats: (publication: Publication): AcquisitionFormat[] => {
-    const formats: AcquisitionFormat[] = [];
-
-    if (!publication.links) {
-      return formats;
-    }
-
-    for (const link of publication.links) {
-      if (link.media_type) {
-        if (link.media_type === EPUB_MEDIA_TYPE || link.media_type === PDF_MEDIA_TYPE) {
-          formats.push({
-            href: link.href,
-            mediaType: link.media_type as MediaType,
-          });
-        }
-      }
-    }
-
-    return formats;
+    return getDownloadableFormats(publication);
   },
 
   getPreferredFormat: (

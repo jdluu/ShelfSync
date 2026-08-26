@@ -104,3 +104,58 @@ export type AcquisitionFormat = {
   href: string;
   mediaType: MediaType;
 };
+
+const EPUB_MEDIA_TYPE: MediaType = "application/epub+zip";
+const ACQUISITION_REL = "http://opds-spec.org/acquisition";
+
+/**
+ * Single source for acquisition-link selection ("which link do I download").
+ *
+ * All format scanning across cards, modals, and services must go through
+ * these helpers so catalog-order and fallback semantics stay consistent.
+ */
+
+/** A link counts as an acquisition when its rel is missing, generic, or an OPDS acquisition rel. */
+export function isAcquisitionLink(link: Acquisition): boolean {
+  return !link.rel || link.rel === "acquisition" || link.rel.startsWith(ACQUISITION_REL);
+}
+
+/** Acquisition links of a publication, in catalog order. */
+export function getAcquisitionLinks(publication: Publication): Acquisition[] {
+  return (publication.links ?? []).filter(isAcquisitionLink);
+}
+
+/**
+ * Downloadable formats offered by a publication: acquisition links with an
+ * explicit EPUB or PDF media type, in catalog order.
+ */
+export function getDownloadableFormats(publication: Publication): AcquisitionFormat[] {
+  const formats: AcquisitionFormat[] = [];
+  for (const link of publication.links ?? []) {
+    if (link.media_type === EPUB_MEDIA_TYPE || link.media_type === "application/pdf") {
+      formats.push({ href: link.href, mediaType: link.media_type });
+    }
+  }
+  return formats;
+}
+
+/** Whether any link of the publication is downloadable (EPUB/PDF). */
+export function hasDownloadableFormats(publication: Publication): boolean {
+  return getDownloadableFormats(publication).length > 0;
+}
+
+/**
+ * Pick the acquisition link to download for the requested format. Falls back
+ * to the first EPUB link when no dedicated link matches, mirroring the
+ * downloader's historical behavior.
+ */
+export function findAcquisitionLinkForFormat(
+  publication: Publication,
+  format: MediaType,
+): Acquisition | null {
+  return (
+    (publication.links ?? []).find(
+      (link) => link.media_type === format || link.media_type === EPUB_MEDIA_TYPE,
+    ) ?? null
+  );
+}

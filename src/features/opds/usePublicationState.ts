@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
-import type {
-  DownloadConfig,
-  DownloadResult,
-  DownloadStatus,
-  MediaType,
-  Publication,
+import {
+  type DownloadConfig,
+  type DownloadResult,
+  type DownloadStatus,
+  getDownloadableFormats,
+  hasDownloadableFormats,
+  type MediaType,
+  type Publication,
 } from "@/types/opds";
 
 export interface UsePublicationStateParams {
@@ -42,9 +44,7 @@ export function usePublicationState({
   libraryInfo = null,
 }: UsePublicationStateParams) {
   const hasDownloadConfig = catalogUrl && contentRoot && onDownload;
-  const hasAcquisitionLinks = publication.links?.some(
-    (link) => link.media_type === "application/epub+zip" || link.media_type === "application/pdf",
-  );
+  const hasAcquisitionLinks = hasDownloadableFormats(publication);
 
   const primaryRecord = libraryInfo?.primary ?? null;
   const supersededRecords = libraryInfo?.superseded ?? [];
@@ -52,16 +52,10 @@ export function usePublicationState({
   const isBusyDownloading =
     downloadStatus === "downloading" || primaryRecord?.section === "downloading";
 
-  const acquisitionFormats: MediaType[] = useMemo(() => {
-    const formats: MediaType[] = [];
-    if (!publication.links) return formats;
-    for (const link of publication.links) {
-      if (link.media_type === "application/epub+zip" || link.media_type === "application/pdf") {
-        formats.push(link.media_type as MediaType);
-      }
-    }
-    return formats;
-  }, [publication.links]);
+  const acquisitionFormats: MediaType[] = useMemo(
+    () => getDownloadableFormats(publication).map((format) => format.mediaType),
+    [publication],
+  );
 
   const [selectedFormat, setSelectedFormat] = useState<MediaType | null>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
