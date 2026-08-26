@@ -1,5 +1,6 @@
 use crate::opds::errors::DownloadError;
 use crate::opds::transport::{origin_matches, CatalogConfig};
+use crate::opds::verify::{ContentVerifier, Sha256Verifier};
 use crate::opds::DownloadPlan;
 use futures_util::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
@@ -7,10 +8,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use uuid::Uuid;
 
+mod progress;
+mod verify;
+
+pub use progress::ProgressCallback;
+
 pub const DEFAULT_DOWNLOAD_TIMEOUT_SECS: u64 = 30;
 pub const DEFAULT_MAX_DOWNLOAD_SIZE: u64 = 50 * 1024 * 1024;
-
-pub type ProgressCallback = Box<dyn Fn(u64, Option<u64>) + Send + Sync>;
 
 pub struct DownloadContext {
     pub client: reqwest::Client,
@@ -144,6 +148,16 @@ pub async fn download_file(
     dest_root: &Path,
     progress_callback: Option<ProgressCallback>,
 ) -> Result<PathBuf, DownloadError> {
+    download_file_with_verifier(plan, context, dest_root, progress_callback, &Sha256Verifier).await
+}
+
+pub async fn download_file_with_verifier<V: ContentVerifier>(
+    plan: &DownloadPlan,
+    context: &DownloadContext,
+    dest_root: &Path,
+    progress_callback: Option<ProgressCallback>,
+    verifier: &V,
+) -> Result<PathBuf, DownloadError> {
     let response = send_download_request(plan, context).await?;
 
     check_content_type(plan, &response)?;
@@ -185,12 +199,18 @@ pub async fn download_file(
     .await;
 
     match result {
-        Ok(_) => std::fs::rename(&part_path, &dest_path)
-            .map_err(|e| {
+        Ok(_) => {
+            if let Err(e) = verify::ensure_verified(&part_path, None, verifier) {
                 let _ = std::fs::remove_file(&part_path);
-                DownloadError::InvalidDestination(e.to_string())
-            })
-            .map(|_| dest_path),
+                return Err(e);
+            }
+            std::fs::rename(&part_path, &dest_path)
+                .map_err(|e| {
+                    let _ = std::fs::remove_file(&part_path);
+                    DownloadError::InvalidDestination(e.to_string())
+                })
+                .map(|_| dest_path)
+        }
         Err(e) => {
             let _ = std::fs::remove_file(&part_path);
             if !pre_existing {
@@ -278,9 +298,7 @@ pub(crate) async fn stream_to_file(
     let mut received: u64 = 0;
     let mut stream = response.bytes_stream();
 
-    if let Some(cb) = progress_callback {
-        cb(0, total_bytes);
-    }
+    progress::emit_progress(progress_callback, 0, total_bytes);
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| DownloadError::Network(e.to_string()))?;
@@ -294,9 +312,7 @@ pub(crate) async fn stream_to_file(
 
         writer.write_all(&chunk).await?;
 
-        if let Some(cb) = progress_callback {
-            cb(received, total_bytes);
-        }
+        progress::emit_progress(progress_callback, received, total_bytes);
     }
 
     writer.flush().await?;

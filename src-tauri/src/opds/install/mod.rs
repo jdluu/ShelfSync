@@ -1,8 +1,6 @@
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use sha2::{Digest, Sha256};
 use tokio_util::sync::CancellationToken;
 
 use crate::opds::acquisition::{plan_download_destination, DownloadPlan, MEDIA_TYPE_EPUB};
@@ -11,6 +9,7 @@ use crate::opds::downloader::{
     DownloadContext, ProgressCallback,
 };
 use crate::opds::errors::{AcquisitionError, DownloadError};
+use crate::opds::verify::{ContentVerifier, Sha256Verifier};
 use crate::opds::Publication;
 use crate::persist::{
     AcquisitionInput, CatalogAccount, JobState, LibraryStore, PersistError, PublicationInput,
@@ -21,6 +20,7 @@ mod archive_validator;
 mod file_installer;
 mod path_planner;
 
+pub use crate::opds::verify::sha256_file;
 pub use archive_validator::validate_epub_zip;
 pub use file_installer::safe_remove_within_root;
 pub use path_planner::safe_join;
@@ -224,7 +224,8 @@ async fn perform_install(
             .ok_or_else(|| DownloadError::InvalidDestination("part path missing".to_string()))?;
 
         verify_lengths(received, request)?;
-        let computed_hash_hex = verify_hash(part, request)?;
+        let verifier = Sha256Verifier;
+        let computed_hash_hex = verify_hash(&verifier, part, request)?;
         validate_epub_zip(part)?;
 
         file_installer::promote_verified_part(part, dest_path)?;
@@ -356,7 +357,8 @@ fn verify_lengths(received: u64, request: &VerifiedEpubRequest) -> Result<(), Do
     Ok(())
 }
 
-fn verify_hash(
+fn verify_hash<V: ContentVerifier>(
+    verifier: &V,
     part_path: &Path,
     request: &VerifiedEpubRequest,
 ) -> Result<Option<String>, DownloadError> {
@@ -372,26 +374,9 @@ fn verify_hash(
             "unsupported hash algorithm: {algorithm}"
         )));
     }
+    verifier.verify(part_path, Some(expected))?;
     let computed = sha256_file(part_path)?;
-    if !computed.eq_ignore_ascii_case(expected.trim()) {
-        return Err(DownloadError::HashMismatch(algorithm, computed));
-    }
     Ok(Some(computed))
-}
-
-pub fn sha256_file(path: &Path) -> Result<String, DownloadError> {
-    let mut file = std::fs::File::open(path)?;
-    let mut hasher = Sha256::new();
-    let mut buf = [0u8; 64 * 1024];
-    loop {
-        let read = file.read(&mut buf)?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buf[..read]);
-    }
-    let digest = hasher.finalize();
-    Ok(digest.iter().map(|b| format!("{:02x}", b)).collect())
 }
 
 #[cfg(test)]
