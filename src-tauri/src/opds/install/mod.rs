@@ -1,5 +1,5 @@
 use std::io::Read;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use sha2::{Digest, Sha256};
@@ -16,6 +16,14 @@ use crate::persist::{
     AcquisitionInput, CatalogAccount, JobState, LibraryStore, PersistError, PublicationInput,
     RevisionInput, StoredAcquisition, StoredDownloadJob, StoredFileRevision, StoredPublication,
 };
+
+mod archive_validator;
+mod file_installer;
+mod path_planner;
+
+pub use archive_validator::validate_epub_zip;
+pub use file_installer::safe_remove_within_root;
+pub use path_planner::safe_join;
 
 pub const DEFAULT_MAX_ATTEMPTS: u32 = 3;
 const RETRY_BACKOFF: Duration = Duration::from_millis(250);
@@ -219,9 +227,7 @@ async fn perform_install(
         let computed_hash_hex = verify_hash(part, request)?;
         validate_epub_zip(part)?;
 
-        std::fs::rename(part, dest_path).map_err(|e| {
-            DownloadError::InvalidDestination(format!("atomic rename failed: {}", e))
-        })?;
+        file_installer::promote_verified_part(part, dest_path)?;
         part_path = None;
 
         Ok(InstallOutcome {
@@ -386,74 +392,6 @@ pub fn sha256_file(path: &Path) -> Result<String, DownloadError> {
     }
     let digest = hasher.finalize();
     Ok(digest.iter().map(|b| format!("{:02x}", b)).collect())
-}
-
-pub fn validate_epub_zip(path: &Path) -> Result<(), DownloadError> {
-    let file = std::fs::File::open(path)?;
-    let mut archive = zip::ZipArchive::new(std::io::BufReader::new(file))
-        .map_err(|e| DownloadError::InvalidZip(e.to_string()))?;
-    if archive.is_empty() {
-        return Err(DownloadError::InvalidZip(
-            "archive contains no entries".to_string(),
-        ));
-    }
-    let mut mimetype = archive
-        .by_name("mimetype")
-        .map_err(|_| DownloadError::InvalidZip("missing mimetype entry".to_string()))?;
-    let mut contents = String::new();
-    mimetype
-        .read_to_string(&mut contents)
-        .map_err(|e| DownloadError::InvalidZip(format!("mimetype is not readable: {e}")))?;
-    if contents.trim() != MEDIA_TYPE_EPUB {
-        return Err(DownloadError::InvalidZip(format!(
-            "mimetype is '{}'",
-            contents.trim()
-        )));
-    }
-    Ok(())
-}
-
-pub fn safe_join(root: &Path, relative: &Path) -> Result<PathBuf, DownloadError> {
-    let canonical_root = std::fs::canonicalize(root).map_err(|_| {
-        DownloadError::InvalidDestination(format!(
-            "content root does not exist: {}",
-            root.display()
-        ))
-    })?;
-    let mut joined = canonical_root;
-    for component in relative.components() {
-        match component {
-            Component::Normal(_) => joined.push(component),
-            Component::CurDir => {}
-            _ => {
-                return Err(DownloadError::InvalidDestination(
-                    "destination path escapes content root".to_string(),
-                ))
-            }
-        }
-    }
-    Ok(joined)
-}
-
-pub fn safe_remove_within_root(root: &Path, target: &Path) -> Result<bool, DownloadError> {
-    let canonical_root = std::fs::canonicalize(root).map_err(|_| {
-        DownloadError::InvalidDestination(format!(
-            "content root does not exist: {}",
-            root.display()
-        ))
-    })?;
-    if !target.exists() {
-        return Ok(false);
-    }
-    let canonical_target = std::fs::canonicalize(target)
-        .map_err(|_| DownloadError::InvalidDestination("target not resolvable".to_string()))?;
-    if canonical_target == canonical_root || !canonical_target.starts_with(&canonical_root) {
-        return Err(DownloadError::InvalidDestination(
-            "refusing to delete outside content root".to_string(),
-        ));
-    }
-    std::fs::remove_file(&canonical_target)?;
-    Ok(true)
 }
 
 #[cfg(test)]
@@ -1123,79 +1061,5 @@ mod tests {
             pubs.is_none(),
             "no records should be written before planning passes"
         );
-    }
-
-    #[test]
-    fn validate_epub_zip_accepts_valid_and_rejects_corrupt() {
-        let dir = tempdir().unwrap();
-        let good = dir.path().join("good.epub");
-        std::fs::write(&good, make_epub_bytes()).unwrap();
-        assert!(validate_epub_zip(&good).is_ok());
-
-        let bad_zip = dir.path().join("bad.epub");
-        std::fs::write(&bad_zip, b"not a zip").unwrap();
-        assert!(matches!(
-            validate_epub_zip(&bad_zip),
-            Err(DownloadError::InvalidZip(_))
-        ));
-    }
-
-    #[test]
-    fn validate_epub_zip_rejects_wrong_mimetype() {
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("wrong.epub");
-        let cursor = Cursor::new(Vec::new());
-        let mut writer = zip::ZipWriter::new(cursor);
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Stored);
-        writer.start_file("mimetype", options).unwrap();
-        writer.write_all(b"application/pdf").unwrap();
-        let bytes = writer.finish().unwrap().into_inner();
-        std::fs::write(&path, bytes).unwrap();
-
-        assert!(matches!(
-            validate_epub_zip(&path),
-            Err(DownloadError::InvalidZip(_))
-        ));
-    }
-
-    #[test]
-    fn safe_remove_refuses_paths_outside_content_root() {
-        let dir = tempdir().unwrap();
-        let root = dir.path().join("root");
-        std::fs::create_dir_all(&root).unwrap();
-
-        let inside = root.join("book.part");
-        std::fs::write(&inside, b"x").unwrap();
-        assert!(safe_remove_within_root(&root, &inside).unwrap());
-        assert!(!inside.exists());
-
-        let outside = dir.path().join("outside.epub");
-        std::fs::write(&outside, b"keep me").unwrap();
-        let err = safe_remove_within_root(&root, &outside).unwrap_err();
-        assert!(matches!(err, DownloadError::InvalidDestination(_)));
-        assert!(outside.exists(), "file outside root must not be deleted");
-
-        let err = safe_remove_within_root(&root, &root).unwrap_err();
-        assert!(matches!(err, DownloadError::InvalidDestination(_)));
-
-        assert!(!safe_remove_within_root(&root, &root.join("missing.epub")).unwrap());
-    }
-
-    #[test]
-    fn safe_join_blocks_traversal_components() {
-        let dir = tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("root")).unwrap();
-        let root = dir.path().join("root");
-
-        let ok = safe_join(&root, Path::new("Book.epub")).unwrap();
-        assert!(ok.starts_with(std::fs::canonicalize(&root).unwrap()));
-        assert!(ok.ends_with("Book.epub"));
-
-        assert!(safe_join(&root, Path::new("../escape.epub")).is_err());
-        assert!(safe_join(&root, Path::new("/absolute.epub")).is_err());
-
-        let missing_root = dir.path().join("does-not-exist");
-        assert!(safe_join(&missing_root, Path::new("x.epub")).is_err());
     }
 }
