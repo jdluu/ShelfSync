@@ -1,6 +1,7 @@
 import { BookMarked, KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import type {
   CategorizedLibraryRecord,
   OfflineRefreshReport,
@@ -231,20 +232,21 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
 
             <div className="card-actions justify-between items-center">
               {onSaveCatalog && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
                   onClick={() => void onSaveCatalog()}
-                  className="btn btn-ghost btn-sm gap-1.5"
                   aria-label="Save this catalog for quick access"
                 >
                   <BookMarked className="h-4 w-4" aria-hidden="true" />
                   Save catalog
-                </button>
+                </Button>
               )}
-              <button type="submit" className="btn btn-primary" disabled={loading}>
+              <Button variant="primary" type="submit" disabled={loading}>
                 <PlugZap className="h-4 w-4" aria-hidden="true" />
                 Connect
-              </button>
+              </Button>
             </div>
           </div>
         </form>
@@ -284,11 +286,11 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                 </div>
               </details>
               {onRefreshLibrary && (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleRefreshLibrary}
                   disabled={refreshingLibrary}
-                  className="btn btn-outline btn-sm"
                   aria-label="Refresh catalog metadata and reconcile downloads"
                 >
                   <RefreshCw
@@ -296,16 +298,12 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                     aria-hidden="true"
                   />
                   {refreshingLibrary ? "Refreshing..." : "Refresh"}
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
-                onClick={handleDisconnect}
-                className="btn btn-outline btn-error"
-              >
+              <Button variant="danger" onClick={handleDisconnect}>
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 Disconnect
-              </button>
+              </Button>
             </div>
             {refreshSummary && (
               <p className="text-xs text-base-content/60" role="status" aria-live="polite">
