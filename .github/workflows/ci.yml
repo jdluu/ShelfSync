@@ -56,9 +56,8 @@ jobs:
       - name: test (locked)
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
 
-  e2e:
+  frontend-compile:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -77,8 +76,8 @@ jobs:
         run: pnpm exec playwright install chromium
       - name: install xvfb
         run: sudo apt-get install -y xvfb
-      # The e2e suite connects to a running Tauri app over CDP; a full tauri
-      # build needs the full GTK/webkit stack, so build the webview bundle
-      # only as a compile gate here.
+      # Compile-only validation: typecheck and bundle the frontend without
+      # exercising runtime behavior. A full tauri build needs the full
+      # GTK/webkit stack, so the webview bundle serves as the compile gate.
       - name: build frontend bundle
         run: pnpm vite build
