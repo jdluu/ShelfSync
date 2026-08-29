@@ -72,10 +72,6 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: typecheck frontend
         run: npx tsc -b
-      - name: install Playwright
-        run: pnpm exec playwright install chromium
-      - name: install xvfb
-        run: sudo apt-get install -y xvfb
       # Compile-only validation: typecheck and bundle the frontend without
       # exercising runtime behavior. A full tauri build needs the full
       # GTK/webkit stack, so the webview bundle serves as the compile gate.
