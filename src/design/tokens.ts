@@ -30,9 +30,9 @@ export const brandTokens = {
         /** base-content — ink */
         ink: "#2b2620",
         /** primary-content — text on the accent */
-        onAccent: "#fffdf9",
+        onAccent: "#1c1712",
         /** accent-content — text on the active accent */
-        onAccentActive: "#fffdf9",
+        onAccentActive: "#1c1712",
       },
       /** The single lamplight-amber accent (interactive elements only). */
       accent: {

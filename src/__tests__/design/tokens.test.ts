@@ -52,7 +52,7 @@ describe("brandTokens — Brand v2 semantic token contract", () => {
   it("pins the paper palette to the DaisyUI theme in App.css", () => {
     expect(paper).toEqual({
       surface: { page: "#faf7f2", card: "#f2ede4", well: "#e4dccc" },
-      content: { ink: "#2b2620", onAccent: "#fffdf9", onAccentActive: "#fffdf9" },
+      content: { ink: "#2b2620", onAccent: "#1c1712", onAccentActive: "#1c1712" },
       accent: { primary: "#c88a3d", active: "#a87838" },
       status: {
         secondary: "#7a6a54",
@@ -85,6 +85,21 @@ describe("brandTokens — Brand v2 semantic token contract", () => {
     const tokens = theme === "paper" ? paper : lamplight;
     expect(contrastRatio(tokens.content.ink, tokens.surface.page)).toBeGreaterThan(7);
   });
+
+  it.each(["paper", "lamplight", "eink"] as const)(
+    "keeps %s on-accent text readable on its accent at WCAG AA 4.5:1",
+    (theme) => {
+      const tokens = brandTokens.color[theme];
+      expect(
+        contrastRatio(tokens.content.onAccent, tokens.accent.primary),
+        `${theme} content.onAccent vs accent.primary`,
+      ).toBeGreaterThan(4.5);
+      expect(
+        contrastRatio(tokens.content.onAccentActive, tokens.accent.active),
+        `${theme} content.onAccentActive vs accent.active`,
+      ).toBeGreaterThan(4.5);
+    },
+  );
 
   it("keeps e-ink a monochrome, zero-accent fallback", () => {
     expect(eink.surface).toEqual({ page: "#ffffff", card: "#ffffff", well: "#e0e0e0" });

@@ -129,13 +129,13 @@ html.e-ink .shadow-2xl {
   --color-base-content: #2b2620; /* ink */
 
   --color-primary: #c88a3d; /* lamplight amber */
-  --color-primary-content: #fffdf9;
+  --color-primary-content: #1c1712;
 
   --color-secondary: #7a6a54; /* leather */
   --color-secondary-content: #faf7f2;
 
   --color-accent: #a87838; /* deeper amber for small interactive elements */
-  --color-accent-content: #fffdf9;
+  --color-accent-content: #1c1712;
 
   --color-neutral: #57503f;
   --color-neutral-content: #f2ede4;
@@ -157,8 +157,8 @@ html.e-ink .shadow-2xl {
   --token-surface-card: #f2ede4;
   --token-surface-well: #e4dccc;
   --token-content-ink: #2b2620;
-  --token-content-on-accent: #fffdf9;
-  --token-content-on-accent-active: #fffdf9;
+  --token-content-on-accent: #1c1712;
+  --token-content-on-accent-active: #1c1712;
   --token-accent-primary: #c88a3d;
   --token-accent-active: #a87838;
   --token-status-secondary: #7a6a54;
