@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { savedCatalogsService } from "@/services/savedCatalogs";
 import type { Publication } from "@/types/opds";
+import { notifyOpdsError } from "@/utils/notifyOpdsError";
 import type { UseCatalogConnectionResult } from "./useCatalogConnection";
 import type { UseDownloadRegistryResult } from "./useDownloadRegistry";
 
@@ -36,8 +37,12 @@ export function useOpdsScreenOrchestration({
         connection.username,
       );
       setSavedCatalogsKey((k) => k + 1);
-    } catch {
-      // Non-fatal: saving the catalog is best-effort.
+    } catch (error) {
+      // Non-fatal: saving the catalog is best-effort, but surface it.
+      notifyOpdsError(error, {
+        context: "Save catalog",
+        fallback: "Failed to save the catalog",
+      });
     }
   }, [connection]);
 
