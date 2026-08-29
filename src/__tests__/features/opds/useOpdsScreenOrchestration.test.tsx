@@ -6,12 +6,19 @@ import {
 } from "@/features/opds/useOpdsScreenOrchestration";
 import { savedCatalogsService } from "@/services/savedCatalogs";
 import type { Publication } from "@/types/opds";
+import { notifyOpdsError } from "@/utils/notifyOpdsError";
 
 vi.mock("@/services/savedCatalogs", () => ({
   savedCatalogsService: {
     save: vi.fn(),
   },
 }));
+
+vi.mock("@/utils/notifyOpdsError", () => ({
+  notifyOpdsError: vi.fn(),
+}));
+
+const mockNotify = vi.mocked(notifyOpdsError);
 
 const makePublication = (id: string): Publication => ({
   id,
@@ -112,12 +119,35 @@ describe("useOpdsScreenOrchestration", () => {
       );
     });
 
-    it("is best-effort: swallows a save failure without bumping the refresh key", async () => {
+    it("is best-effort: swallows a save failure without bumping the refresh key and surfaces it via notifyOpdsError", async () => {
       vi.mocked(savedCatalogsService.save).mockRejectedValue(new Error("backend down"));
       const { result } = render();
 
       await expect(result.current.handleSaveCatalog()).resolves.toBeUndefined();
       expect(result.current.savedCatalogsKey).toBe(0);
+      expect(mockNotify).toHaveBeenCalledTimes(1);
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "backend down" }),
+        { context: "Save catalog", fallback: "Failed to save the catalog" },
+      );
+    });
+
+    it("does not toast when the save succeeds", async () => {
+      vi.mocked(savedCatalogsService.save).mockResolvedValue({
+        id: "cat-ok",
+        name: "https://example.com/opds",
+        url: "https://example.com/opds",
+        username: "alice",
+        added_at: "2026-08-28T00:00:00Z",
+      });
+      const { result } = render();
+
+      await act(async () => {
+        await result.current.handleSaveCatalog();
+      });
+
+      expect(result.current.savedCatalogsKey).toBe(1);
+      expect(mockNotify).not.toHaveBeenCalled();
     });
   });
 
