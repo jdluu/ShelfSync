@@ -117,7 +117,7 @@ describe("brandTokens — Brand v2 semantic token contract", () => {
     }
   });
 
-  it("documents the typography roles from BRAND.md", () => {
+  it("documents the typography roles from docs/design-system.md", () => {
     expect(brandTokens.typography.ui).toContain("Outfit");
     expect(brandTokens.typography.display).toContain("Source Serif 4");
     expect(brandTokens.typography.ui).not.toBe(brandTokens.typography.display);

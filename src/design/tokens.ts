@@ -2,7 +2,7 @@
  * Brand v2 semantic design tokens.
  *
  * Single, typed source of truth for the ShelfSync design language, derived from
- * agent_docs/BRAND.md and mirrored by the DaisyUI themes in src/App.css
+ * docs/design-system.md and mirrored by the DaisyUI themes in src/App.css
  * (`paper`, `lamplight`) plus the `e-ink` fallback. Every value here must stay
  * in sync with src/App.css; the DaisyUI class names those themes power
  * (`bg-base-100`, `border-base-300`, `text-base-content`, ...) are the
