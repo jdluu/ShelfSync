@@ -1,7 +1,7 @@
 import type React from "react";
 import { cn } from "@/utils/cn";
 
-export type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "outline" | "ghost" | "danger" | "plain";
 export type ButtonSize = "sm" | "md";
 
 export interface ButtonProps extends React.ComponentProps<"button"> {
@@ -14,6 +14,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   outline: "btn-outline",
   ghost: "btn-ghost",
   danger: "btn-outline btn-error",
+  plain: "",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -29,11 +30,17 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
+  const isPlain = variant === "plain";
   return (
     <button
       ref={ref}
       type="button"
-      className={cn("btn", variantClasses[variant], sizeClasses[size], className)}
+      className={cn(
+        isPlain ? "" : "btn",
+        isPlain ? "" : variantClasses[variant],
+        isPlain ? "" : sizeClasses[size],
+        className,
+      )}
       {...props}
     >
       {children}

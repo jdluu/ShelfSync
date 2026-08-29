@@ -118,4 +118,41 @@ describe("Button primitive", () => {
 
     expect(ref.current).toBe(screen.getByRole("button", { name: "Ref me" }));
   });
+
+  it("renders the plain variant with no DaisyUI classes so callers own all styling", () => {
+    const { rerender } = render(
+      <Button variant="plain" className="w-full px-3 py-2 text-left text-sm">
+        Option
+      </Button>,
+    );
+
+    const className = screen.getByRole("button", { name: "Option" }).getAttribute("class") ?? "";
+    expect(className).not.toContain("btn");
+    expect(className).toContain("w-full");
+    expect(className).toContain("px-3");
+    expect(className).toContain("py-2");
+    expect(className).toContain("text-left");
+    expect(className).toContain("text-sm");
+
+    rerender(
+      <Button variant="plain" size="sm">
+        Nested
+      </Button>,
+    );
+    const nested = screen.getByRole("button", { name: "Nested" });
+    expect(nested.getAttribute("class")).not.toContain("btn");
+    expect(nested.getAttribute("class")).not.toContain("btn-sm");
+  });
+
+  it("spreads role and aria attributes onto plain variant buttons", () => {
+    render(
+      <Button variant="plain" role="option" aria-selected="true">
+        EPUB
+      </Button>,
+    );
+
+    const option = screen.getByRole("option", { name: "EPUB" });
+    expect(option.getAttribute("role")).toBe("option");
+    expect(option.getAttribute("aria-selected")).toBe("true");
+  });
 });
