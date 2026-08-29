@@ -7,9 +7,20 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
 
-  /* Brand fonts (docs/design/BRAND.md) */
+  /* Brand fonts (agent_docs/BRAND.md) */
   --font-ui: "Outfit", system-ui, -apple-system, sans-serif;
   --font-display: "Source Serif 4", Georgia, serif;
+
+  /* Operational semantic tokens (mirror src/design/tokens.ts, Brand v2) */
+  --token-font-ui: "Outfit", system-ui, -apple-system, sans-serif;
+  --token-font-display: "Source Serif 4", Georgia, serif;
+  --token-radius-box: 0.75rem;
+  --token-radius-field: 0.5rem;
+  --token-radius-pill: 999px;
+  --token-spacing-gutter: 24px;
+  --token-spacing-cover-min-width: 140px;
+  --token-motion-page: 200ms;
+  --token-motion-toast: 150ms;
 }
 
 html,
@@ -76,6 +87,21 @@ html.e-ink {
   --color-info: #000000;
   --color-warning: #000000;
   --color-error: #000000;
+
+  --token-surface-page: #ffffff;
+  --token-surface-card: #ffffff;
+  --token-surface-well: #e0e0e0;
+  --token-content-ink: #000000;
+  --token-content-on-accent: #ffffff;
+  --token-content-on-accent-active: #ffffff;
+  --token-accent-primary: #000000;
+  --token-accent-active: #000000;
+  --token-status-secondary: #000000;
+  --token-status-neutral: #000000;
+  --token-status-info: #000000;
+  --token-status-success: #000000;
+  --token-status-warning: #000000;
+  --token-status-error: #000000;
 }
 
 html.e-ink .shadow,
@@ -126,6 +152,22 @@ html.e-ink .shadow-2xl {
   --color-error: #b0563f;
   --color-error-content: #faf7f2;
 
+  /* Operational semantic tokens (mirror src/design/tokens.ts, theme "paper") */
+  --token-surface-page: #faf7f2;
+  --token-surface-card: #f2ede4;
+  --token-surface-well: #e4dccc;
+  --token-content-ink: #2b2620;
+  --token-content-on-accent: #fffdf9;
+  --token-content-on-accent-active: #fffdf9;
+  --token-accent-primary: #c88a3d;
+  --token-accent-active: #a87838;
+  --token-status-secondary: #7a6a54;
+  --token-status-neutral: #57503f;
+  --token-status-info: #5b7d9e;
+  --token-status-success: #6a8f5f;
+  --token-status-warning: #b08a3e;
+  --token-status-error: #b0563f;
+
   --radius-selector: 0.75rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
@@ -174,6 +216,22 @@ html.e-ink .shadow-2xl {
 
   --color-error: #d98a72;
   --color-error-content: #1c1712;
+
+  /* Operational semantic tokens (mirror src/design/tokens.ts, theme "lamplight") */
+  --token-surface-page: #191714;
+  --token-surface-card: #211e1a;
+  --token-surface-well: #2b2722;
+  --token-content-ink: #ece5d8;
+  --token-content-on-accent: #1c1712;
+  --token-content-on-accent-active: #1c1712;
+  --token-accent-primary: #e0a458;
+  --token-accent-active: #e0a458;
+  --token-status-secondary: #b3a184;
+  --token-status-neutral: #3a352c;
+  --token-status-info: #8fb0cc;
+  --token-status-success: #93b886;
+  --token-status-warning: #d4b06a;
+  --token-status-error: #d98a72;
 
   --radius-selector: 0.75rem;
   --radius-field: 0.5rem;
