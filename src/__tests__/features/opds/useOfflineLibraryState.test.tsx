@@ -163,22 +163,28 @@ describe("useOfflineLibraryState", () => {
       );
     });
 
-    it("updates the snapshot and does not toast on success, preserving prior state on failure", async () => {
+    it("updates the snapshot and preserves prior state when a later refresh fails", async () => {
       const { result } = renderOfflineState();
       await waitFor(() => {
-        expect(mockList).toHaveBeenCalledTimes(1);
+        expect(result.current.libraryInfoByPublicationId["book-1"]?.primary?.revision_id).toBe(11);
+      });
+
+      expect(mockNotify).not.toHaveBeenCalled();
+      mockNotify.mockClear();
+      mockList.mockRejectedValueOnce(new Error("Snapshot read failed"));
+
+      await act(async () => {
+        await result.current.refreshLibrarySnapshot();
       });
 
       expect(result.current.libraryInfoByPublicationId["book-1"]?.primary?.revision_id).toBe(11);
-      expect(mockNotify).not.toHaveBeenCalled();
-
-      result.current.refreshLibrarySnapshot();
-      await waitFor(() => {
-        expect(mockList).toHaveBeenCalledTimes(2);
-      });
-
-      expect(result.current.libraryInfoByPublicationId["book-1"]?.primary?.revision_id).toBe(11);
-      expect(mockNotify).not.toHaveBeenCalled();
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Snapshot read failed" }),
+        {
+          context: "Offline library",
+          fallback: "Failed to load the offline library",
+        },
+      );
     });
   });
 
