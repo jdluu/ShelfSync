@@ -141,6 +141,61 @@ describe("OpdsCatalogView", () => {
 
       expect(screen.queryByText("Retry")).toBeNull();
     });
+
+    it("stamps the alert retry action with the shared small outline error button classes", () => {
+      render(
+        <OpdsCatalogView
+          catalog={undefined}
+          loading={false}
+          error="Connection failed"
+          page={1}
+          onPageChange={vi.fn()}
+          onRetry={vi.fn()}
+        />,
+      );
+
+      const retry = screen.getByRole("button", { name: /Retry/ });
+      const classes = (retry.getAttribute("class") ?? "").split(" ");
+      expect(classes).toContain("btn");
+      expect(classes).toContain("btn-sm");
+      expect(classes).toContain("btn-outline");
+      expect(classes).toContain("btn-error");
+      expect(retry.getAttribute("type")).toBe("button");
+    });
+
+    it("stamps the try again action with the shared outline full-width responsive button classes", () => {
+      render(
+        <OpdsCatalogView
+          catalog={undefined}
+          loading={false}
+          error="Connection failed"
+          page={1}
+          onPageChange={vi.fn()}
+          onRetry={vi.fn()}
+        />,
+      );
+
+      const tryAgain = screen.getByRole("button", { name: "Try Again" });
+      expect(tryAgain.getAttribute("class")).toBe("btn btn-outline w-full sm:w-auto");
+      expect(tryAgain.getAttribute("type")).toBe("button");
+    });
+
+    it("calls onRetry when the try again action is clicked", () => {
+      const onRetry = vi.fn();
+      render(
+        <OpdsCatalogView
+          catalog={undefined}
+          loading={false}
+          error="Connection failed"
+          page={1}
+          onPageChange={vi.fn()}
+          onRetry={onRetry}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("empty catalog", () => {
