@@ -1,6 +1,7 @@
 import { Book, RefreshCw } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
@@ -97,16 +98,16 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
             <p className="text-sm">{error}</p>
           </div>
           {onRetry && (
-            <button type="button" onClick={onRetry} className="btn btn-sm btn-outline btn-error">
+            <Button variant="outline" size="sm" onClick={onRetry} className="btn-error">
               <RefreshCw className="w-4 h-4 mr-1" />
               Retry
-            </button>
+            </Button>
           )}
         </div>
         {onRetry && (
-          <button type="button" onClick={onRetry} className="btn btn-outline w-full sm:w-auto">
+          <Button variant="outline" onClick={onRetry} className="w-full sm:w-auto">
             Try Again
-          </button>
+          </Button>
         )}
       </div>
     );
