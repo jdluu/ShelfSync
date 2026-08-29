@@ -145,6 +145,43 @@ describe("useOfflineLibraryState", () => {
     });
   });
 
+  describe("refreshLibrarySnapshot", () => {
+    it("surfaces a listing failure through notifyOpdsError and does not throw", async () => {
+      mockList.mockRejectedValue(new Error("Snapshot read failed"));
+
+      renderOfflineState();
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Snapshot read failed" }),
+        {
+          context: "Offline library",
+          fallback: "Failed to load the offline library",
+        },
+      );
+    });
+
+    it("updates the snapshot and does not toast on success, preserving prior state on failure", async () => {
+      const { result } = renderOfflineState();
+      await waitFor(() => {
+        expect(mockList).toHaveBeenCalledTimes(1);
+      });
+
+      expect(result.current.libraryInfoByPublicationId["book-1"]?.primary?.revision_id).toBe(11);
+      expect(mockNotify).not.toHaveBeenCalled();
+
+      result.current.refreshLibrarySnapshot();
+      await waitFor(() => {
+        expect(mockList).toHaveBeenCalledTimes(2);
+      });
+
+      expect(result.current.libraryInfoByPublicationId["book-1"]?.primary?.revision_id).toBe(11);
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+  });
+
   describe("handleDeleteLocal", () => {
     it("surfaces the failure through notifyOpdsError and keeps the record visible", async () => {
       mockDeleteContent.mockRejectedValue(new Error("Permission denied"));
