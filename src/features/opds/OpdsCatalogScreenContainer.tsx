@@ -1,8 +1,5 @@
 import type React from "react";
-import { useCallback, useState } from "react";
 import { useOpdsCatalog } from "@/hooks/useOpdsCatalog";
-import { savedCatalogsService } from "@/services/savedCatalogs";
-import type { Publication } from "@/types/opds";
 import { OpdsCatalogScreen } from "./OpdsCatalogScreen";
 import { PublicationDetailModal } from "./PublicationDetailModal";
 import { SavedCatalogsManager } from "./SavedCatalogsManager";
@@ -10,12 +7,10 @@ import { useCatalogConnection } from "./useCatalogConnection";
 import { useDownloadRegistry } from "./useDownloadRegistry";
 import { useOfflineLibraryState } from "./useOfflineLibraryState";
 import { useOpdsDownload } from "./useOpdsDownload";
+import { useOpdsScreenOrchestration } from "./useOpdsScreenOrchestration";
 
 const OpdsCatalogScreenContainer: React.FC = () => {
   const { status, error, localPath, mediaType, progress, startDownload } = useOpdsDownload();
-
-  const [detailPublication, setDetailPublication] = useState<Publication | null>(null);
-  const [savedCatalogsKey, setSavedCatalogsKey] = useState(0);
 
   const connection = useCatalogConnection();
   const offline = useOfflineLibraryState({
@@ -40,24 +35,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
     connection.page,
     connection.connected,
   );
-
-  const handleDisconnect = useCallback(() => {
-    connection.disconnect();
-    downloads.clearDownloads();
-  }, [connection.disconnect, downloads.clearDownloads]);
-
-  const handleSaveCatalog = useCallback(async () => {
-    try {
-      await savedCatalogsService.save(
-        connection.url.trim() || "Untitled catalog",
-        connection.url,
-        connection.username,
-      );
-      setSavedCatalogsKey((k) => k + 1);
-    } catch {
-      // Non-fatal: saving the catalog is best-effort.
-    }
-  }, [connection]);
+  const orchestration = useOpdsScreenOrchestration({ connection, downloads });
 
   return (
     <>
@@ -70,7 +48,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
         onPasswordChange={connection.setPassword}
         connected={connection.connected}
         onConnect={connection.connect}
-        onDisconnect={handleDisconnect}
+        onDisconnect={orchestration.handleDisconnect}
         catalog={catalogQuery.data}
         loading={catalogQuery.isFetching}
         error={catalogQuery.error?.message ?? null}
@@ -87,27 +65,29 @@ const OpdsCatalogScreenContainer: React.FC = () => {
         deletingRevisionId={offline.deletingRevisionId}
         onDeleteLocal={offline.handleDeleteLocal}
         onRefreshLibrary={offline.handleRefreshLibrary}
-        onViewDetails={setDetailPublication}
-        onSaveCatalog={handleSaveCatalog}
+        onViewDetails={orchestration.openDetail}
+        onSaveCatalog={orchestration.handleSaveCatalog}
         savedCatalogs={
           <SavedCatalogsManager
             onConnectTo={connection.connectToSaved}
-            refreshKey={savedCatalogsKey}
+            refreshKey={orchestration.savedCatalogsKey}
           />
         }
       />
-      {detailPublication && (
+      {orchestration.detailPublication && (
         <PublicationDetailModal
-          publication={detailPublication}
-          onClose={() => setDetailPublication(null)}
+          publication={orchestration.detailPublication}
+          onClose={orchestration.closeDetail}
           catalogUrl={connection.url.trim()}
           transientUsername={connection.username}
           transientPassword={connection.password}
           contentRoot={connection.contentRoot}
           onDownload={downloads.handleDownload}
-          downloadStatus={downloads.downloadStatuses[detailPublication.id]}
-          downloadErrorMessage={downloads.downloadErrors[detailPublication.id]}
-          libraryInfo={offline.libraryInfoByPublicationId[detailPublication.id] ?? null}
+          downloadStatus={downloads.downloadStatuses[orchestration.detailPublication.id]}
+          downloadErrorMessage={downloads.downloadErrors[orchestration.detailPublication.id]}
+          libraryInfo={
+            offline.libraryInfoByPublicationId[orchestration.detailPublication.id] ?? null
+          }
         />
       )}
     </>

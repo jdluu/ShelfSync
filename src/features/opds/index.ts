@@ -8,4 +8,5 @@ export { useCatalogConnection } from "./useCatalogConnection";
 export { useDownloadRegistry } from "./useDownloadRegistry";
 export { useOfflineLibraryState } from "./useOfflineLibraryState";
 export { useOpdsDownload } from "./useOpdsDownload";
+export { useOpdsScreenOrchestration } from "./useOpdsScreenOrchestration";
 export { usePublicationState } from "./usePublicationState";
