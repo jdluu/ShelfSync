@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useStorageStore } from "@/store/storageStore";
+import { notifyError } from "@/utils/notifications";
 import { safeStoreLoad } from "@/utils/tauri";
 
 const STORE_PATH = "shelfsync_settings.json";
@@ -29,7 +30,9 @@ export const useLibraryStore = create<LibraryState>((set) => ({
       const store = await safeStoreLoad(STORE_PATH);
       await store.set("e_ink_mode", enabled);
       await store.save();
-    } catch (_) {}
+    } catch (_) {
+      notifyError("Settings Error", "Failed to save e-ink display setting.");
+    }
   },
 
   loadSettings: async () => {
@@ -47,6 +50,7 @@ export const useLibraryStore = create<LibraryState>((set) => ({
       }
     } catch (_) {
       // Settings load failure is non-fatal; defaults apply.
+      notifyError("Settings Error", "Failed to load e-ink display settings.");
     }
   },
 }));
