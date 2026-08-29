@@ -40,7 +40,12 @@ export function useOfflineLibraryState({
     try {
       const snapshot = await offlineLibraryClient.list();
       setLibraryInfoByPublicationId(buildPublicationLibraryInfo(snapshot));
-    } catch {}
+    } catch (error) {
+      notifyOpdsError(error, {
+        context: "Offline library",
+        fallback: "Failed to load the offline library",
+      });
+    }
   }, []);
 
   useEffect(() => {
