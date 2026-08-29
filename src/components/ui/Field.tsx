@@ -1,4 +1,5 @@
 import type React from "react";
+import { cn } from "@/utils/cn";
 
 export interface FieldProps extends Omit<React.ComponentProps<"input">, "id"> {
   id: string;
@@ -36,7 +37,7 @@ export const Field: React.FC<FieldProps> = ({
           type={type}
           aria-invalid={error ? true : undefined}
           aria-describedby={resolvedDescribedBy}
-          className={`input input-bordered w-full ${error ? "input-error" : ""} ${inputClassName ?? ""}`}
+          className={cn("input input-bordered w-full", error && "input-error", inputClassName)}
           {...inputProps}
         />
       </label>

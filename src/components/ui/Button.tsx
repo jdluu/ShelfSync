@@ -1,6 +1,5 @@
-import { type ClassValue, clsx } from "clsx";
 import type React from "react";
-import { twMerge } from "tailwind-merge";
+import { cn } from "@/utils/cn";
 
 export type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md";
@@ -21,10 +20,6 @@ const sizeClasses: Record<ButtonSize, string> = {
   sm: "btn-sm",
   md: "",
 };
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export const Button: React.FC<ButtonProps> = ({
   variant = "outline",
