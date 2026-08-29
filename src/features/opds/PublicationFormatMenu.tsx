@@ -1,6 +1,7 @@
 import { ChevronDown as ChevronDownIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useId, useRef } from "react";
+import { Button } from "@/components/ui/Button";
 import type { MediaType } from "@/types/opds";
 
 function getMediaTypeLabel(mediaType: MediaType): string {
@@ -81,15 +82,14 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
 
   return (
     <div ref={formatMenuContainerRef} className="relative inline-block w-full">
-      <button
+      <Button
         ref={triggerRef}
         id={triggerId}
-        type="button"
+        variant="outline"
+        size="sm"
         onClick={() => onOpenChange(!isOpen)}
         disabled={disabled}
-        className={`btn btn-sm btn-outline w-full justify-between ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        }`}
+        className={`w-full justify-between ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
@@ -102,7 +102,7 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
       >
         <span>{triggerText}</span>
         <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
-      </button>
+      </Button>
       {isOpen && (
         <div
           id={listboxId}
@@ -111,12 +111,12 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
           className="absolute z-10 mt-1 w-full bg-base-100 border border-base-content/20 rounded-lg shadow-lg max-h-60 overflow-y-auto"
         >
           {formats.map((format, index) => (
-            <button
+            <Button
               key={format}
               ref={(node) => {
                 optionRefs.current[index] = node;
               }}
-              type="button"
+              variant="plain"
               onClick={() => {
                 onSelectFormat(format);
                 onOpenChange(false);
@@ -131,7 +131,7 @@ export const PublicationFormatMenu: React.FC<PublicationFormatMenuProps> = ({
               aria-selected={selectedFormat === format}
             >
               {getMediaTypeLabel(format)}
-            </button>
+            </Button>
           ))}
         </div>
       )}
