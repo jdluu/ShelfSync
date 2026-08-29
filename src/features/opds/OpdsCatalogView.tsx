@@ -189,28 +189,28 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
 
       {catalog.pagination && (
         <nav className="flex justify-center gap-2" aria-label="Pagination">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            className="btn btn-sm btn-outline"
             aria-label="Previous page"
           >
             Previous
-          </button>
+          </Button>
           <span className="badge badge-sm badge-ghost" aria-live="polite">
             Page {page}
             {catalog.pagination.total ? ` of ${Math.ceil(catalog.pagination.total)}` : ""}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onPageChange(page + 1)}
             disabled={!catalog.pagination.next}
-            className="btn btn-sm btn-outline"
             aria-label="Next page"
           >
             Next
-          </button>
+          </Button>
         </nav>
       )}
     </div>

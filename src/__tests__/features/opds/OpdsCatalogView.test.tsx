@@ -562,6 +562,85 @@ describe("OpdsCatalogView", () => {
       const prevBtn = screen.getByText("Previous");
       expect(prevBtn.hasAttribute("disabled")).toBe(true);
     });
+
+    it("exposes each page action via its aria-label", () => {
+      const catalog = createMockCatalog({
+        publications: [createMockPublication()],
+        pagination: { page: 2, size: 20, next: "https://example.com/page/3" },
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={2}
+          onPageChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Previous page" })).not.toBeNull();
+      expect(screen.getByRole("button", { name: "Next page" })).not.toBeNull();
+    });
+
+    it("stamps each page action with the shared small outline button classes and type", () => {
+      const catalog = createMockCatalog({
+        publications: [createMockPublication()],
+        pagination: { page: 2, size: 20, next: "https://example.com/page/3" },
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={2}
+          onPageChange={vi.fn()}
+        />,
+      );
+
+      for (const name of ["Previous page", "Next page"]) {
+        const button = screen.getByRole("button", { name });
+        expect(button.getAttribute("class")).toBe("btn btn-outline btn-sm");
+        expect(button.getAttribute("type")).toBe("button");
+      }
+    });
+
+    it("disables next button when the catalog has no next pagination link", () => {
+      const catalog = createMockCatalog({
+        publications: [createMockPublication()],
+        pagination: { page: 1, size: 20 },
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Next page" }).hasAttribute("disabled")).toBe(true);
+    });
+
+    it("enables next button when the catalog exposes a next pagination link", () => {
+      const catalog = createMockCatalog({
+        publications: [createMockPublication()],
+        pagination: { page: 1, size: 20, next: "https://example.com/page/2" },
+      });
+      render(
+        <OpdsCatalogView
+          catalog={catalog}
+          loading={false}
+          error={null}
+          page={1}
+          onPageChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Next page" }).hasAttribute("disabled")).toBe(
+        false,
+      );
+    });
   });
 
   describe("with download props", () => {
