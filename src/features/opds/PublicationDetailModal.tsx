@@ -3,7 +3,11 @@ import type React from "react";
 import { Button } from "@/components/ui/Button";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
-import { getAcquisitionLinks } from "@/types/opds";
+import {
+  getAcquisitionLinks,
+  getAcquisitionMediaType,
+  getMediaTypeDisplayLabel,
+} from "@/types/opds";
 import { LibraryStateBadge } from "./LibraryStateBadge";
 
 interface PublicationDetailModalProps {
@@ -210,13 +214,8 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
               {downloadStatus !== "downloading" && (
                 <div className="flex flex-wrap gap-2">
                   {acquisitionLinks.map((link) => {
-                    const format = link.media_type ?? link.type ?? "application/epub+zip";
-                    const label =
-                      format === "application/epub+zip"
-                        ? "EPUB"
-                        : format === "application/pdf"
-                          ? "PDF"
-                          : format;
+                    const format = getAcquisitionMediaType(link);
+                    const label = getMediaTypeDisplayLabel(format);
                     return (
                       <Button
                         key={`${link.href}-${format}`}

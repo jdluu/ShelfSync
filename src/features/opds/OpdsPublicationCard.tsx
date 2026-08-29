@@ -10,8 +10,9 @@ import type React from "react";
 import { Button } from "@/components/ui/Button";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
+import { getMediaTypeDisplayLabel } from "@/types/opds";
 import { LibraryStateBadge } from "./LibraryStateBadge";
-import { getMediaTypeLabel, PublicationFormatMenu } from "./PublicationFormatMenu";
+import { PublicationFormatMenu } from "./PublicationFormatMenu";
 import { usePublicationState } from "./usePublicationState";
 
 interface OpdsPublicationCardProps {
@@ -39,24 +40,6 @@ interface OpdsPublicationCardProps {
   deletingRevisionId?: number | null;
   onDeleteLocal?: (record: CategorizedLibraryRecord) => void;
   onViewDetails?: (publication: Publication) => void;
-}
-
-function getMediaTypeLabelForBadge(mediaType: string): string {
-  const labels: Record<string, string> = {
-    "application/epub+zip": "EPUB",
-    "application/pdf": "PDF",
-    "application/pdf+aes": "PDF (Encrypted)",
-    "application/zip": "ZIP",
-    "chemical/x-mdldrum": "MDL",
-    "chemical/x-mol": "MOL",
-    "text/html": "HTML",
-    "application/rtf": "RTF",
-    "application/x-mobipocket-ebook": "MOBI",
-    "application/x-kindle": "Kindle",
-    "image/jpeg": "JPEG",
-    "image/png": "PNG",
-  };
-  return labels[mediaType.toLowerCase()] || mediaType;
 }
 
 export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
@@ -192,7 +175,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
             {formatLabels.map((fmt) => (
               <li key={fmt}>
                 <span className="badge badge-xs badge-outline badge-info">
-                  {getMediaTypeLabelForBadge(fmt)}
+                  {getMediaTypeDisplayLabel(fmt)}
                 </span>
               </li>
             ))}
@@ -260,7 +243,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                 size="sm"
                 onClick={handleDownload}
                 className="w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label={`Download ${publication.title} as ${getMediaTypeLabel(selectedFormat)}`}
+                aria-label={`Download ${publication.title} as ${getMediaTypeDisplayLabel(selectedFormat)}`}
               >
                 <DownloadIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                 Download
@@ -289,7 +272,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                 className="text-error justify-start gap-2 px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={
                   record.section === "superseded"
-                    ? `Delete older ${getMediaTypeLabelForBadge(record.media_type)} copy of ${publication.title}`
+                    ? `Delete older ${getMediaTypeDisplayLabel(record.media_type)} copy of ${publication.title}`
                     : `Delete local copy of ${publication.title}`
                 }
               >
@@ -297,7 +280,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                 {deletingRevisionId === record.revision_id
                   ? "Deleting..."
                   : record.section === "superseded"
-                    ? `Delete older ${getMediaTypeLabelForBadge(record.media_type)} copy`
+                    ? `Delete older ${getMediaTypeDisplayLabel(record.media_type)} copy`
                     : "Delete local copy"}
               </Button>
             ))}
