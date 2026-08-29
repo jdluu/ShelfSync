@@ -2,6 +2,7 @@ import { BookMarked, KeyRound, Link2, LogOut, PlugZap, RefreshCw, User } from "l
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Field } from "@/components/ui/Field";
 import type {
   CategorizedLibraryRecord,
   OfflineRefreshReport,
@@ -178,26 +179,17 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               </p>
             </div>
 
-            <label className="form-control w-full" htmlFor="opds-catalog-url">
-              <span className="label-text mb-1 font-medium">Catalog URL</span>
-              <input
-                id="opds-catalog-url"
-                type="text"
-                inputMode="url"
-                autoComplete="off"
-                value={url}
-                onChange={(e) => handleUrlChange(e.target.value)}
-                placeholder="https://example.com/opds"
-                aria-invalid={validationError ? true : undefined}
-                aria-describedby={validationError ? "opds-url-error" : undefined}
-                className={`input input-bordered w-full ${validationError ? "input-error" : ""}`}
-              />
-            </label>
-            {validationError && (
-              <p id="opds-url-error" role="alert" className="text-sm text-error">
-                {validationError}
-              </p>
-            )}
+            <Field
+              id="opds-catalog-url"
+              label="Catalog URL"
+              inputMode="url"
+              autoComplete="off"
+              value={url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder="https://example.com/opds"
+              error={validationError ?? undefined}
+              errorId="opds-url-error"
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="form-control w-full" htmlFor="opds-username">
