@@ -3,13 +3,10 @@ import type React from "react";
 import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import type { MediaType } from "@/types/opds";
+import { getMediaTypeDisplayLabel } from "@/types/opds";
 
 function getMediaTypeLabel(mediaType: MediaType): string {
-  const labels: Record<MediaType, string> = {
-    "application/epub+zip": "EPUB",
-    "application/pdf": "PDF",
-  };
-  return labels[mediaType] || mediaType;
+  return getMediaTypeDisplayLabel(mediaType);
 }
 
 interface PublicationFormatMenuProps {

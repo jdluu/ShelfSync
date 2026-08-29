@@ -159,3 +159,35 @@ export function findAcquisitionLinkForFormat(
     ) ?? null
   );
 }
+
+const MEDIA_TYPE_LABELS: Record<string, string> = {
+  "application/epub+zip": "EPUB",
+  "application/pdf": "PDF",
+  "application/pdf+aes": "PDF (Encrypted)",
+  "application/zip": "ZIP",
+  "chemical/x-mdldrum": "MDL",
+  "chemical/x-mol": "MOL",
+  "text/html": "HTML",
+  "application/rtf": "RTF",
+  "application/x-mobipocket-ebook": "MOBI",
+  "application/x-kindle": "Kindle",
+  "image/jpeg": "JPEG",
+  "image/png": "PNG",
+};
+
+/**
+ * Single source for display labels shown next to media types (badges, format
+ * menus, download buttons). Falls back to the raw media type for unknown
+ * formats and matches case-insensitively.
+ */
+export function getMediaTypeDisplayLabel(mediaType: string): string {
+  return MEDIA_TYPE_LABELS[mediaType.toLowerCase()] || mediaType;
+}
+
+/**
+ * Normalize an acquisition link into its download format, preferring
+ * `media_type` over `type` and defaulting to EPUB when neither is present.
+ */
+export function getAcquisitionMediaType(link: Acquisition): MediaType {
+  return link.media_type ?? link.type ?? EPUB_MEDIA_TYPE;
+}

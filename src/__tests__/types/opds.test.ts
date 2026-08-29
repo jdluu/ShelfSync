@@ -3,7 +3,9 @@ import type { Acquisition, Publication } from "@/types/opds";
 import {
   findAcquisitionLinkForFormat,
   getAcquisitionLinks,
+  getAcquisitionMediaType,
   getDownloadableFormats,
+  getMediaTypeDisplayLabel,
   hasDownloadableFormats,
   isAcquisitionLink,
 } from "@/types/opds";
@@ -110,5 +112,49 @@ describe("findAcquisitionLinkForFormat", () => {
   it("returns null when nothing matches", () => {
     const htmlOnly = publicationWith([link({ href: "/p.html", media_type: "text/html" })]);
     expect(findAcquisitionLinkForFormat(htmlOnly, "application/epub+zip")).toBeNull();
+  });
+});
+
+describe("getMediaTypeDisplayLabel", () => {
+  it("maps EPUB and PDF to short labels", () => {
+    expect(getMediaTypeDisplayLabel("application/epub+zip")).toBe("EPUB");
+    expect(getMediaTypeDisplayLabel("application/pdf")).toBe("PDF");
+  });
+
+  it("maps the richer badge set for known non-EPUB/PDF types", () => {
+    expect(getMediaTypeDisplayLabel("application/pdf+aes")).toBe("PDF (Encrypted)");
+    expect(getMediaTypeDisplayLabel("application/zip")).toBe("ZIP");
+    expect(getMediaTypeDisplayLabel("application/x-mobipocket-ebook")).toBe("MOBI");
+    expect(getMediaTypeDisplayLabel("image/jpeg")).toBe("JPEG");
+  });
+
+  it("matches case-insensitively", () => {
+    expect(getMediaTypeDisplayLabel("Application/EPUB+ZIP")).toBe("EPUB");
+  });
+
+  it("falls back to the raw media type for unknown formats", () => {
+    expect(getMediaTypeDisplayLabel("application/x-custom-format")).toBe(
+      "application/x-custom-format",
+    );
+  });
+});
+
+describe("getAcquisitionMediaType", () => {
+  it("prefers media_type over type", () => {
+    expect(
+      getAcquisitionMediaType(
+        link({ href: "/x", media_type: "application/pdf", type: "application/epub+zip" }),
+      ),
+    ).toBe("application/pdf");
+  });
+
+  it("falls back to the type when media_type is absent", () => {
+    expect(getAcquisitionMediaType(link({ href: "/x", type: "application/epub+zip" }))).toBe(
+      "application/epub+zip",
+    );
+  });
+
+  it("defaults to EPUB when neither media_type nor type is present", () => {
+    expect(getAcquisitionMediaType(link({ href: "/x" }))).toBe("application/epub+zip");
   });
 });
