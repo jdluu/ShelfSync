@@ -11,10 +11,12 @@ use crate::opds::{CatalogConfig, DownloadContext};
 use url::Url;
 
 /// A validated, ready-to-use setup for a single publication download.
-pub struct DownloadSetup {
-    pub url: Url,
-    pub config: CatalogConfig,
-    pub context: DownloadContext,
+///
+/// The `url` and `config` the command consumes are both carried inside the
+/// `context` (`context.config.url` / `context.config`) so they are not
+/// duplicated here — this type holds the single source of truth.
+pub(crate) struct DownloadSetup {
+    pub(crate) context: DownloadContext,
 }
 
 /// Prepares a download setup from raw command inputs.
@@ -22,7 +24,7 @@ pub struct DownloadSetup {
 /// Validates the catalog URL, derives a `CatalogConfig`, and constructs the
 /// HTTP client + `DownloadContext`. Failure produces the exact
 /// `AppError::OpdsTransport` messages the previous inline command produced.
-pub fn prepare_download_setup(
+pub(crate) fn prepare_download_setup(
     catalog_url: &str,
     username: &str,
     password: &str,
@@ -42,13 +44,8 @@ pub fn prepare_download_setup(
         ));
     }
 
-    let config = CatalogConfig::new(
-        "download",
-        parsed_url.clone(),
-        username,
-        password.to_string(),
-    )
-    .map_err(|e| AppError::OpdsTransport(e.to_string()))?;
+    let config = CatalogConfig::new("download", parsed_url, username, password.to_string())
+        .map_err(|e| AppError::OpdsTransport(e.to_string()))?;
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -57,13 +54,9 @@ pub fn prepare_download_setup(
         .build()
         .map_err(|e| AppError::OpdsTransport(format!("Failed to build HTTP client: {}", e)))?;
 
-    let context = DownloadContext::new(client, config.clone());
+    let context = DownloadContext::new(client, config);
 
-    Ok(DownloadSetup {
-        url: parsed_url,
-        config,
-        context,
-    })
+    Ok(DownloadSetup { context })
 }
 
 #[cfg(test)]
@@ -87,22 +80,25 @@ mod tests {
     #[test]
     fn valid_https_url_builds_setup() {
         let setup = prepare_download_setup("https://example.com/opds", "user", "pass").unwrap();
-        assert_eq!(setup.url.as_str(), "https://example.com/opds");
-        assert_eq!(setup.config.origin(), "https://example.com");
+        assert_eq!(
+            setup.context.config.url.as_str(),
+            "https://example.com/opds"
+        );
+        assert_eq!(setup.context.config.origin(), "https://example.com");
     }
 
     #[test]
     fn valid_http_url_builds_setup() {
         let setup = prepare_download_setup("http://example.com:8080/opds", "user", "pass").unwrap();
-        assert_eq!(setup.config.origin(), "http://example.com:8080");
+        assert_eq!(setup.context.config.origin(), "http://example.com:8080");
     }
 
     #[test]
     fn setup_config_carries_provider_and_username() {
         let setup = prepare_download_setup("https://example.com/opds", "alice", "s3cret").unwrap();
-        assert_eq!(setup.config.provider, "download");
-        assert_eq!(setup.config.username, "alice");
-        assert_eq!(setup.config.password, "s3cret");
+        assert_eq!(setup.context.config.provider, "download");
+        assert_eq!(setup.context.config.username, "alice");
+        assert_eq!(setup.context.config.password, "s3cret");
     }
 
     #[test]

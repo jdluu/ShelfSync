@@ -97,9 +97,9 @@ pub async fn download_opds_publication(
     app: AppHandle,
 ) -> Result<DownloadResult, AppError> {
     let setup = prepare_download_setup(&catalog_url, &username, &password)?;
-    let parsed_url = setup.url;
-    let config = setup.config;
     let context = setup.context;
+    let config = &context.config;
+    let parsed_url = config.url.clone();
 
     let content_root_path = std::path::Path::new(&content_root);
     let plan = plan_download_destination(
