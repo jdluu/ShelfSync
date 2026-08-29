@@ -1,15 +1,14 @@
+use super::download_service::prepare_download_setup;
 use super::transport::sanitize_error_message;
 use crate::error::AppError;
 use crate::opds::{
-    download_file, plan_download_destination, CatalogConfig, DownloadContext, DownloadError,
-    ProgressCallback, Publication,
+    download_file, plan_download_destination, DownloadError, ProgressCallback, Publication,
 };
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 use tauri::{command, AppHandle, Emitter};
 use tokio_util::sync::CancellationToken;
-use url::Url;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct OpdsDownloadProgress {
@@ -97,31 +96,10 @@ pub async fn download_opds_publication(
     content_root: String,
     app: AppHandle,
 ) -> Result<DownloadResult, AppError> {
-    let parsed_url = Url::parse(&catalog_url)
-        .map_err(|_| AppError::OpdsTransport("Invalid URL: unable to parse".to_string()))?;
-
-    if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
-        return Err(AppError::OpdsTransport(
-            "Invalid URL: only HTTP and HTTPS schemes are allowed".to_string(),
-        ));
-    }
-
-    if !parsed_url.username().is_empty() {
-        return Err(AppError::OpdsTransport(
-            "Invalid URL: credentials must not be embedded in URL".to_string(),
-        ));
-    }
-
-    let config = CatalogConfig::new("download", parsed_url.clone(), username, password)?;
-
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .redirect(reqwest::redirect::Policy::none())
-        .use_rustls_tls()
-        .build()
-        .map_err(|e| AppError::OpdsTransport(format!("Failed to build HTTP client: {}", e)))?;
-
-    let context = DownloadContext::new(client, config.clone());
+    let setup = prepare_download_setup(&catalog_url, &username, &password)?;
+    let parsed_url = setup.url;
+    let config = setup.config;
+    let context = setup.context;
 
     let content_root_path = std::path::Path::new(&content_root);
     let plan = plan_download_destination(
@@ -201,8 +179,10 @@ pub async fn download_opds_publication(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::opds::{CatalogConfig, DownloadContext};
     use axum::{routing::get, Router};
     use axum_test::TestServer;
+    use url::Url;
 
     #[tokio::test]
     async fn cancellable_download_stops_when_token_fires() {
