@@ -7,6 +7,7 @@ import {
   Trash2 as TrashIcon,
 } from "lucide-react";
 import type React from "react";
+import { Button } from "@/components/ui/Button";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
 import { LibraryStateBadge } from "./LibraryStateBadge";
@@ -254,15 +255,16 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
             )}
 
             {selectedFormat && status === "idle" && (
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleDownload}
-                className="btn btn-sm btn-primary w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={`Download ${publication.title} as ${getMediaTypeLabel(selectedFormat)}`}
               >
                 <DownloadIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                 Download
-              </button>
+              </Button>
             )}
           </section>
         )}
@@ -278,12 +280,13 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
               </p>
             )}
             {deletableRecords.map((record) => (
-              <button
+              <Button
                 key={record.revision_id}
-                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => onDeleteLocal?.(record)}
                 disabled={deletingRevisionId === record.revision_id}
-                className="btn btn-sm btn-ghost text-error justify-start gap-2 px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="text-error justify-start gap-2 px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={
                   record.section === "superseded"
                     ? `Delete older ${getMediaTypeLabelForBadge(record.media_type)} copy of ${publication.title}`
@@ -296,19 +299,20 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                   : record.section === "superseded"
                     ? `Delete older ${getMediaTypeLabelForBadge(record.media_type)} copy`
                     : "Delete local copy"}
-              </button>
+              </Button>
             ))}
             {retryableRecord && (
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={handleRetry}
                 disabled={isBusyDownloading}
-                className="btn btn-sm btn-outline btn-error w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label={`Retry download of ${publication.title}`}
               >
                 <RetryIcon className="w-4 h-4 mr-1" aria-hidden="true" />
                 Retry download
-              </button>
+              </Button>
             )}
           </section>
         )}
