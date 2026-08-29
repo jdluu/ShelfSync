@@ -7,6 +7,7 @@ import type {
   PublicationLibraryInfo,
 } from "@/types/offline";
 import { buildPublicationLibraryInfo } from "@/types/offline";
+import { notifyOpdsError } from "@/utils/notifyOpdsError";
 import { isTauri } from "@/utils/tauri";
 
 export interface UseOfflineLibraryStateParams {
@@ -55,7 +56,11 @@ export function useOfflineLibraryState({
       try {
         await offlineLibraryClient.deleteContent(record.revision_id);
         await refreshLibrarySnapshot();
-      } catch {
+      } catch (error) {
+        notifyOpdsError(error, {
+          context: "Offline library",
+          fallback: "Failed to delete the local copy",
+        });
         // Keep the record visible on failure so the user can retry deletion.
       } finally {
         setDeletingRevisionId(null);
@@ -75,7 +80,11 @@ export function useOfflineLibraryState({
       await queryClient.invalidateQueries({ queryKey: ["opds", "catalog", catalogUrl] });
       await refreshLibrarySnapshot();
       return report;
-    } catch {
+    } catch (error) {
+      notifyOpdsError(error, {
+        context: "Catalog refresh",
+        fallback: "Failed to refresh the offline library",
+      });
       return null;
     }
   }, [catalogUrl, password, queryClient, refreshLibrarySnapshot, username]);
