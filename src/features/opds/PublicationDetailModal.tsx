@@ -1,5 +1,6 @@
 import { Book, Calendar, Download, User, X } from "lucide-react";
 import type React from "react";
+import { Button } from "@/components/ui/Button";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
 import { getAcquisitionLinks } from "@/types/opds";
@@ -126,14 +127,15 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
                 )}
               </div>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="btn btn-sm btn-ghost btn-square shrink-0"
+              className="btn-square shrink-0"
               aria-label="Close details"
             >
               <X className="w-5 h-5" />
-            </button>
+            </Button>
           </div>
 
           {/* Series info */}
@@ -216,16 +218,17 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
                           ? "PDF"
                           : format;
                     return (
-                      <button
+                      <Button
                         key={`${link.href}-${format}`}
-                        type="button"
+                        variant="primary"
+                        size="sm"
                         onClick={() => handleDownloadClick(format)}
-                        className="btn btn-sm btn-primary gap-2"
+                        className="gap-2"
                         aria-label={`Download ${publication.title} as ${label}`}
                       >
                         <Download className="w-4 h-4" aria-hidden="true" />
                         {label}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -235,9 +238,9 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
 
           {/* Close */}
           <div className="flex justify-end mt-4 pt-2 border-t border-base-300">
-            <button type="button" onClick={onClose} className="btn btn-sm btn-ghost">
+            <Button variant="ghost" size="sm" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>
