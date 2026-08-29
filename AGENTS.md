@@ -38,18 +38,15 @@ the division of responsibility between the two apps.
 ## Layout map
 
 ```
-agent_docs/  Agent/internal documentation: BRAND.md (design system v2),
-             FEATURE_FREEZE.md (scope boundary), android-hardening.md.
-             Not user-facing; do not link from README.
-docs/        User-facing docs only: app-boundaries.md, screenshots.
+docs/        User-facing docs: app-boundaries.md, design-system.md (canonical
+             design reference; mirrored by src/design/tokens.ts + src/App.css),
+             screenshots.
 ```
 
 ## Workflow (enforced)
 
 - All changes land via PR from a `feat/`, `fix/`, `chore/`, or `docs/`
   branch referencing a GitHub Issue; squash-merge to `main`; delete branch.
-- Scope is governed by `agent_docs/FEATURE_FREEZE.md` — no new features
-  without a tagged exception issue.
 - Never commit roadmap/planning docs, credentials, or `.env` files.
 
 ### Source layout

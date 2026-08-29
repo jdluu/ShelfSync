@@ -7,7 +7,7 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
 
-  /* Brand fonts (agent_docs/BRAND.md) */
+  /* Brand fonts (docs/design-system.md) */
   --font-ui: "Outfit", system-ui, -apple-system, sans-serif;
   --font-display: "Source Serif 4", Georgia, serif;
 
@@ -115,7 +115,7 @@ html.e-ink .shadow-2xl {
 
 /*
  * Theme: "paper" (light) — a warm reading room in daylight.
- * Paper neutrals, ink text, lamplight-amber accent. See docs/design/BRAND.md.
+ * Paper neutrals, ink text, lamplight-amber accent. See docs/design-system.md.
  */
 @plugin "daisyui/theme" {
   name: "paper";
