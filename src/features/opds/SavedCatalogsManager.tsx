@@ -1,6 +1,7 @@
 import { BookMarked, Plus, Trash2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { type SavedCatalog, savedCatalogsService } from "@/services/savedCatalogs";
 
 interface SavedCatalogsManagerProps {
@@ -82,20 +83,20 @@ export const SavedCatalogsManager: React.FC<SavedCatalogsManagerProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={() => onConnectTo(catalog)}
-                  className="btn btn-primary btn-xs gap-1"
+                  className="btn-xs gap-1"
                   aria-label={`Connect to ${catalog.name}`}
                 >
                   <Plus className="w-3 h-3" aria-hidden="true" />
                   Connect
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => handleDelete(catalog.id)}
                   disabled={deletingId === catalog.id}
-                  className="btn btn-ghost btn-xs btn-square text-error"
+                  className="btn-xs btn-square text-error"
                   aria-label={`Remove ${catalog.name} from saved catalogs`}
                 >
                   {deletingId === catalog.id ? (
@@ -103,7 +104,7 @@ export const SavedCatalogsManager: React.FC<SavedCatalogsManagerProps> = ({
                   ) : (
                     <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           </li>
