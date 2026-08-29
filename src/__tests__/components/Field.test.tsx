@@ -130,12 +130,35 @@ describe("Field primitive", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("merges extra input classes so surface-specific classes survive", () => {
-    render(<Field id="opds-content-root" label="Content root" inputClassName="input-sm" />);
+  it("honors the native className by merging extra input classes through cn", () => {
+    render(<Field id="opds-content-root" label="Content root" className="input-sm" />);
 
     const className = screen.getByLabelText("Content root").getAttribute("class");
     expect(className).toContain("input");
     expect(className).toContain("input-sm");
+  });
+
+  it("merges the native className alongside error styling through cn", () => {
+    render(
+      <Field
+        id="opds-catalog-url"
+        label="Catalog URL"
+        className="input-sm"
+        error="Required."
+        errorId="opds-url-error"
+      />,
+    );
+
+    const className = screen.getByLabelText("Catalog URL").getAttribute("class");
+    expect(className).toContain("input-error");
+    expect(className).toContain("input-sm");
+  });
+
+  it("forwards a ref to the underlying native input element", () => {
+    const ref = { current: null as HTMLInputElement | null };
+    render(<Field id="opds-catalog-url" label="Catalog URL" ref={ref} />);
+
+    expect(ref.current).toBe(screen.getByLabelText("Catalog URL"));
   });
 
   it("accepts a custom input type for password fields", () => {

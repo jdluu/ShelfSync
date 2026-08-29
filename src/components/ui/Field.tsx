@@ -8,7 +8,6 @@ export interface FieldProps extends Omit<React.ComponentProps<"input">, "id"> {
   errorId?: string;
   helper?: string;
   helperId?: string;
-  inputClassName?: string;
 }
 
 export const Field: React.FC<FieldProps> = ({
@@ -18,10 +17,10 @@ export const Field: React.FC<FieldProps> = ({
   errorId = `${id}-error`,
   helper,
   helperId = `${id}-helper`,
-  inputClassName,
   type = "text",
-  "aria-describedby": ariaDescribedBy,
+  ref,
   className,
+  "aria-describedby": ariaDescribedBy,
   ...inputProps
 }) => {
   const describedByRefs = [helper ? helperId : null, error ? errorId : null].filter(Boolean);
@@ -33,11 +32,12 @@ export const Field: React.FC<FieldProps> = ({
       <label htmlFor={id}>
         <span className="label-text mb-1 font-medium">{label}</span>
         <input
+          ref={ref}
           id={id}
           type={type}
           aria-invalid={error ? true : undefined}
           aria-describedby={resolvedDescribedBy}
-          className={cn("input input-bordered w-full", error && "input-error", inputClassName)}
+          className={cn("input input-bordered w-full", error && "input-error", className)}
           {...inputProps}
         />
       </label>
