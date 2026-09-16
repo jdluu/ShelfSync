@@ -110,3 +110,39 @@ A runtime smoke test still needs an attached device or emulator.
 - Run the validation suite before opening a PR.
 - Do not remove legacy implementation wholesale until replacement tests cover
   the retired behavior.
+
+
+## Board, CI, and tooling quirks (from the former shelfsync-github-workflow skill)
+
+# ShelfSync GitHub Workflow
+
+Repo: `jdluu/ShelfSync` (PUBLIC). Tauri 2 (Rust + React/TS) OPDS library client.
+Sibling of Leafline; boundaries in `docs/app-boundaries.md`.
+
+## Key facts (verified 2026-08-25)
+
+- Board: "ShelfSync Development", project number **6**, id `PVT_kwHOBPhPDc4BhPM5`,
+  Status field `PVTSSF_lAHOBPhPDc4BhPM5zhgLqZo` (Todo `f75ad846`,
+  In Progress `47fc9ee4`, Done `98236657`). Older board #8 "v1.5 Sweep" is closed-out.
+- Feature freeze ACTIVE: scope governed by `agent_docs/FEATURE_FREEZE.md`.
+  New features need a `feature-freeze-exception` tagged issue.
+- Internal docs live in `agent_docs/` (BRAND.md, FEATURE_FREEZE.md,
+  android-hardening.md). User-facing docs stay in `docs/`. README is end-user only.
+- Validation: `pnpm vitest run` (~222), `cargo test --manifest-path src-tauri/Cargo.toml`
+  (~230; cargo at ~/.cargo/bin — not on default PATH in fresh shells),
+  `npx tsc -b`, Biome.
+- Biome quirk: `pnpm lint` can die with "Linter process terminated abnormally
+  (possibly out of memory)" and exit 0. Use
+  `node node_modules/@biomejs/biome/bin/biome check .` for real results.
+
+## Workflow rules (enforced)
+
+- Never push to main. Branches `feat|fix|chore|docs/...` → PR → verify checks → squash-merge → delete branch.
+- Conventional commits, no emojis/emdashes; reference issues ("Closes #N").
+- PR order matters when main's CI is red: fix CI first on its own branch, merge it, then rebase dependent PRs (`git rebase main && git push --force-with-lease`) so their checks are meaningful.
+
+## Pitfalls
+
+- Vitest mock stubs: a bare `vi.fn()` resolves to undefined; any component awaiting it then reading `.length` throws as an UNHANDLED error after tests pass — vitest exits non-zero and CI fails even with all tests green. Always give async mocks `mockResolvedValue(...)`. This exact bug was issue #56 / PR #57.
+- Projects v2 via raw GraphQL only (`gh api graphql`); `gh project item-list` hits owner-type errors. Complex payloads via `--input file.json`.
+- gh token: device login already has classic PAT scopes (repo+project+workflow); BWS fallback rarely needed here unlike Leafline.
