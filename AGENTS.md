@@ -140,6 +140,10 @@ Sibling of Leafline; boundaries in `docs/app-boundaries.md`.
 - Conventional commits, no emojis/emdashes; reference issues ("Closes #N").
 - PR order matters when main's CI is red: fix CI first on its own branch, merge it, then rebase dependent PRs (`git rebase main && git push --force-with-lease`) so their checks are meaningful.
 
+### Release pipeline
+
+The release process and secret layout for CI are documented in `docs/releasing.md`. Refer to that runbook for release procedures, secret management, and signing policies rather than restating the pipeline here.
+
 ## Pitfalls
 
 - Vitest mock stubs: a bare `vi.fn()` resolves to undefined; any component awaiting it then reading `.length` throws as an UNHANDLED error after tests pass — vitest exits non-zero and CI fails even with all tests green. Always give async mocks `mockResolvedValue(...)`. This exact bug was issue #56 / PR #57.

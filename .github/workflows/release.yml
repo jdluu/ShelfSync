@@ -1,5 +1,22 @@
 name: Release
 
+# Builds and publishes release assets for a tag.
+#
+# Signing material is never stored in this repository or in long-lived workflow
+# inputs. It is fetched at build time from Infisical by scripts/sync-secrets.js,
+# which is the same code path local development uses.
+#
+# Required repository secrets (the only ones this workflow needs):
+#   INFISICAL_CLIENT_ID, INFISICAL_CLIENT_SECRET
+#     A machine identity with read access to the Infisical project paths that
+#     scripts/sync-secrets.js reads. They are exchanged for a short-lived token
+#     inside the build, so no long-lived token sits in the workflow.
+#
+# The tag that gets checked out is never taken directly from workflow input.
+# It is validated against a strict pattern in the `validate` job first, and only
+# that job's output is ever passed to actions/checkout `ref:`, so no unvalidated
+# string can reach a ref.
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,15 +24,90 @@ on:
         description: 'Existing tag to build and attach assets to, e.g. v0.0.1'
         required: true
         type: string
+      release_type:
+        description: 'How to mark the release'
+        required: false
+        type: choice
+        default: prerelease
+        options:
+          - prerelease
+          - stable
   push:
     tags:
       - 'v*'
+
+# Never cancel a release build; never let two run against the same tag at once.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      release_type: ${{ steps.check.outputs.release_type }}
+    steps:
+      - name: Validate the tag and release type
+        id: check
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$REF_NAME}"
+
+          # Anchored, shell-safe pattern: letters, digits, dot, dash, plus only.
+          # Anything else (spaces, quotes, semicolons, substitutions) is rejected
+          # before the value can be used as a git ref.
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "ERROR: tag '$tag' is not a valid release tag (expected e.g. v0.0.1 or v0.0.1-rc.1)." >&2
+            exit 1
+          fi
+
+          release_type="${INPUT_TYPE:-prerelease}"
+          case "$release_type" in
+            prerelease|stable) ;;
+            *)
+              echo "ERROR: release_type must be 'prerelease' or 'stable', got '$release_type'." >&2
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release_type=$release_type" >> "$GITHUB_OUTPUT"
+          echo "Validated tag=$tag, release_type=$release_type"
+
+  verify-version:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Safe: comes from the validate job, which only emits a value matching
+          # ^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$.
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - name: Check the tag matches the declared version
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+          if [ "$TAG" != "v$version" ]; then
+            echo "ERROR: tag '$TAG' does not match the checked-out version 'v$version'." >&2
+            echo "Bump the version in package.json, src-tauri/Cargo.toml and src-tauri/tauri.conf.json," >&2
+            echo "then tag the commit. Rebuilding an older tag requires the version to match it." >&2
+            exit 1
+          fi
+          echo "Version check passed: tag $TAG matches version $version"
+
   build-desktop:
+    needs: [validate, verify-version]
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +115,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -58,6 +152,10 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      # Desktop bundles are currently unsigned: bundle.createUpdaterArtifacts is
+      # not enabled in tauri.conf.json, so no updater signature is produced and no
+      # signing key is needed here. If updater artifacts are enabled later, this
+      # job must fetch the key from Infisical the way build-android does.
       - name: Build Desktop
         run: pnpm tauri build
 
@@ -76,9 +174,12 @@ jobs:
             src-tauri/target/release/bundle/msi/*.zip
 
   build-android:
+    needs: [validate, verify-version]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -112,38 +213,43 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup Android signing
+      # The machine-identity credentials are exchanged for a short-lived token
+      # inside this step and used only here, so the token never reaches the
+      # environment of later steps.
+      - name: Fetch signing secrets from Infisical
         env:
-          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
         run: |
-          if [ -n "$ANDROID_KEY_BASE64" ]; then
-            mkdir -p src-tauri/gen/android/app
-            printf '%s\n' \
-              "shelfsync.key.alias=$ANDROID_KEY_ALIAS" \
-              "shelfsync.key.password=$ANDROID_KEY_PASSWORD" \
-              "shelfsync.keystore.password=$ANDROID_KEY_PASSWORD" \
-              "shelfsync.keystore.path=shelfsync-release.jks" \
-              > src-tauri/gen/android/app/keystore.properties
+          set -euo pipefail
 
-            if ! printf '%s' "$ANDROID_KEY_BASE64" | base64 -d > src-tauri/gen/android/app/shelfsync-release.jks 2>/dev/null || [ ! -s src-tauri/gen/android/app/shelfsync-release.jks ]; then
-              echo "ERROR: Failed to decode ANDROID_KEY_BASE64 or keystore is empty" >&2
-              exit 1
-            fi
-            echo "Android signing configured"
-          else
-            echo "WARNING: ANDROID_KEY_BASE64 is empty, building unsigned"
+          if [ -z "${INFISICAL_CLIENT_ID:-}" ] || [ -z "${INFISICAL_CLIENT_SECRET:-}" ]; then
+            echo "ERROR: INFISICAL_CLIENT_ID and INFISICAL_CLIENT_SECRET must be set." >&2
+            echo "Android builds are signed from Infisical; there is no unsigned fallback." >&2
+            exit 1
           fi
+
+          token=$(curl -fsS -X POST "https://app.infisical.com/api/v1/auth/universal-auth/login" \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode "clientId=${INFISICAL_CLIENT_ID}" \
+            --data-urlencode "clientSecret=${INFISICAL_CLIENT_SECRET}" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["accessToken"])')
+
+          if [ -z "$token" ]; then
+            echo "ERROR: Infisical returned an empty access token." >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+
+          INFISICAL_TOKEN="$token" pnpm secrets:fetch
 
       - name: Build Android (AAB and APK)
         run: |
-          export NDK_HOME=$ANDROID_NDK_HOME
+          set -euo pipefail
+          export NDK_HOME="$ANDROID_NDK_HOME"
 
           pnpm tauri android build --apk
-          if [ -f "src-tauri/gen/android/app/keystore.properties" ]; then
-            pnpm tauri android build --aab
-          fi
+          pnpm tauri android build --aab
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
@@ -155,8 +261,16 @@ jobs:
             src-tauri/gen/android/app/build/outputs/apk/release/*.apk
             src-tauri/gen/android/app/build/outputs/bundle/release/*.aab
 
+      # Signing material is injected at run time and must not survive the job.
+      - name: Remove injected secrets
+        if: always()
+        run: |
+          rm -f src-tauri/gen/android/app/keystore.properties
+          rm -f src-tauri/gen/android/app/shelfsync-release.jks
+          rm -f keys/updater
+
   publish:
-    needs: [build-desktop, build-android]
+    needs: [validate, build-desktop, build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -171,9 +285,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_TYPE: ${{ needs.validate.outputs.release_type }}
         run: |
-          tag="${{ inputs.tag || github.ref_name }}"
-          echo "Publishing assets for tag: $tag"
+          set -euo pipefail
+          echo "Publishing assets for tag: $TAG ($RELEASE_TYPE)"
 
           echo "Artifact file tree:"
           find artifacts -type f
@@ -184,40 +300,61 @@ jobs:
           done < <(find artifacts -type f -print0)
 
           if [ ${#files[@]} -eq 0 ]; then
-            echo "ERROR: No artifact files found in artifacts directory" >&2
+            echo "ERROR: no artifact files found; nothing to publish." >&2
             exit 1
           fi
 
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Release $tag exists; attaching assets with --clobber"
-            gh release upload "$tag" "${files[@]}" --clobber
-          else
-            echo "Release $tag does not exist; creating prerelease"
-            gh release create "$tag" --title "$tag" --generate-notes --prerelease "${files[@]}"
+          prerelease_flag=()
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            prerelease_flag=(--prerelease)
           fi
 
-      - name: Verify release
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Attach to the existing release so its curated notes are preserved.
+            echo "Release $TAG exists; uploading assets with --clobber."
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            echo "Release $TAG does not exist; creating it."
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              "${prerelease_flag[@]}" \
+              "${files[@]}"
+          fi
+
+      - name: Verify the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_TYPE: ${{ needs.validate.outputs.release_type }}
         run: |
-          tag="${{ inputs.tag || github.ref_name }}"
-          release_json=$(gh release view "$tag" --json isPrerelease,assets)
+          set -euo pipefail
+          release_json=$(gh release view "$TAG" --json isPrerelease,isDraft,assets)
           echo "$release_json"
 
           is_prerelease=$(echo "$release_json" | jq -r '.isPrerelease')
+          is_draft=$(echo "$release_json" | jq -r '.isDraft')
           asset_count=$(echo "$release_json" | jq '.assets | length')
 
-          echo "Verification: isPrerelease=$is_prerelease, asset_count=$asset_count"
-
-          if [ "$is_prerelease" != "true" ]; then
-            echo "Release verification failed: expected prerelease to be true, got $is_prerelease" >&2
-            exit 1
+          expected_prerelease=false
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            expected_prerelease=true
           fi
 
+          echo "Verification: isPrerelease=$is_prerelease (expected $expected_prerelease), isDraft=$is_draft, assets=$asset_count"
+
+          if [ "$is_draft" != "false" ]; then
+            echo "Release verification failed: release is still a draft." >&2
+            exit 1
+          fi
+          if [ "$is_prerelease" != "$expected_prerelease" ]; then
+            echo "Release verification failed: expected prerelease=$expected_prerelease, got $is_prerelease." >&2
+            exit 1
+          fi
           if [ "$asset_count" -le 0 ]; then
-            echo "Release verification failed: asset count is 0" >&2
+            echo "Release verification failed: asset count is 0." >&2
             exit 1
           fi
 
-          echo "Release verification passed: prerelease is true and $asset_count assets found"
+          echo "Release verification passed: $asset_count assets attached."
