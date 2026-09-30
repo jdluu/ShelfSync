@@ -87,6 +87,7 @@ src-tauri/src/
 src-tauri/test/fixtures/opds/   XML fixtures; e2e/ Playwright (local only)
 scripts/sync-secrets.js         Infisical -> keystore.properties
 src/design/tokens.ts           design tokens; DESIGN.md is the source of truth
+screenshots/                    README images, referenced relatively from README.md
 ```
 
 ## Code style
