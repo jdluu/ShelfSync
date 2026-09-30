@@ -24,14 +24,14 @@ Open them with your favorite reading app (we recommend
 
 **Connect your shelf** — point ShelfSync at any OPDS catalog:
 
-![Connect screen in the paper theme](docs/screenshots/connect-paper.png)
+![Connect screen in the paper theme](assets/screenshots/connect-paper.png)
 
 **Browse and download** — cover-forward cards with serif titles, live download
 progress, and offline library states:
 
 | Paper (light) | Lamplight (dark) |
 |---|---|
-| ![Catalog in paper theme](docs/screenshots/catalog-paper.png) | ![Catalog in lamplight theme](docs/screenshots/catalog-lamplight.png) |
+| ![Catalog in paper theme](assets/screenshots/catalog-paper.png) | ![Catalog in lamplight theme](assets/screenshots/catalog-lamplight.png) |
 
 ## Features
 
