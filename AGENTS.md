@@ -124,10 +124,9 @@ Sibling of Leafline; boundaries in `docs/app-boundaries.md`.
 - Board: "ShelfSync Development", project number **6**, id `PVT_kwHOBPhPDc4BhPM5`,
   Status field `PVTSSF_lAHOBPhPDc4BhPM5zhgLqZo` (Todo `f75ad846`,
   In Progress `47fc9ee4`, Done `98236657`). Older board #8 "v1.5 Sweep" is closed-out.
-- Feature freeze ACTIVE: scope governed by `agent_docs/FEATURE_FREEZE.md`.
-  New features need a `feature-freeze-exception` tagged issue.
-- Internal docs live in `agent_docs/` (BRAND.md, FEATURE_FREEZE.md,
-  android-hardening.md). User-facing docs stay in `docs/`. README is end-user only.
+- Feature freeze ACTIVE: new features need a `feature-freeze-exception` tagged issue.
+- Internal docs: `AGENTS.md` is the only agent-facing document in the repository;
+  user-facing documentation lives in `docs/`. README is end-user only.
 - Validation: `pnpm vitest run` (~222), `cargo test --manifest-path src-tauri/Cargo.toml`
   (~230; cargo at ~/.cargo/bin — not on default PATH in fresh shells),
   `npx tsc -b`, Biome.

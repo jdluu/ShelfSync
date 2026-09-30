@@ -16,6 +16,11 @@ ShelfSync is not an e-reader — it gets verified books onto your device.
 Open them with your favorite reading app (we recommend
 [Leafline](https://github.com/jdluu/Leafline)).
 
+> [!NOTE]
+> ShelfSync is at v0.0.1, an early pre-release under active development.
+> Interfaces and behavior may change between releases, and there are
+> currently no prebuilt desktop binaries published.
+
 ## Screenshots
 
 **Connect your shelf** — point ShelfSync at any OPDS catalog:
@@ -57,10 +62,11 @@ installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
 
 ### Desktop
 
-Download the latest release for your platform from the
-[Releases page](https://github.com/jdluu/ShelfSync/releases):
-
-- **Windows / Linux:** installers under `src-tauri/target/release/bundle`.
+Prebuilt desktop installers are not published yet for this pre-release. The
+[Releases page](https://github.com/jdluu/ShelfSync/releases) provides release
+notes for the v0.0.1 pre-release tag. To run the desktop app, you must
+[build from source](#building-from-source). See [CHANGELOG.md](CHANGELOG.md) for
+release history.
 
 No special permissions are required on Android beyond network access;
 downloads live in the app's private storage (you can point them at your
