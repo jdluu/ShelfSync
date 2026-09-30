@@ -18,8 +18,7 @@ Open them with your favorite reading app (we recommend
 
 > [!NOTE]
 > ShelfSync is at v0.0.1, an early pre-release under active development.
-> Interfaces and behavior may change between releases, and there are
-> currently no prebuilt desktop binaries published.
+> Interfaces and behavior may change between releases.
 
 ## Screenshots
 
@@ -60,11 +59,21 @@ progress, and offline library states:
 Tap the badge on your Android device with [Obtainium](https://obtainium.imranr.dev/)
 installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
 
+You can also sideload the APK from the
+[v0.0.1 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.1)
+(`app-universal-release.apk`, a universal build for all supported ABIs).
+
 ### Desktop
 
-Prebuilt desktop installers are not published yet for this pre-release. The
-[Releases page](https://github.com/jdluu/ShelfSync/releases) provides release
-notes for the v0.0.1 pre-release tag. To run the desktop app, you must
+Download the installer for your platform from the
+[v0.0.1 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.1):
+
+- **Windows:** `ShelfSync_0.0.1_x64-setup.exe` (installer) or
+  `ShelfSync_0.0.1_x64_en-US.msi`
+- **Linux:** `ShelfSync_0.0.1_amd64.AppImage` (portable, no install needed) or
+  `ShelfSync_0.0.1_amd64.deb`
+
+These are pre-release builds of an early version. You can also
 [build from source](#building-from-source). See [CHANGELOG.md](CHANGELOG.md) for
 release history.
 
