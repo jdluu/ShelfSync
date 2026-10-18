@@ -10,7 +10,8 @@ import { useOpdsDownload } from "./useOpdsDownload";
 import { useOpdsScreenOrchestration } from "./useOpdsScreenOrchestration";
 
 const OpdsCatalogScreenContainer: React.FC = () => {
-  const { status, error, localPath, mediaType, progress, startDownload } = useOpdsDownload();
+  const { status, error, localPath, mediaType, progress, startDownload, cancelDownload } =
+    useOpdsDownload();
 
   const connection = useCatalogConnection();
   const offline = useOfflineLibraryState({
@@ -61,6 +62,7 @@ const OpdsCatalogScreenContainer: React.FC = () => {
         downloadLocalPaths={downloads.downloadLocalPaths}
         downloadProgress={downloads.downloadProgressPercents}
         onDownload={downloads.handleDownload}
+        onCancelDownload={cancelDownload}
         libraryInfoByPublicationId={offline.libraryInfoByPublicationId}
         deletingRevisionId={offline.deletingRevisionId}
         onDeleteLocal={offline.handleDeleteLocal}
@@ -83,7 +85,9 @@ const OpdsCatalogScreenContainer: React.FC = () => {
           transientPassword={connection.password}
           contentRoot={connection.contentRoot}
           onDownload={downloads.handleDownload}
+          onCancelDownload={cancelDownload}
           downloadStatus={downloads.downloadStatuses[orchestration.detailPublication.id]}
+          downloadProgress={downloads.downloadProgressPercents[orchestration.detailPublication.id]}
           downloadErrorMessage={downloads.downloadErrors[orchestration.detailPublication.id]}
           libraryInfo={
             offline.libraryInfoByPublicationId[orchestration.detailPublication.id] ?? null

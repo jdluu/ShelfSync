@@ -13,7 +13,7 @@ Non-login shells miss the toolchain: `export PATH="$HOME/.local/bin:$HOME/.local
 | Desktop dev | `pnpm tauri dev` |
 | Typecheck + bundle (CI) | `pnpm build` |
 | Lint/format (CI) | `pnpm exec biome check .` |
-| Frontend tests (CI) | `pnpm vitest run` (expect 29 files / 310 tests) |
+| Frontend tests (CI) | `pnpm vitest run` (expect 32 files / 328 tests) |
 | One spec | `pnpm vitest run src/__tests__/design/tokens.test.ts` |
 | One test by name | `pnpm vitest run -t "tokens"` |
 | Rust fmt (CI) | `cargo fmt --manifest-path src-tauri/Cargo.toml --check` |

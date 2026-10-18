@@ -1,4 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
+import { formatRegistry } from "@/services/formatRegistry";
 import type {
   AcquisitionFormat,
   Catalog,
@@ -27,9 +28,6 @@ type TauriDownloadResult = {
 
 const OPDS_DOWNLOAD_PROGRESS_EVENT = "opds-download-progress";
 
-const EPUB_MEDIA_TYPE: MediaType = "application/epub+zip";
-const PDF_MEDIA_TYPE: MediaType = "application/pdf";
-
 export const opdsClient = {
   fetchCatalog: (params: FetchOpdsCatalogParams) => {
     return safeInvoke<Catalog>("fetch_opds_catalog", {
@@ -47,7 +45,7 @@ export const opdsClient = {
     format: MediaType,
   ): Promise<DownloadResult> => {
     const formattedFormat = format as string;
-    if (formattedFormat !== EPUB_MEDIA_TYPE && formattedFormat !== PDF_MEDIA_TYPE) {
+    if (!formatRegistry.isDownloadable(formattedFormat)) {
       return Promise.reject(
         new Error(`Unsupported acquisition format: ${format}. Only EPUB and PDF are supported.`),
       );

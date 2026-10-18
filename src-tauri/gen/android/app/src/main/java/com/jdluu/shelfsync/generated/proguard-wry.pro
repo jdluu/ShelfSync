@@ -13,7 +13,9 @@
 
   void setWebView(com.jdluu.shelfsync.RustWebView);
   java.lang.Class getAppClass(...);
+  int getId();
   java.lang.String getVersion();
+  int startActivity(...);
 }
 
 -keep class com.jdluu.shelfsync.Ipc {

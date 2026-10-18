@@ -1,3 +1,5 @@
+import { formatRegistry } from "@/services/formatRegistry";
+
 export interface NavigationLink {
   href: string;
   rel?: string | null;
@@ -127,13 +129,13 @@ export function getAcquisitionLinks(publication: Publication): Acquisition[] {
 
 /**
  * Downloadable formats offered by a publication: acquisition links with an
- * explicit EPUB or PDF media type, in catalog order.
+ * explicit downloadable media type in the formatRegistry, in catalog order.
  */
 export function getDownloadableFormats(publication: Publication): AcquisitionFormat[] {
   const formats: AcquisitionFormat[] = [];
   for (const link of publication.links ?? []) {
-    if (link.media_type === EPUB_MEDIA_TYPE || link.media_type === "application/pdf") {
-      formats.push({ href: link.href, mediaType: link.media_type });
+    if (formatRegistry.isDownloadable(link.media_type)) {
+      formats.push({ href: link.href, mediaType: link.media_type as MediaType });
     }
   }
   return formats;
@@ -160,28 +162,12 @@ export function findAcquisitionLinkForFormat(
   );
 }
 
-const MEDIA_TYPE_LABELS: Record<string, string> = {
-  "application/epub+zip": "EPUB",
-  "application/pdf": "PDF",
-  "application/pdf+aes": "PDF (Encrypted)",
-  "application/zip": "ZIP",
-  "chemical/x-mdldrum": "MDL",
-  "chemical/x-mol": "MOL",
-  "text/html": "HTML",
-  "application/rtf": "RTF",
-  "application/x-mobipocket-ebook": "MOBI",
-  "application/x-kindle": "Kindle",
-  "image/jpeg": "JPEG",
-  "image/png": "PNG",
-};
-
 /**
  * Single source for display labels shown next to media types (badges, format
- * menus, download buttons). Falls back to the raw media type for unknown
- * formats and matches case-insensitively.
+ * menus, download buttons). Delegates to formatRegistry.
  */
 export function getMediaTypeDisplayLabel(mediaType: string): string {
-  return MEDIA_TYPE_LABELS[mediaType.toLowerCase()] || mediaType;
+  return formatRegistry.getLabel(mediaType);
 }
 
 /**

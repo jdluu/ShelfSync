@@ -1,5 +1,6 @@
 import { Book, Calendar, Download, User, X } from "lucide-react";
 import type React from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { DownloadStatus, MediaType, Publication } from "@/types/opds";
@@ -8,6 +9,7 @@ import {
   getAcquisitionMediaType,
   getMediaTypeDisplayLabel,
 } from "@/types/opds";
+import { cleanHtml } from "@/utils/sanitize";
 import { LibraryStateBadge } from "./LibraryStateBadge";
 
 interface PublicationDetailModalProps {
@@ -27,6 +29,7 @@ interface PublicationDetailModalProps {
     publication: Publication,
     format: MediaType,
   ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  onCancelDownload?: () => void;
   downloadStatus?: DownloadStatus;
   downloadProgress?: number | null;
   downloadLocalPath?: string | null;
@@ -44,10 +47,6 @@ function dateOrUnknown(date: string | null | undefined): string {
   }
 }
 
-function cleanHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, "").trim();
-}
-
 export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
   publication,
   onClose,
@@ -56,11 +55,48 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
   transientPassword,
   contentRoot,
   onDownload,
+  onCancelDownload,
   downloadStatus,
+  downloadProgress,
   downloadErrorMessage,
   libraryInfo,
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const acquisitionLinks = getAcquisitionLinks(publication);
+
+  useEffect(() => {
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+
+    const handleFocusTrap = (e: KeyboardEvent) => {
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusableElements.length === 0) return;
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleFocusTrap);
+    return () => {
+      window.removeEventListener("keydown", handleFocusTrap);
+      previousActiveElement?.focus?.();
+    };
+  }, []);
 
   const showDownload = catalogUrl && onDownload && acquisitionLinks.length > 0;
 
@@ -80,7 +116,9 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 outline-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -209,7 +247,32 @@ export const PublicationDetailModal: React.FC<PublicationDetailModalProps> = ({
                 </p>
               )}
               {downloadStatus === "downloading" && (
-                <p className="text-xs text-base-content/70">Downloading…</p>
+                <div className="flex flex-col gap-1.5">
+                  <progress
+                    className="progress progress-primary w-full"
+                    max={100}
+                    value={typeof downloadProgress === "number" ? downloadProgress : undefined}
+                    aria-label={`Downloading ${publication.title}`}
+                  />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-base-content/70">
+                      {typeof downloadProgress === "number"
+                        ? `${downloadProgress}%`
+                        : "Downloading…"}
+                    </p>
+                    {onCancelDownload && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onCancelDownload}
+                        className="btn-xs text-error h-auto py-0.5 px-1.5"
+                        aria-label={`Cancel download of ${publication.title}`}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
               {downloadStatus !== "downloading" && (
                 <div className="flex flex-wrap gap-2">

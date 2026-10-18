@@ -58,6 +58,15 @@ export function useDownloadRegistry({
     const publicationId = activeDownloadIdRef.current;
     if (!publicationId) return;
 
+    if (status === "idle") {
+      setDownloadStatuses((prev) => ({ ...prev, [publicationId]: "idle" }));
+      setDownloadProgressPercents((prev) => ({ ...prev, [publicationId]: null }));
+      setDownloadErrors((prev) => ({ ...prev, [publicationId]: null }));
+      activeDownloadIdRef.current = null;
+      pendingResultRef.current = null;
+      return;
+    }
+
     setDownloadStatuses((prev) => ({ ...prev, [publicationId]: status }));
     setDownloadErrors((prev) => ({ ...prev, [publicationId]: error }));
     setDownloadLocalPaths((prev) => ({ ...prev, [publicationId]: localPath }));
