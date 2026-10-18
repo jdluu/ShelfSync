@@ -1,11 +1,11 @@
 import tailwindcss from "@tailwindcss/postcss";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [react()],
   resolve: {
     tsconfigPaths: true,
@@ -16,7 +16,10 @@ export default defineConfig(async () => ({
   },
   css: {
     postcss: {
-      plugins: [tailwindcss()],
+      plugins: [
+        // biome-ignore lint/suspicious/noExplicitAny: Workaround for duplicate postcss type definitions
+        tailwindcss() as any,
+      ],
     },
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -40,4 +43,4 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
-}));
+});
