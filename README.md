@@ -17,7 +17,7 @@ Open them with your favorite reading app (we recommend
 [Leafline](https://github.com/jdluu/Leafline)).
 
 > [!NOTE]
-> ShelfSync is at v0.0.1, an early pre-release under active development.
+> ShelfSync is at v0.0.2, an early pre-release under active development.
 > Interfaces and behavior may change between releases.
 
 ## Screenshots
@@ -66,18 +66,18 @@ Tap the badge on your Android device with [Obtainium](https://obtainium.imranr.d
 installed, or add the source URL manually: `https://github.com/jdluu/ShelfSync`
 
 You can also sideload the APK from the
-[v0.0.1 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.1)
+[v0.0.2 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.2)
 (`app-universal-release.apk`, a universal build for all supported ABIs).
 
 ### Desktop
 
 Download the installer for your platform from the
-[v0.0.1 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.1):
+[v0.0.2 pre-release](https://github.com/jdluu/ShelfSync/releases/tag/v0.0.2):
 
-- **Windows:** `ShelfSync_0.0.1_x64-setup.exe` (installer) or
-  `ShelfSync_0.0.1_x64_en-US.msi`
-- **Linux:** `ShelfSync_0.0.1_amd64.AppImage` (portable, no install needed) or
-  `ShelfSync_0.0.1_amd64.deb`
+- **Windows:** `ShelfSync_0.0.2_x64-setup.exe` (installer) or
+  `ShelfSync_0.0.2_x64_en-US.msi`
+- **Linux:** `ShelfSync_0.0.2_amd64.AppImage` (portable, no install needed) or
+  `ShelfSync_0.0.2_amd64.deb`
 
 These are pre-release builds of an early version. You can also
 [build from source](#building-from-source). See [CHANGELOG.md](CHANGELOG.md) for
