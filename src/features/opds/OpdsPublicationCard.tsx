@@ -32,6 +32,7 @@ interface OpdsPublicationCardProps {
     publication: Publication,
     format: MediaType,
   ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  onCancelDownload?: () => void;
   downloadStatus?: DownloadStatus;
   downloadProgress?: number | null;
   downloadLocalPath?: string | null;
@@ -50,6 +51,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
   transientPassword,
   contentRoot,
   onDownload,
+  onCancelDownload,
   downloadStatus,
   downloadProgress,
   downloadLocalPath,
@@ -77,6 +79,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
     selectFormat,
     handleDownload,
     handleRetry,
+    cancelDownload,
     retryableRecord,
     deletableRecords,
     showDownloadSection,
@@ -89,6 +92,7 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
     transientPassword,
     contentRoot,
     onDownload,
+    onCancelDownload,
     downloadStatus,
     downloadProgress,
     downloadLocalPath,
@@ -203,9 +207,22 @@ export const OpdsPublicationCard: React.FC<OpdsPublicationCardProps> = ({
                   value={typeof progress === "number" ? progress : undefined}
                   aria-label={`Downloading ${publication.title}`}
                 />
-                <p className="text-xs text-base-content/70">
-                  {typeof progress === "number" ? `${progress}%` : "Downloading…"}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-base-content/70">
+                    {typeof progress === "number" ? `${progress}%` : "Downloading…"}
+                  </p>
+                  {cancelDownload && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelDownload}
+                      className="btn-xs text-error h-auto py-0.5 px-1.5"
+                      aria-label={`Cancel download of ${publication.title}`}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
             <PublicationFormatMenu

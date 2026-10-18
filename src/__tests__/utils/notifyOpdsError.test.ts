@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useToastStore } from "@/store/toastStore";
-import { formatOpdsErrorMessage, notifyOpdsError } from "@/utils/notifyOpdsError";
+import {
+  diagnoseOpdsError,
+  formatOpdsErrorMessage,
+  notifyOpdsError,
+} from "@/utils/notifyOpdsError";
 
 const toastMessages = () => useToastStore.getState().toasts.map((t) => t.message);
 
@@ -18,6 +22,34 @@ describe("formatOpdsErrorMessage", () => {
     expect(formatOpdsErrorMessage(null)).toBe("Unknown error");
     expect(formatOpdsErrorMessage(undefined)).toBe("Unknown error");
     expect(formatOpdsErrorMessage(42, "Custom fallback")).toBe("Custom fallback");
+  });
+});
+
+describe("diagnoseOpdsError", () => {
+  it("returns null for null, undefined, or empty errors", () => {
+    expect(diagnoseOpdsError(null)).toBeNull();
+    expect(diagnoseOpdsError(undefined)).toBeNull();
+    expect(diagnoseOpdsError("")).toBeNull();
+  });
+
+  it("diagnoses 401 Unauthorized errors", () => {
+    const tip = diagnoseOpdsError("HTTP 401 Unauthorized");
+    expect(tip).toContain("username and password");
+  });
+
+  it("diagnoses 404 Not Found errors", () => {
+    const tip = diagnoseOpdsError(new Error("404 Not Found"));
+    expect(tip).toContain("Verify the URL endpoint");
+  });
+
+  it("diagnoses connection refused errors", () => {
+    const tip = diagnoseOpdsError("ECONNREFUSED 127.0.0.1:8080");
+    expect(tip).toContain("Confirm your OPDS server is running");
+  });
+
+  it("diagnoses timeout errors", () => {
+    const tip = diagnoseOpdsError(new Error("request timed out after 30000ms"));
+    expect(tip).toContain("Connection timed out");
   });
 });
 

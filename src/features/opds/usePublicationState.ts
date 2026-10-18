@@ -22,6 +22,7 @@ export interface UsePublicationStateParams {
     publication: Publication,
     format: MediaType,
   ) => Promise<DownloadResult>;
+  onCancelDownload?: () => void;
   downloadStatus?: DownloadStatus;
   downloadProgress?: number | null;
   downloadLocalPath?: string | null;
@@ -37,6 +38,7 @@ export function usePublicationState({
   transientPassword,
   contentRoot,
   onDownload,
+  onCancelDownload,
   downloadStatus = "idle",
   downloadProgress = null,
   downloadLocalPath = null,
@@ -114,6 +116,7 @@ export function usePublicationState({
   const cancelDownload = () => {
     setShowFormatMenu(false);
     setSelectedFormat(null);
+    onCancelDownload?.();
   };
 
   const deletableRecords: CategorizedLibraryRecord[] = [];

@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import type { CategorizedLibraryRecord, PublicationLibraryInfo } from "@/types/offline";
 import type { Catalog, DownloadStatus, MediaType, NavigationLink, Publication } from "@/types/opds";
+import { diagnoseOpdsError } from "@/utils/notifyOpdsError";
 import { OpdsPublicationCard } from "./OpdsPublicationCard";
 
 interface OpdsCatalogViewProps {
@@ -31,6 +32,7 @@ interface OpdsCatalogViewProps {
     publication: Publication,
     format: MediaType,
   ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  onCancelDownload?: (publicationId: string) => void;
   downloadStatuses?: Record<string, DownloadStatus>;
   downloadErrors?: Record<string, string | null>;
   downloadLocalPaths?: Record<string, string | null>;
@@ -50,6 +52,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   onRetry,
   downloadConfig,
   onDownload,
+  onCancelDownload,
   downloadStatuses = {},
   downloadErrors = {},
   downloadLocalPaths = {},
@@ -59,14 +62,11 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   onDeleteLocal,
   onViewDetails,
 }) => {
-  const navigationLinks = useMemo(() => {
-    if (!catalog?.links) return [];
-    return catalog.links.filter(
-      (link: NavigationLink) => link.rel !== "self" && link.rel !== "previous",
-    );
-  }, [catalog?.links]);
-
   const isLoading = loading && !catalog;
+
+  const navigationLinks = useMemo(() => {
+    return (catalog?.links ?? []).filter((link) => link.rel !== "self");
+  }, [catalog]);
 
   const loadingKeys = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => `load-${i}`);
@@ -90,12 +90,14 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
   }
 
   if (error) {
+    const tip = diagnoseOpdsError(error);
     return (
       <div className="flex flex-col gap-4" role="alert">
         <div className="alert alert-error mb-4">
           <div className="flex-1">
             <h3 className="font-bold">Unable to load catalog</h3>
             <p className="text-sm">{error}</p>
+            {tip && <p className="text-xs mt-2 opacity-90 font-medium">💡 {tip}</p>}
           </div>
           {onRetry && (
             <Button variant="outline" size="sm" onClick={onRetry} className="btn-error">
@@ -118,15 +120,15 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
       <EmptyState
         icon={Book}
         title="No Catalog Loaded"
-        description="Connect to an OPDS catalog to begin browsing."
+        description="Enter a catalog URL and credentials above to view publications."
       />
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2 pb-4 border-b border-base-300">
-        <h2 className="font-display text-3xl font-semibold tracking-tight">{catalog.title}</h2>
+      <header className="flex flex-col gap-1 border-b border-base-300 pb-4">
+        <h2 className="text-2xl font-bold">{catalog.title}</h2>
         {catalog.updated && (
           <p className="text-sm text-base-content/60">
             Last updated: {new Date(catalog.updated).toLocaleDateString()}
@@ -145,6 +147,16 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
           </nav>
         )}
       </header>
+
+      {loading && (
+        <div
+          className="flex items-center justify-center gap-2 py-1 text-xs text-base-content/70"
+          aria-live="polite"
+        >
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" aria-hidden="true" />
+          <span>Updating catalog…</span>
+        </div>
+      )}
 
       <section aria-label="Publications">
         {catalog.publications.length === 0 ? (
@@ -170,6 +182,9 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
                   transientPassword={downloadConfig?.transientPassword}
                   contentRoot={downloadConfig?.contentRoot}
                   onDownload={hasDownloadProps ? onDownload : undefined}
+                  onCancelDownload={
+                    onCancelDownload ? () => onCancelDownload(publication.id) : undefined
+                  }
                   downloadStatus={pubDownloadStatus}
                   downloadProgress={pubDownloadProgress}
                   downloadLocalPath={pubDownloadPath}
@@ -193,7 +208,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page - 1)}
-            disabled={page <= 1}
+            disabled={loading || page <= 1}
             aria-label="Previous page"
           >
             Previous
@@ -206,7 +221,7 @@ export const OpdsCatalogView: React.FC<OpdsCatalogViewProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onPageChange(page + 1)}
-            disabled={!catalog.pagination.next}
+            disabled={loading || !catalog.pagination.next}
             aria-label="Next page"
           >
             Next

@@ -9,7 +9,10 @@ import type {
   PublicationLibraryInfo,
 } from "@/types/offline";
 import type { Catalog, DownloadStatus, MediaType, Publication } from "@/types/opds";
+import { isValidOpdsCatalogUrl } from "@/utils/url";
 import { OpdsCatalogView } from "./OpdsCatalogView";
+
+export { isValidOpdsCatalogUrl } from "@/utils/url";
 
 export interface OpdsConnectPayload {
   url: string;
@@ -48,6 +51,7 @@ interface OpdsCatalogScreenProps {
     publication: Publication,
     format: MediaType,
   ) => Promise<{ localPath: string; mediaType: MediaType }>;
+  onCancelDownload?: (publicationId: string) => void;
   libraryInfoByPublicationId?: Record<string, PublicationLibraryInfo>;
   deletingRevisionId?: number | null;
   onDeleteLocal?: (publicationId: string, record: CategorizedLibraryRecord) => void;
@@ -56,10 +60,6 @@ interface OpdsCatalogScreenProps {
   onSaveCatalog?: () => void | Promise<void>;
   savedCatalogs?: React.ReactNode;
 }
-
-export const isValidOpdsCatalogUrl = (value: string): boolean => {
-  return /^https?:\/\//i.test(value.trim());
-};
 
 export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   url,
@@ -83,6 +83,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
   downloadLocalPaths = {},
   downloadProgress,
   onDownload,
+  onCancelDownload,
   libraryInfoByPublicationId = {},
   deletingRevisionId = null,
   onDeleteLocal,
@@ -190,6 +191,9 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
               error={validationError ?? undefined}
               errorId="opds-url-error"
             />
+            <p className="text-xs text-base-content/50 -mt-2">
+              Compatible with Calibre-Web, Grimmory, Kavita, and other standard OPDS feeds.
+            </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="form-control w-full" htmlFor="opds-username">
@@ -326,6 +330,7 @@ export const OpdsCatalogScreen: React.FC<OpdsCatalogScreenProps> = ({
                 contentRoot,
               }}
               onDownload={onDownload}
+              onCancelDownload={onCancelDownload}
               downloadStatuses={downloadStatuses}
               downloadErrors={downloadErrors}
               downloadLocalPaths={downloadLocalPaths}
