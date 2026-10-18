@@ -49,6 +49,12 @@ progress, and offline library states:
 - **E-Ink friendly UI** — a fast React interface with grouped browsing by
   series, author, tag, or date added; keyboard accessible and screen-reader
   labeled.
+- **Usability-driven feedback (NN/g Heuristics)** — real-time progress percentage,
+  contextual error diagnostics with actionable recovery tips, in-flight download
+  cancellation controls, and focus-trapped dialogs.
+- **Extensible Format Architecture** — SOLID principles with an Open-Closed
+  format registry for scalable acquisition media types, HTML synopsis sanitization,
+  and URL normalization.
 
 ## Installation
 
