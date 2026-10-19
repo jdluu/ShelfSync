@@ -26,6 +26,15 @@ Non-login shells miss the toolchain: `export PATH="$HOME/.local/bin:$HOME/.local
 
 No `pnpm test` script exists; if `pnpm lint` prints "Linter process terminated abnormally", re-run `node node_modules/@biomejs/biome/bin/biome check .`, because that OOM has faked a green exit before.
 
+### Build output on this machine
+
+Rust build output does not land in `src-tauri/target/`. The global `~/.cargo/config.toml` sets
+`build.target-dir` to a nested btrfs subvolume (`~/.buildcache/cargo-target`), because `/` is a
+snapshotted btrfs subvolume: a snapshot taken while `target/` exists keeps every block referenced, so
+`cargo clean` frees nothing. A 35G `target/` was cleaned on 2026-10-19 and 34G stayed pinned until
+recent snapshots were deleted. Do not set `CARGO_TARGET_DIR` back inside the repo, and expect
+`src-tauri/target/` to be absent or empty.
+
 ## Boundaries
 
 ### Always do
